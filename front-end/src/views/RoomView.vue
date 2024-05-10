@@ -2,30 +2,31 @@
 import { computed, inject, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import { Socket } from 'socket.io-client';
+import { username } from '@/modules/user'
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
-import { useRootStore } from '@/stores/root';
 
 const props = defineProps({
   id: String,
 });
+const roomId = computed(() => props.id?.toLowerCase());
 
 const socket = inject<Socket>('socket')
-socket?.emit('getMembers', props.id)
+socket?.emit('getMembers', roomId.value)
 
-const username = ref('')
-const store = useRootStore()
-watch(() => store.username, () => {
+const usernameModel = ref('');
+watch(username, () => {
   socket?.emit('joinRoom', {
-    roomId: props.id,
-    username: store.username
+    roomId: roomId.value,
+    username: username.value
   });
 });
 
 // Display error message when username is taken
 const userNameMessage = ref('')
 socket?.on('bad-username', (message: string) => {
-  store.username = '';
+  username.value = '';
+  usernameModel.value = '';
   userNameMessage.value = message
 });
 
@@ -53,10 +54,10 @@ const members = computed(() => {
 // Update users when a new member joins
 type Member = { username: string, point?: number };
 socket?.on('update-members', (members: Member[]) => {
-  users.value = members.reduce<UserPointMap>((acc, { username, point }) => {
-    const visible = store.username === username;
-    acc[username] = {
-      point: users.value[username]?.point ?? point,
+  users.value = members.reduce<UserPointMap>((acc, { username: name, point }) => {
+    const visible = username.value === name;
+    acc[name] = {
+      point: users.value[name]?.point ?? point,
       visible
     };
     return acc;
@@ -73,7 +74,7 @@ const hasVotes = computed(
 const votesVisible = ref(false);
 function toggleVoteVisibility() {
   socket?.emit('toggleVoteVisibility', {
-    roomId: props.id,
+    roomId: roomId.value,
     visible: !votesVisible.value
   });
 }
@@ -81,8 +82,8 @@ function toggleVoteVisibility() {
 // Hide all votes
 socket?.on('hideAllVotes', () => {
   votesVisible.value = false;
-  Object.entries(users.value).forEach(([username, user]) => {
-    if (store.username !== username) user.visible = false;
+  Object.entries(users.value).forEach(([name, user]) => {
+    if (username.value !== name) user.visible = false;
   });
 });
 
@@ -95,11 +96,11 @@ socket?.on('revealAllVotes', () => {
 });
 
 // Update user points when a vote is received
-socket?.on('voteReceived', ({ username, point }) => {
-  if (users.value[username]) {
-    users.value[username].point = point;
+socket?.on('voteReceived', ({ username: name, point }) => {
+  if (users.value[name]) {
+    users.value[name].point = point;
     if (votesVisible.value) {
-      users.value[username].visible = true;
+      users.value[name].visible = true;
     }
   }
 });
@@ -107,12 +108,12 @@ socket?.on('voteReceived', ({ username, point }) => {
 // Available points for voting
 const points = ref([21, 13, 8, 5, 3])
 function vote(point?: number) {
-  socket?.emit('vote', { roomId: props.id, point });
+  socket?.emit('vote', { roomId: roomId.value, point });
 }
 
 // Clear all votes
 function clearAllVotes() {
-  socket?.emit('clearAllVotes', props.id);
+  socket?.emit('clearAllVotes', roomId.value);
 }
 socket?.on('allVotesCleared', () => {
   Object.values(users.value).forEach(user => {
@@ -129,7 +130,7 @@ function copyRoomLink() {
 
 // Leave room when navigating away
 onBeforeRouteLeave(() => {
-  socket?.emit('leaveRoom', props.id);
+  socket?.emit('leaveRoom', roomId.value);
 });
 </script>
 
@@ -170,7 +171,7 @@ onBeforeRouteLeave(() => {
         <VButton
           label="Clear My Vote"
           severity="secondary"
-          :disabled="!users[store.username]"
+          :disabled="!users[username]"
           @click="vote()"
         />
         <VButton
@@ -184,21 +185,21 @@ onBeforeRouteLeave(() => {
 
     <VDialog
       :closable="false"
-      :visible="!store.username"
+      :visible="!username"
       modal
       header="Welcome"
     >
       <p>Please enter a username to join the room.</p>
       <FloatLabel>
-        <InputText id="username" v-model="username" />
+        <InputText id="username" v-model="usernameModel" autocomplete="off" />
         <label for="username">Username</label>
       </FloatLabel>
       <p v-if="userNameMessage" class="p-error">{{ userNameMessage }}</p>
       <template #footer>
         <VButton
           label="Submit"
-          :disabled="!username"
-          @click="store.username = username"
+          :disabled="!usernameModel"
+          @click="username = usernameModel"
         />
       </template>
     </VDialog>

@@ -2,37 +2,36 @@
 import { computed, inject, ref } from 'vue';
 import { Socket } from 'socket.io-client';
 import { useRouter } from 'vue-router';
-import { useRootStore } from '@/stores/root';
+import { username } from '@/modules/user';
 
 const socket = inject<Socket>('socket')
 
 const rId = ref('');
-const username = ref('');
+const usernameModel = ref('');
 
 const roomId = computed(() => rId.value.trim().toLowerCase());
 
-const store = useRootStore();
 const router = useRouter();
 function createRoom() {
-  socket?.emit('createRoom', { roomId: roomId.value, username: username.value});
+  socket?.emit('createRoom', { roomId: roomId.value, username: usernameModel.value});
   socket?.on('roomCreated', (data) => {
-    const { roomId: id, socketId } = data;
-    store.socketId = socketId;
-    store.username = username.value;
+    const { roomId: id } = data;
+    username.value = usernameModel.value;
 
     router.push({ name: 'Room', params: { id } });
   });
 }
 
 function joinRoom() {
-  store.username = username.value;
-  socket?.emit('joinRoom', { roomId: roomId.value, username: username.value });
+  socket?.emit('joinRoom', { roomId: roomId.value, username: usernameModel.value });
   socket?.on('roomJoined', (id) => {
+    username.value = usernameModel.value;
+
     router.push({ name: 'Room', params: { id } });
   });
 }
 
-const disabled = computed(() => !roomId.value || !username.value);
+const disabled = computed(() => !roomId.value || !usernameModel.value);
 </script>
 
 <template>
@@ -46,7 +45,7 @@ const disabled = computed(() => !roomId.value || !username.value);
     </div>
     <div class="card">
       <FloatLabel>
-        <InputText id="username" v-model="username" autocomplete="off" />
+        <InputText id="username" v-model="usernameModel" autocomplete="off" />
         <label for="username">Username</label>
       </FloatLabel>
       <FloatLabel>

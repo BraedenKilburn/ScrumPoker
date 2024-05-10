@@ -27,7 +27,6 @@
     "eslint": "^8.57.0",
     "eslint-plugin-vue": "^9.23.0",
     "npm-run-all2": "^6.1.2",
-    "pinia": "^2.1.7",
     "prettier": "^3.2.5",
     "primevue": "^3.52.0",
     "sass": "^1.77.0",
