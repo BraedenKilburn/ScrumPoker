@@ -2,7 +2,7 @@
 import { computed, inject, ref } from 'vue';
 import { Socket } from 'socket.io-client';
 import { useRouter } from 'vue-router';
-import { username } from '@/modules/user';
+import { isHost, username } from '@/modules/user';
 
 const socket = inject<Socket>('socket')
 
@@ -14,9 +14,9 @@ const roomId = computed(() => rId.value.trim().toLowerCase());
 const router = useRouter();
 function createRoom() {
   socket?.emit('createRoom', { roomId: roomId.value, username: usernameModel.value});
-  socket?.on('roomCreated', (data) => {
-    const { roomId: id } = data;
+  socket?.on('roomCreated', ({ roomId: id }) => {
     username.value = usernameModel.value;
+    isHost.value = true;
 
     router.push({ name: 'Room', params: { id } });
   });
@@ -26,7 +26,8 @@ function joinRoom() {
   socket?.emit('joinRoom', { roomId: roomId.value, username: usernameModel.value });
   socket?.on('roomJoined', (id) => {
     username.value = usernameModel.value;
-
+    isHost.value = false;
+    
     router.push({ name: 'Room', params: { id } });
   });
 }

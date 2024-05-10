@@ -4,6 +4,7 @@ import {
   userMap,
   createRoom,
   joinRoom,
+  isHost,
   leaveRoom,
   getMembers,
 } from '@/roomManager'
@@ -22,10 +23,7 @@ export function setupEventHandlers() {
     socket.on('createRoom', ({ roomId, username }) => {
       // If the room already exists, emit an error message
       if (rooms[roomId]) {
-        socket.emit('error', {
-          message:
-            'Room already exists. Try another name or join the existing room.',
-        })
+        socket.emit('error', 'Room already exists. Try another name or join the existing room.')
       } else {
         // Otherwise, create the room and emit a success message
         createRoom(socket, roomId, username)
@@ -70,6 +68,7 @@ export function setupEventHandlers() {
     // Toggle vote visibility
     socket.on('toggleVoteVisibility', ({ roomId, visible }) => {
       if (!rooms[roomId]) return
+      if (!isHost(socket, roomId)) return
 
       // If visible is true, emit the revealAllVotes event
       // to all clients in the room; otherwise, emit the hideAllVotes event
@@ -81,6 +80,7 @@ export function setupEventHandlers() {
     socket.on('clearAllVotes', (roomId: string) => {
       const room = rooms[roomId]
       if (!room) return
+      if (!isHost(socket, roomId)) return
 
       // For each member in the room, set the point to undefined
       room.members.forEach((member) => {

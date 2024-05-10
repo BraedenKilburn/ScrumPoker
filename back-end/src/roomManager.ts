@@ -60,6 +60,10 @@ export function leaveRoom(socket: Socket, roomId: string) {
   return false
 }
 
+export function isHost(socket: Socket, roomId: string) {
+  return rooms[roomId]?.hostSocketId === socket.id
+}
+
 /**
  * Handles the user switching rooms.
  * 

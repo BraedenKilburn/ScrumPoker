@@ -10,8 +10,8 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
 const links = useRouter().getRoutes()
   .sort((a, b) => (a.meta.order as number) - (b.meta.order as number))
 
-const socket = inject<Socket>('socket')
 const toast = useToast();
+const socket = inject<Socket>('socket')
 socket?.on('notification', (message: string) => {
   toast.add({
     severity: 'info',

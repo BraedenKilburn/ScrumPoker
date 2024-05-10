@@ -2,7 +2,7 @@
 import { computed, inject, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import { Socket } from 'socket.io-client';
-import { username } from '@/modules/user'
+import { isHost, username } from '@/modules/user'
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 
@@ -20,6 +20,8 @@ watch(username, () => {
     roomId: roomId.value,
     username: username.value
   });
+
+  isHost.value = false;
 });
 
 // Display error message when username is taken
@@ -142,6 +144,7 @@ onBeforeRouteLeave(() => {
         <VButton severity="danger" label="Leave Room" />
       </RouterLink>
       <VButton
+        v-if="isHost"
         :label="votesVisible ? 'Hide Votes' : 'Reveal Votes'"
         severity="success"
         :disabled="!hasVotes"
@@ -175,6 +178,7 @@ onBeforeRouteLeave(() => {
           @click="vote()"
         />
         <VButton
+          v-if="isHost"
           label="Clear All Votes"
           severity="danger"
           :disabled="!hasVotes"
