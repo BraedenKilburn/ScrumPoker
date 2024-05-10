@@ -138,7 +138,6 @@ onBeforeRouteLeave(() => {
 
 <template>
   <main>
-    <h1>Room: {{ id }}</h1>
     <div class="actions">
       <RouterLink :to="{ name: 'Home' }">
         <VButton severity="danger" label="Leave Room" />

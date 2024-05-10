@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { type RouteRecordRaw } from 'vue-router'
+import { computed } from 'vue';
+import { useRoute, type RouteRecordRaw } from 'vue-router'
 
 defineProps<{
   links: RouteRecordRaw[]
 }>()
 
-const active = ref(false)
-const closeMenu = () => (active.value = false)
+const route = useRoute()
+const roomId = computed(() => route.params.id)
 </script>
 
 <template>
@@ -15,17 +15,18 @@ const closeMenu = () => (active.value = false)
     <router-link
       :to="{ name: 'Home' }"
       class="logo"
-      @click="closeMenu"
     >
       <i class="pi pi-home" />
       Scrum Poker
     </router-link>
+    <p v-if="roomId">Room ID: <strong>{{ roomId }}</strong></p>
   </nav>
 </template>
 
 <style scoped lang="scss">
 nav {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   height: var(--nav-height);
   padding: 1rem;
