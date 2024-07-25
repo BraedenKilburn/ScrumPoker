@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "nodemon index.ts",
-    "start": "ts-node index.ts"
+    "start": "npm run build && node dist/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
