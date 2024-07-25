@@ -1,4 +1,4 @@
-import { io } from '@/serverConfig'
+import { io } from './serverConfig'
 import {
   rooms,
   userMap,
@@ -7,7 +7,7 @@ import {
   isHost,
   leaveRoom,
   getMembers,
-} from '@/roomManager'
+} from './roomManager'
 
 /**
  * Provides an updated list of members to all clients in the room

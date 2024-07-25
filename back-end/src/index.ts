@@ -1,5 +1,5 @@
-import server, { PORT } from '@/serverConfig'
-import { setupEventHandlers } from '@/eventHandlers'
+import server, { PORT } from './serverConfig'
+import { setupEventHandlers } from './eventHandlers'
 
 setupEventHandlers()
 

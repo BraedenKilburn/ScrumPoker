@@ -6,6 +6,7 @@
     "email": "braedenk99@gmail.com"
   },
   "scripts": {
+    "build": "tsc",
     "dev": "nodemon index.ts",
     "start": "ts-node index.ts"
   },
