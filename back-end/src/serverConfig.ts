@@ -8,7 +8,7 @@ const server = http.createServer(app)
 
 export const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:8080',
+    origin: 'https://scrum.braedenkilburn.com',
     methods: ['GET', 'POST'],
   },
 })

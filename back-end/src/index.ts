@@ -4,5 +4,5 @@ import { setupEventHandlers } from './eventHandlers'
 setupEventHandlers()
 
 server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`)
+  console.log(`Server is running on port ${PORT}`)
 })
