@@ -3,7 +3,7 @@ import { inject } from 'vue';
 import { useRouter } from 'vue-router'
 import { Socket } from 'socket.io-client';
 import Toast from 'primevue/toast'
-import { useToast } from 'primevue/useToast';
+import { useToast } from 'primevue/useToast/UseToast';
 import GlobalNavbar from '@/components/GlobalNavbar.vue'
 import GlobalFooter from '@/components/GlobalFooter.vue'
 
