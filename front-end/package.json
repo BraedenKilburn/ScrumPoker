@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "module": "esnext",
   "author": {
     "name": "Braeden Kilburn",
     "email": "braedenk99@gmail.com"

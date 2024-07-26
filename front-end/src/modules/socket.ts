@@ -1,6 +1,10 @@
 import { io } from "socket.io-client";
 
 export function createSocketIo() {
-  const socket = io('http://23.20.128.131:3000'); // Your Node.js server URL
+  if (!import.meta.env.VITE_SOCKET_URL) {
+    throw new Error("VITE_SOCKET_URL is not set");
+  }
+
+  const socket = io(import.meta.env.VITE_SOCKET_URL);
   return socket;
 }
