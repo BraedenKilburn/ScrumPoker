@@ -1,139 +1,119 @@
 <script setup lang="ts">
-import { computed, inject, ref, watch } from 'vue';
-import { onBeforeRouteLeave, useRouter } from 'vue-router';
-import { Socket } from 'socket.io-client';
-import { isHost, username } from '@/modules/user'
+import { computed, ref } from 'vue';
+import { onBeforeRouteLeave } from 'vue-router';
+import { storeToRefs } from 'pinia';
+import { usernameKey } from '@/modules/constants';
+import {
+  clearVotes,
+  hideVotes,
+  joinRoom,
+  leaveRoom,
+  revealVotes,
+  submitVote,
+} from '@/modules/socket';
+import { useRootStore } from '@/stores/root';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
+import type InputText from 'primevue/inputtext';
 
-const props = defineProps({
-  id: String,
-});
+// Room ID
+const props = defineProps({ id: String });
 const roomId = computed(() => props.id?.toLowerCase());
 
-const socket = inject<Socket>('socket')
-socket?.emit('getMembers', roomId.value)
+const store = useRootStore();
+const { user, username, votesVisible } = storeToRefs(store);
 
-const usernameModel = ref('');
-watch(username, () => {
-  socket?.emit('joinRoom', {
-    roomId: roomId.value,
-    username: username.value
-  });
+// If entered room without a username (e.g., from a link),
+// prompt the user to enter a username and join the room.
+const isMissingUsername = computed(() => !username.value);
+const usernameModel = ref(localStorage.getItem(usernameKey) ?? '');
+function join() {
+  if (!roomId.value || !usernameModel.value) return;
+  store.setUsername(usernameModel.value);
+  joinRoom({ roomId: roomId.value, username: usernameModel.value });
+}
 
-  isHost.value = false;
-});
-
-// Display error message when username is taken
-const userNameMessage = ref('')
-socket?.on('bad-username', (message: string) => {
-  username.value = '';
-  usernameModel.value = '';
-  userNameMessage.value = message
-});
-
-const router = useRouter();
-socket?.on('bad-room', () => {
-  router.push({ name: 'Home' });
-});
-
-socket?.on('roomDestroyed', () => {
-  router.push({ name: 'Home' });
-});
-
-type UserPointMap = Record<string, { point?: number, visible: boolean }>;
-const users = ref<UserPointMap>({});
-
-// Get members with their points (used for the DataTable)
+/**
+ * All members in the room with their point estimates.
+ * Used to display the table of members and their votes.
+ */
 const members = computed(() => {
-  return Object.entries(users.value)
-    .map(([name, { point, visible }]) => ({
-      name,
-      point: point ? (visible ? point : '?') : undefined
-    }));
+  return store.participants.map(({ username, point_estimate }) => {
+    const isSelf = username === user.value?.username;
+    const point = isSelf ? point_estimate : '?';
+    return {
+      name: username,
+      point: point_estimate ? (votesVisible.value ? point_estimate : point) : null
+    }
+  });
 });
 
-// Update users when a new member joins
-type Member = { username: string, point?: number };
-socket?.on('update-members', (members: Member[]) => {
-  users.value = members.reduce<UserPointMap>((acc, { username: name, point }) => {
-    const visible = username.value === name;
-    acc[name] = {
-      point: users.value[name]?.point ?? point,
-      visible
-    };
-    return acc;
-  }, {});
-});
-
-// Check if at least one user has voted
+/**
+ * Check if at least one member has voted.
+ */
 const hasVotes = computed(
-  () => Object.values(users.value)
+  () => members.value
     .some(({ point }) => point != null)
 );
 
-// Reveal votes
-const votesVisible = ref(false);
+/**
+ * Toggle the visibility of all votes.
+ */
 function toggleVoteVisibility() {
-  socket?.emit('toggleVoteVisibility', {
-    roomId: roomId.value,
-    visible: !votesVisible.value
-  });
+  if (!roomId.value) return;
+  if (votesVisible.value) hideVotes(roomId.value);
+  else revealVotes(roomId.value);
+  votesVisible.value = !votesVisible.value;
 }
-
-// Hide all votes
-socket?.on('hideAllVotes', () => {
-  votesVisible.value = false;
-  Object.entries(users.value).forEach(([name, user]) => {
-    if (username.value !== name) user.visible = false;
-  });
-});
-
-// Reveal all votes
-socket?.on('revealAllVotes', () => {
-  votesVisible.value = true;
-  Object.values(users.value).forEach(user => {
-    user.visible = true;
-  });
-});
-
-// Update user points when a vote is received
-socket?.on('voteReceived', ({ username: name, point }) => {
-  if (users.value[name]) {
-    users.value[name].point = point;
-    if (votesVisible.value) {
-      users.value[name].visible = true;
-    }
-  }
-});
 
 // Available points for voting
-const points = ref([21, 13, 8, 5, 3])
-function vote(point?: number) {
-  socket?.emit('vote', { roomId: roomId.value, point });
-}
+const points = ref(['21', '13', '8', '5', '3'])
 
-// Clear all votes
-function clearAllVotes() {
-  socket?.emit('clearAllVotes', roomId.value);
-}
-socket?.on('allVotesCleared', () => {
-  Object.values(users.value).forEach(user => {
-    user.point = undefined;
+/**
+ * Submit a vote for the user.
+ * @param point The point estimate to vote for.
+ */
+function vote(point: string | null) {
+  if (!roomId.value) return;
+  store.setUserPointEstimate(point);
+  submitVote({
+    roomId: roomId.value,
+    pointEstimate: point ? point.toString() : null
   });
-});
+}
 
-// Copy room ID
+/**
+ * Clear all votes in the room.
+ */
+function clearAllVotes() {
+  if (!roomId.value) return;
+  clearVotes(roomId.value);
+}
+
 const copiedRoomLink = ref(false);
+/**
+ * Copy the room link to the clipboard.
+ */
 function copyRoomLink() {
   navigator.clipboard.writeText(window.location.href);
   copiedRoomLink.value = true;
 }
 
-// Leave room when navigating away
+// reset store and leave room when navigating away
 onBeforeRouteLeave(() => {
-  socket?.emit('leaveRoom', roomId.value);
+  store.$reset();
+  if (!roomId.value) return;
+  leaveRoom(roomId.value);
 });
+
+const usernameInput = ref<InstanceType<typeof InputText> | null>(null);
+/**
+ * Focus on the input field when the dialog is shown.
+ */
+function focusOnDialogInput() {
+  if (!usernameInput.value) return;
+  usernameInput.value.$el.focus();
+}
 </script>
 
 <template>
@@ -143,7 +123,6 @@ onBeforeRouteLeave(() => {
         <VButton severity="danger" label="Leave Room" />
       </RouterLink>
       <VButton
-        v-if="isHost"
         :label="votesVisible ? 'Hide Votes' : 'Reveal Votes'"
         severity="success"
         :disabled="!hasVotes"
@@ -173,11 +152,10 @@ onBeforeRouteLeave(() => {
         <VButton
           label="Clear My Vote"
           severity="secondary"
-          :disabled="!users[username]"
-          @click="vote()"
+          :disabled="!user || user.point_estimate == null"
+          @click="vote(null)"
         />
         <VButton
-          v-if="isHost"
           label="Clear All Votes"
           severity="danger"
           :disabled="!hasVotes"
@@ -188,21 +166,18 @@ onBeforeRouteLeave(() => {
 
     <VDialog
       :closable="false"
-      :visible="!username"
+      :visible="isMissingUsername"
       modal
       header="Welcome"
+      @show="focusOnDialogInput"
     >
       <p>Please enter a username to join the room.</p>
-      <FloatLabel>
-        <InputText id="username" v-model="usernameModel" autocomplete="off" />
-        <label for="username">Username</label>
-      </FloatLabel>
-      <p v-if="userNameMessage" class="p-error">{{ userNameMessage }}</p>
+      <InputText ref="usernameInput" id="username" v-model="usernameModel" autocomplete="off" />
       <template #footer>
         <VButton
           label="Submit"
           :disabled="!usernameModel"
-          @click="username = usernameModel"
+          @click="join"
         />
       </template>
     </VDialog>
@@ -248,12 +223,14 @@ main {
   }
 }
 
-.p-dialog-content {
+.p-dialog-content,
+.p-dialog-footer {
   p {
-    margin-bottom: 2rem;
+    margin-top: 0;
   }
-  
-  input {
+
+  input,
+  button {
     width: 100%;
   }
 }

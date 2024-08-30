@@ -20,6 +20,7 @@
     "format": "prettier --write src/"
   },
   "devDependencies": {
+    "@primevue/themes": "^4.0.5",
     "@rushstack/eslint-patch": "^1.8.0",
     "@tsconfig/node20": "^20.1.4",
     "@types/node": "^20.12.5",
@@ -31,13 +32,14 @@
     "eslint-plugin-vue": "^9.23.0",
     "npm-audit-resolver": "^3.0.0-RC.0",
     "npm-run-all2": "^6.1.2",
+    "pinia": "^2.2.2",
     "prettier": "^3.2.5",
     "primeicons": "^7.0.0",
-    "primevue": "^3.52.0",
+    "primevue": "^4.0.5",
     "sass": "^1.77.0",
-    "socket.io-client": "^4.7.5",
     "typescript": "~5.4.0",
     "vite": "^5.2.8",
+    "vite-plugin-vue-devtools": "^7.3.9",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0",
     "vue-tsc": "^2.0.11"

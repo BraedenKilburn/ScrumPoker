@@ -3,6 +3,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 
 const roomView: AsyncComponentLoader = () => import(/* webpackChunkName: "room" */ '@/views/RoomView.vue');
+const NotFoundView: AsyncComponentLoader = () => import(/* webpackChunkName: "not-found" */ '@/views/NotFoundView.vue');
 
 const routes: RouteRecordRaw[] = [
   {
@@ -15,7 +16,11 @@ const routes: RouteRecordRaw[] = [
     name: 'Room',
     component: roomView,
     props: true,
-  }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    component: NotFoundView,
+  },
 ]
 
 export default routes

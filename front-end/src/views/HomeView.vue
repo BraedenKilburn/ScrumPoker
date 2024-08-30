@@ -1,76 +1,96 @@
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue';
-import { Socket } from 'socket.io-client';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { isHost, username } from '@/modules/user';
+import { usernameKey } from '@/modules/constants';
+import { joinRoom } from "@/modules/socket";
+import { useRootStore } from '@/stores/root';
+import type InputText from 'primevue/inputtext';
 
-const socket = inject<Socket>('socket')
+// Username
+const username = ref(localStorage.getItem(usernameKey) ?? '');
 
+// Room ID
 const rId = ref('');
-const usernameModel = ref('');
+const roomId = computed(() => rId.value.toLowerCase());
 
-const roomId = computed(() => rId.value.trim().toLowerCase());
-
+const store = useRootStore();
 const router = useRouter();
-function createRoom() {
-  socket?.emit('createRoom', { roomId: roomId.value, username: usernameModel.value});
-  socket?.on('roomCreated', ({ roomId: id }) => {
-    username.value = usernameModel.value;
-    isHost.value = true;
 
-    router.push({ name: 'Room', params: { id } });
-  });
+/**
+ * If the username and room ID are not empty, join the room.
+ */
+function join() {
+  if (!roomId.value || !username.value) return;
+  store.setUsername(username.value);
+  joinRoom({ roomId: roomId.value, username: username.value });
+  router.push({ name: 'Room', params: { id: roomId.value } });
 }
 
-function joinRoom() {
-  socket?.emit('joinRoom', { roomId: roomId.value, username: usernameModel.value });
-  socket?.on('roomJoined', (id) => {
-    username.value = usernameModel.value;
-    isHost.value = false;
-    
-    router.push({ name: 'Room', params: { id } });
-  });
-}
+// Disable the join button if the room ID or username is empty.
+const disabled = computed(() => !roomId.value || !username.value);
 
-const disabled = computed(() => !roomId.value || !usernameModel.value);
+// Focus the username input
+const usernameInput = ref<InstanceType<typeof InputText> | null>(null);
+onMounted(() => {
+  usernameInput.value?.$el.focus();
+});
 </script>
 
 <template>
   <main>
     <div class="intro">
-      <h1>Welcome to Scrum Poker</h1>
+      <h1>Welcome to Scrum&nbsp;Poker</h1>
       <p>
         Enter a username and a room ID to join an existing room or create a new
         room.
       </p>
     </div>
-    <div class="card">
-      <FloatLabel>
-        <InputText id="username" v-model="usernameModel" autocomplete="off" />
-        <label for="username">Username</label>
-      </FloatLabel>
-      <FloatLabel>
-        <InputText id="roomId" v-model="rId" autocomplete="off" />
-        <label for="roomId">Room ID</label>
-      </FloatLabel>
+    <VCard class="home-card">
+      <template #content>
+        <FloatLabel>
+          <InputText ref="usernameInput" id="username" v-model.trim="username" autocomplete="off" size="large" />
+          <label for="username">Username</label>
+        </FloatLabel>
+        <FloatLabel>
+          <InputText id="roomId" v-model.trim="rId" autocomplete="off" size="large" />
+          <label for="roomId">Room ID</label>
+        </FloatLabel>
+      </template>
 
-      <VButton
-        class="join-button"
-        label="Join Room"
-        :disabled
-        @click="joinRoom"
-      />
-
-      <VButton
-        label="Create New Room"
-        severity="secondary"
-        class="create-button"
-        :disabled
-        @click="createRoom"
-      />
-    </div>
+      <template #footer>
+        <VButton
+          class="join-button"
+          label="Join Room"
+          :disabled
+          @click="join"
+        />
+      </template>
+    </VCard>
   </main>
 </template>
+
+<style lang="scss">
+.home-card {
+  --p-card-body-gap: 1.5rem;
+
+  width: 90vw;
+
+  .p-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--p-card-body-gap);
+    padding-top: var(--p-card-body-padding);
+
+    input {
+      width: 100%;
+    }
+  }
+
+  @media (min-width: 768px) {
+    width: 50vw;
+  }
+}
+</style>
 
 <style scoped lang="scss">
 main {
@@ -82,30 +102,8 @@ main {
   padding: 1rem;
   text-align: center;
 
-  .card {
-    width: 90vw;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    background-color: var(--surface-card);
-
-    input {
-      width: 100%;
-    }
-
-    .p-float-label {
-      margin-top: 1rem;
-    }
-  }
-}
-
-@media (min-width: 768px) {
-  main {
-    .card {
-      width: 50vw;
-    }
+  .join-button {
+    width: 100%;
   }
 }
 </style>

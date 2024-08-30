@@ -1,11 +1,10 @@
 <template>
   <footer>
     <a
-      severity="secondary"
       link
-      href="https://github.com/BraedenKilburn"
+      href="https://github.com/BraedenKilburn/ScrumPoker/tree/main"
       target="_blank"
-      rel="noopener noreferrer"
+      rel="noopener"
     >
       <i class="pi pi-github" />
       Created by Braeden Kilburn
@@ -16,6 +15,7 @@
 <style scoped lang="scss">
 footer {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   height: var(--footer-height);
   padding: 0 1rem;
