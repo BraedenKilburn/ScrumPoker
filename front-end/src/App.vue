@@ -32,11 +32,12 @@ function handleWebSocketMessage(data: Message) {
       store.addParticipant(data.user);
       addNotification(`${data.user.username} joined the room`);
       break;
-    case 'UserLeft':
+    case 'UserLeft': {
       if (!data.connection_id) return;
-      store.removeParticipant(data.connection_id);
-      addNotification('A user left the room');
+      const user = store.removeParticipant(data.connection_id);
+      addNotification(`${user?.username ?? 'A user'} left the room`);
       break;
+    }
     case 'UserVoted':
       if (!data.connection_id || data.point_estimate === undefined) return;
       store.setParticipantPointEstimate(data.connection_id, data.point_estimate);
