@@ -83,7 +83,7 @@ function toggleVoteVisibility() {
 }
 
 // Available points for voting
-const points = ref(['21', '13', '8', '5', '3'])
+const points = ref(['40', '21', '13', '8', '5', '3', '?']);
 
 /**
  * Submit a vote for the user.
@@ -141,7 +141,7 @@ function focusOnDialogInput() {
       <VButton
         :label="votesVisible ? 'Hide Votes' : 'Reveal Votes'"
         severity="success"
-        :disabled="!hasVotes"
+        :disabled="!votesVisible && !hasVotes"
         @click="toggleVoteVisibility()"
       />
       <VButton
