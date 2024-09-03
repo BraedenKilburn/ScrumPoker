@@ -37,8 +37,23 @@ function join() {
  * All members in the room with their point estimates.
  * Used to display the table of members and their votes.
  */
-const members = computed(() => {
-  return store.participants.map(({ username, point_estimate }) => {
+ const members = computed(() => {
+  const sortedParticipants = store.participants.slice()
+    .sort((a, b) => {
+      if (votesVisible.value) {
+        // Sort by ascending point_estimate if votes are visible, then alphabetically
+        const voteComparison = (Number.parseInt(a?.point_estimate || '') || 0) - (Number.parseInt(b?.point_estimate || '') || 0);
+        if (voteComparison !== 0) return voteComparison;
+        return a.username.localeCompare(b.username);
+      } else {
+        // User should be first if votes are hidden, then sort alphabetically
+        if (a.username === user.value?.username) return -1;
+        if (b.username === user.value?.username) return 1;
+        return a.username.localeCompare(b.username);
+      }
+    });
+
+  return sortedParticipants.map(({ username, point_estimate }) => {
     const isSelf = username === user.value?.username;
     const point = isSelf ? point_estimate : '?';
     return {
