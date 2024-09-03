@@ -15,6 +15,7 @@ import { useRootStore } from '@/stores/root';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import type InputText from 'primevue/inputtext';
+import PointAccordion from '@/components/PointAccordion.vue';
 
 // Room ID
 const props = defineProps({ id: String });
@@ -152,7 +153,7 @@ function focusOnDialogInput() {
     </div>
 
     <div class="container">
-      <DataTable :value="members">
+      <DataTable :value="members" row-hover>
         <Column field="name" header="Name" />
         <Column field="point" header="Point" />
       </DataTable>
@@ -178,6 +179,8 @@ function focusOnDialogInput() {
         />
       </div>
     </div>
+
+    <PointAccordion />
 
     <VDialog
       :closable="false"
@@ -205,6 +208,7 @@ main {
   flex-direction: column;
   align-items: center;
   gap: 1rem;
+  padding: 0 1rem;
 
   h1 {
     margin: 0;
@@ -216,7 +220,6 @@ main {
     align-items: center;
     gap: 1rem;
     width: 100%;
-    padding: 0 1rem;
   }
 
   .container {
@@ -224,7 +227,6 @@ main {
     display: flex;
     justify-content: space-around;
     gap: 1rem;
-    padding: 0 1rem;
 
     .p-datatable {
       width: 80%;
