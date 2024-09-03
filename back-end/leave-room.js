@@ -12,98 +12,91 @@ import {
 // Initialize DynamoDBDocumentClient
 const ddbClient = new DynamoDBClient({})
 const ddb = DynamoDBDocumentClient.from(ddbClient)
-
-async function leaveRoom(roomId, connectionId) {
-  try {
-    // Delete the user from the room
-    const params = {
-      TableName: 'scrum-poker',
-      Key: {
-        room_id: roomId,
-        connection_id: connectionId,
-      },
-    }
-    await ddb.send(new DeleteCommand(params))
-  } catch (error) {
-    console.error('Error leaving room:', error)
-    throw new Error('Could not leave room')
-  }
-}
-
-async function notifyUsersOfDeparture(roomId, departedConnectionId) {
-  try {
-    // Query to get all remaining connections in the room
-    const queryParams = {
-      TableName: 'scrum-poker',
-      KeyConditionExpression: 'room_id = :roomId',
-      ExpressionAttributeValues: {
-        ':roomId': roomId,
-      },
-    }
-    const result = await ddb.send(new QueryCommand(queryParams))
-
-    // Prepare the message to notify remaining users
-    const message = {
-      message: 'UserLeft',
-      connection_id: departedConnectionId,
-    }
-
-    // Send the message to each remaining connection in the room
-    for (const item of result.Items) {
-      await sendToClient(item.connection_id, JSON.stringify(message))
-    }
-  } catch (error) {
-    console.error('Error notifying users of departure:', error)
-  }
-}
-
-// Initialize ApiGatewayManagementApiClient
 let apigwManagementApi
-async function sendToClient(connectionId, data) {
-  try {
-    const params = {
-      ConnectionId: connectionId,
-      Data: Buffer.from(data),
-    }
-    await apigwManagementApi.send(new PostToConnectionCommand(params))
-  } catch (error) {
-    console.error(`Failed to send data to connection ${connectionId}:`, error)
-    // Optionally, handle stale connections here by deleting them from DynamoDB
-  }
-}
 
 export const handler = async (event) => {
   const { roomId } = JSON.parse(event.body)
   const connectionId = event.requestContext.connectionId
+  const { domainName, stage } = event.requestContext
 
-  apigwManagementApi = new ApiGatewayManagementApiClient({
-    endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
-  })
+  apigwManagementApi = initializeApiGatewayManagementClient(domainName, stage)
 
   try {
-    // Remove the user from the room
     await leaveRoom(roomId, connectionId)
-
-    // Notify other users that the user has left
     await notifyUsersOfDeparture(roomId, connectionId)
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: 'User left the room successfully' }),
-    }
+    return successResponse('User left the room successfully')
   } catch (error) {
-    const errorMessage = {
-      message: 'error',
-      details: 'Failed to leave room',
-    }
-    await sendToClient(
-      event.requestContext.connectionId,
-      JSON.stringify(errorMessage),
-    )
-    console.error('Error during leaveRoom:', error)
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: 'Failed to leave room' }),
-    }
+    return handleError(connectionId, 'Failed to leave room', error)
+  }
+}
+
+// Initialize the ApiGatewayManagementApiClient
+function initializeApiGatewayManagementClient(domainName, stage) {
+  return new ApiGatewayManagementApiClient({
+    endpoint: `https://${domainName}/${stage}`,
+  })
+}
+
+// Remove the user from the room
+async function leaveRoom(roomId, connectionId) {
+  const deleteParams = {
+    TableName: 'scrum-poker',
+    Key: {
+      room_id: roomId,
+      connection_id: connectionId,
+    },
+  }
+  await ddb.send(new DeleteCommand(deleteParams))
+}
+
+// Notify all remaining users in the room that a user has left
+async function notifyUsersOfDeparture(roomId, departedConnectionId) {
+  const queryParams = {
+    TableName: 'scrum-poker',
+    KeyConditionExpression: 'room_id = :roomId',
+    ExpressionAttributeValues: {
+      ':roomId': roomId,
+    },
+  }
+  const result = await ddb.send(new QueryCommand(queryParams))
+
+  const message = {
+    message: 'UserLeft',
+    connection_id: departedConnectionId,
+  }
+
+  for (const item of result.Items) {
+    await sendToClient(item.connection_id, JSON.stringify(message))
+  }
+}
+
+// Send data to a specific client via WebSocket
+async function sendToClient(connectionId, data) {
+  const params = {
+    ConnectionId: connectionId,
+    Data: Buffer.from(data),
+  }
+  await apigwManagementApi.send(new PostToConnectionCommand(params))
+}
+
+// Handle errors and notify the client
+async function handleError(connectionId, message, error) {
+  console.error(message, error)
+  await sendToClient(
+    connectionId,
+    JSON.stringify({ message: 'error', details: message }),
+  )
+  return {
+    statusCode: 500,
+    body: JSON.stringify({ message }),
+  }
+}
+
+// Success response
+function successResponse(message) {
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ message }),
   }
 }

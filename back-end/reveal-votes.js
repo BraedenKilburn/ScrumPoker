@@ -1,81 +1,110 @@
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
+import {
+  DynamoDBDocumentClient,
+  QueryCommand,
+  UpdateCommand,
+} from '@aws-sdk/lib-dynamodb'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
 } from '@aws-sdk/client-apigatewaymanagementapi'
 
-// Initialize DynamoDBDocumentClient
+// Initialize DynamoDBDocumentClient and ApiGatewayManagementApiClient
 const ddbClient = new DynamoDBClient({})
 const ddb = DynamoDBDocumentClient.from(ddbClient)
-
-async function revealPointEstimates(roomId) {
-  try {
-    const params = {
-      TableName: 'scrum-poker',
-      KeyConditionExpression: 'room_id = :roomId',
-      ExpressionAttributeValues: {
-        ':roomId': roomId,
-      },
-    }
-    const result = await ddb.send(new QueryCommand(params))
-    return result.Items ? result.Items : []
-  } catch (error) {
-    console.error('Error revealing point estimates:', error)
-    throw new Error('Could not reveal point estimates')
-  }
-}
-
 let apigwManagementApi
-async function sendToClient(connectionId, data) {
-  try {
-    const params = {
-      ConnectionId: connectionId,
-      Data: Buffer.from(data),
-    }
-    await apigwManagementApi.send(new PostToConnectionCommand(params))
-  } catch (error) {
-    console.error(`Failed to send data to connection ${connectionId}:`, error)
-    // Optionally, handle stale connections here by deleting them from DynamoDB
-  }
-}
 
 export const handler = async (event) => {
-  // Initialize ApiGatewayManagementApiClient
-  apigwManagementApi = new ApiGatewayManagementApiClient({
-    endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
-  })
   const { roomId } = JSON.parse(event.body)
+  const { domainName, stage, connectionId } = event.requestContext
+
+  apigwManagementApi = initializeApiGatewayManagementClient(domainName, stage)
 
   try {
-    const pointEstimates = await revealPointEstimates(roomId)
-
-    // Iterate over all connections in the room and send the revealed votes
-    for (const item of pointEstimates) {
-      const data = JSON.stringify({
-        message: 'RevealVotes',
-        point_estimates: pointEstimates,
-      })
-      await sendToClient(item.connection_id, data)
-    }
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: 'Votes revealed successfully' }),
-    }
+    await revealVotesAndNotifyUsers(roomId)
+    return successResponse('Votes revealed successfully')
   } catch (error) {
-    const errorMessage = {
-      message: 'error',
-      details: 'Failed to reveal votes',
-    }
-    await sendToClient(
-      event.requestContext.connectionId,
-      JSON.stringify(errorMessage),
-    )
-    console.error('Error during revealVotes:', error)
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: 'Failed to reveal votes' }),
-    }
+    return handleError(connectionId, 'Failed to reveal votes', error)
+  }
+}
+
+// Initialize the ApiGatewayManagementApiClient
+function initializeApiGatewayManagementClient(domainName, stage) {
+  return new ApiGatewayManagementApiClient({
+    endpoint: `https://${domainName}/${stage}`,
+  })
+}
+
+// Update the votes_visible attribute in the scrum-poker-rooms table
+async function updateVotesVisible(roomId) {
+  const params = {
+    TableName: 'scrum-poker-rooms',
+    Key: { room_id: roomId },
+    UpdateExpression: 'SET votes_visible = :votesVisible',
+    ExpressionAttributeValues: {
+      ':votesVisible': true,
+    },
+  }
+  await ddb.send(new UpdateCommand(params))
+}
+
+// Reveal the point estimates for the room
+async function revealPointEstimates(roomId) {
+  const params = {
+    TableName: 'scrum-poker',
+    KeyConditionExpression: 'room_id = :roomId',
+    ExpressionAttributeValues: {
+      ':roomId': roomId,
+    },
+  }
+  const result = await ddb.send(new QueryCommand(params))
+  return result.Items || []
+}
+
+// Notify all users in the room with the revealed votes
+async function notifyUsersOfRevealedVotes(roomId, pointEstimates) {
+  for (const item of pointEstimates) {
+    const data = JSON.stringify({
+      message: 'RevealVotes',
+      point_estimates: pointEstimates,
+    })
+    await sendToClient(item.connection_id, data)
+  }
+}
+
+// Reveal votes and notify users
+async function revealVotesAndNotifyUsers(roomId) {
+  await updateVotesVisible(roomId)
+  const pointEstimates = await revealPointEstimates(roomId)
+  await notifyUsersOfRevealedVotes(roomId, pointEstimates)
+}
+
+// Send data to a specific client via WebSocket
+async function sendToClient(connectionId, data) {
+  const params = {
+    ConnectionId: connectionId,
+    Data: Buffer.from(data),
+  }
+  await apigwManagementApi.send(new PostToConnectionCommand(params))
+}
+
+// Handle errors and notify the client
+async function handleError(connectionId, message, error) {
+  console.error(message, error)
+  await sendToClient(
+    connectionId,
+    JSON.stringify({ message: 'error', details: message }),
+  )
+  return {
+    statusCode: 500,
+    body: JSON.stringify({ message }),
+  }
+}
+
+// Success response
+function successResponse(message) {
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ message }),
   }
 }

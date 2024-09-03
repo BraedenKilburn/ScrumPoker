@@ -2,6 +2,7 @@ import {
   DynamoDBDocumentClient,
   PutCommand,
   QueryCommand,
+  GetCommand,
 } from '@aws-sdk/lib-dynamodb'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
@@ -13,47 +14,176 @@ import {
 const ddbClient = new DynamoDBClient({})
 const ddb = DynamoDBDocumentClient.from(ddbClient)
 
+// Initialize ApiGatewayManagementApiClient
+let apigwManagementApi
+
+export const handler = async (event) => {
+  const { roomId, username } = JSON.parse(event.body) // Accept username from the request body
+  const { connectionId, domainName, stage } = event.requestContext
+
+  apigwManagementApi = new ApiGatewayManagementApiClient({
+    endpoint: `https://${domainName}/${stage}`,
+  })
+
+  try {
+    await ensureRoomExists(roomId, connectionId)
+    await ensureUsernameIsUnique(roomId, username, connectionId)
+    await addUserToRoom(roomId, connectionId, username)
+    await notifyRoomOfNewUser(roomId, connectionId, username)
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: `Joined room ${roomId} successfully`,
+      }),
+    }
+  } catch (error) {
+    return handleJoinRoomError(connectionId, error)
+  }
+}
+
+// Ensure the room exists and create it if it doesn't
+async function ensureRoomExists(roomId, connectionId) {
+  try {
+    const room = await getRoom(roomId)
+    if (!room) {
+      await createRoom(roomId, connectionId)
+    }
+  } catch (error) {
+    throw new Error('Failed to ensure room existence')
+  }
+}
+
+async function getRoom(roomId) {
+  const getParams = {
+    TableName: 'scrum-poker-rooms',
+    Key: { room_id: roomId },
+  }
+  const roomCheck = await ddb.send(new GetCommand(getParams))
+  return roomCheck.Item
+}
+
+async function createRoom(roomId, connectionId) {
+  const putParams = {
+    TableName: 'scrum-poker-rooms',
+    Item: {
+      room_id: roomId,
+      votes_visible: false,
+      admin: connectionId,
+    },
+  }
+  await ddb.send(new PutCommand(putParams))
+}
+
+// Ensure the username is unique within the room
+async function ensureUsernameIsUnique(roomId, username, connectionId) {
+  const existingUser = await checkUsernameInRoom(roomId, username)
+  if (existingUser) {
+    await sendErrorToClient(
+      connectionId,
+      'Username is already taken in this room',
+    )
+    throw new Error('Username is already taken in this room')
+  }
+}
+
+async function checkUsernameInRoom(roomId, username) {
+  const queryParams = {
+    TableName: 'scrum-poker',
+    KeyConditionExpression: 'room_id = :roomId',
+    FilterExpression: 'username = :username',
+    ExpressionAttributeValues: {
+      ':roomId': roomId,
+      ':username': username,
+    },
+  }
+  const result = await ddb.send(new QueryCommand(queryParams))
+  return result.Items.length > 0
+}
+
+// Add the user to the room
+async function addUserToRoom(roomId, connectionId, username) {
+  const putParams = {
+    TableName: 'scrum-poker',
+    Item: {
+      room_id: roomId,
+      connection_id: connectionId,
+      username: username,
+      point_estimate: null, // or initial value
+    },
+  }
+  await ddb.send(new PutCommand(putParams))
+}
+
+// Notify the room that a new user has joined
+async function notifyRoomOfNewUser(roomId, connectionId, username) {
+  const newUser = {
+    connection_id: connectionId,
+    username: username,
+    point_estimate: null,
+  }
+  await broadcastToRoom(roomId, newUser)
+}
+
 async function broadcastToRoom(roomId, newUser) {
   try {
-    // Query to get all connections in the room
-    const params = {
-      TableName: 'scrum-poker',
-      KeyConditionExpression: 'room_id = :roomId',
-      ExpressionAttributeValues: {
-        ':roomId': roomId,
-      },
-    }
-    const result = await ddb.send(new QueryCommand(params))
-
-    // Prepare the message to notify existing users
-    const message = {
-      message: 'UserJoined',
-      user: newUser,
-    }
-
-    // Send the message to each existing connection in the room
-    for (const item of result.Items) {
-      if (item.connection_id !== newUser.connection_id) {
-        await sendToClient(item.connection_id, JSON.stringify(message))
-      }
-    }
-
-    // Send the list of existing users to the new user
-    const existingUsersMessage = {
-      message: 'ExistingUsers',
-      users: result.Items,
-    }
-    await sendToClient(
-      newUser.connection_id,
-      JSON.stringify(existingUsersMessage),
-    )
+    const users = await getUsersInRoom(roomId)
+    await sendUserJoinedMessage(users, newUser)
+    await sendExistingUsersList(newUser.connection_id, users)
   } catch (error) {
     console.error('Error broadcasting to room:', error)
   }
 }
 
-// Initialize ApiGatewayManagementApiClient
-let apigwManagementApi
+async function getUsersInRoom(roomId) {
+  const queryParams = {
+    TableName: 'scrum-poker',
+    KeyConditionExpression: 'room_id = :roomId',
+    ExpressionAttributeValues: { ':roomId': roomId },
+  }
+  const result = await ddb.send(new QueryCommand(queryParams))
+  return result.Items
+}
+
+async function sendUserJoinedMessage(users, newUser) {
+  const message = {
+    message: 'UserJoined',
+    user: newUser,
+  }
+  for (const user of users) {
+    if (user.connection_id !== newUser.connection_id) {
+      await sendToClient(user.connection_id, JSON.stringify(message))
+    }
+  }
+}
+
+async function sendExistingUsersList(connectionId, users) {
+  const existingUsersMessage = {
+    message: 'ExistingUsers',
+    users,
+  }
+  await sendToClient(connectionId, JSON.stringify(existingUsersMessage))
+}
+
+// Handle any errors that occur during the join room process
+async function handleJoinRoomError(connectionId, error) {
+  console.error('Error during joinRoom:', error)
+  await sendErrorToClient(connectionId, 'Failed to join room')
+  return {
+    statusCode: 500,
+    body: JSON.stringify({ message: 'Failed to join room' }),
+  }
+}
+
+async function sendErrorToClient(connectionId, details) {
+  const errorMessage = {
+    message: 'error',
+    details,
+  }
+  await sendToClient(connectionId, JSON.stringify(errorMessage))
+}
+
+// Send data to a specific client via WebSocket
 async function sendToClient(connectionId, data) {
   try {
     const params = {
@@ -63,81 +193,5 @@ async function sendToClient(connectionId, data) {
     await apigwManagementApi.send(new PostToConnectionCommand(params))
   } catch (error) {
     console.error(`Failed to send data to connection ${connectionId}:`, error)
-    // Optionally, handle stale connections here by deleting them from DynamoDB
-  }
-}
-
-export const handler = async (event) => {
-  const { roomId, username } = JSON.parse(event.body) // Accept username from the request body
-  const { connectionId } = event.requestContext
-
-  apigwManagementApi = new ApiGatewayManagementApiClient({
-    endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
-  })
-
-  try {
-    // Check if the username is already taken in the room
-    const queryParams = {
-      TableName: 'scrum-poker',
-      KeyConditionExpression: 'room_id = :roomId',
-      FilterExpression: 'username = :username',
-      ExpressionAttributeValues: {
-        ':roomId': roomId,
-        ':username': username,
-      },
-    }
-    const result = await ddb.send(new QueryCommand(queryParams))
-
-    if (result.Items.length > 0) {
-      const errorMessage = {
-        message: 'error',
-        details: 'Username is already taken in this room',
-      }
-      await sendToClient(connectionId, JSON.stringify(errorMessage))
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ message: errorMessage.details }),
-      }
-    }
-
-    // Add user to the room with username
-    const putParams = {
-      TableName: 'scrum-poker',
-      Item: {
-        room_id: roomId,
-        connection_id: connectionId,
-        username: username, // Store the username
-        point_estimate: null, // or initial value
-      },
-    }
-    await ddb.send(new PutCommand(putParams))
-
-    // Broadcast the new user to the room and send the list of existing users to the new user
-    const newUser = {
-      connection_id: connectionId,
-      username: username,
-      point_estimate: null,
-    }
-    await broadcastToRoom(roomId, newUser)
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: `Joined room ${roomId} successfully`,
-      }),
-    }
-  } catch (error) {
-    const errorMessage = {
-      message: 'error',
-      details: 'Failed to join room',
-    }
-    await sendToClient(connectionId, JSON.stringify(errorMessage))
-    console.error('Error during joinRoom:', error)
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        message: 'Failed to join room',
-      }),
-    }
   }
 }

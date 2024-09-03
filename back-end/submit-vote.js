@@ -1,5 +1,6 @@
 import {
   DynamoDBDocumentClient,
+  GetCommand,
   UpdateCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb'
@@ -52,7 +53,7 @@ async function notifyUsersOfVote(roomId, votingConnectionId, pointEstimate) {
       connection_id: votingConnectionId,
       point_estimate: pointEstimate,
     }
-    console.log('Items', queryResult.Items)
+
     // Send the message to each connection in the room, except the one that just voted
     for (const item of queryResult.Items) {
       if (item.connection_id !== votingConnectionId) {
@@ -79,20 +80,41 @@ async function sendToClient(connectionId, data) {
   }
 }
 
+async function getRoomState(roomId) {
+  try {
+    const params = {
+      TableName: 'scrum-poker-rooms',
+      Key: {
+        room_id: roomId,
+      },
+    }
+    const result = await ddb.send(new GetCommand(params))
+    return result.Item || {}
+  } catch (error) {
+    console.error('Error getting room state:', error)
+    throw new Error('Could not retrieve room state')
+  }
+}
+
 export const handler = async (event) => {
   const { roomId, pointEstimate } = JSON.parse(event.body)
-  const connectionId = event.requestContext.connectionId
+  const { connectionId, domainName, stage } = event.requestContext
 
   apigwManagementApi = new ApiGatewayManagementApiClient({
-    endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
+    endpoint: `https://${domainName}/${stage}`,
   })
 
   try {
+    // Get the current state of the room to check if votes are visible
+    const roomState = await getRoomState(roomId)
+
+    // Determine whether to show the actual point estimate or a placeholder
+    const pointPlaceholder = roomState.votes_visible ? pointEstimate : '?'
+
     // Submit the user's point estimate
     await submitPointEstimate(roomId, connectionId, pointEstimate)
 
     // Notify other users in the room that a vote has been submitted
-    const pointPlaceholder = pointEstimate ? '?' : null
     await notifyUsersOfVote(roomId, connectionId, pointPlaceholder)
 
     return {

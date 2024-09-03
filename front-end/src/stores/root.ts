@@ -48,12 +48,17 @@ export const useRootStore = defineStore('root', () => {
   }
 
   /**
-   * Removes a participant from the room.
+   * Removes a participant from the room and returns the removed participant.
    * @param connectionId The connection ID of the participant to remove.
+   * @returns The removed participant object, or `null` if no participant was found.
    */
-  function removeParticipant(connectionId: string) {
+  function removeParticipant(connectionId: string): User | null {
     const index = participants.value.findIndex((participant) => participant.connection_id === connectionId);
-    if (index !== -1) participants.value.splice(index, 1);
+    if (index !== -1) {
+      const [removedParticipant] = participants.value.splice(index, 1); // Remove and return the participant
+      return removedParticipant;
+    }
+    return null; // Return null if no participant was found
   }
 
   /**
