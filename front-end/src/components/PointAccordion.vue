@@ -13,7 +13,9 @@ const points = ref([
   { point: 5, description: "About a day", complexity: "A task that takes about a day" },
   { point: 8, description: "A few days", complexity: "A task that takes a few days" },
   { point: 13, description: "About a week", complexity: "A task that takes about a week" },
-  { point: 21, description: "A few weeks", complexity: "A task that takes a few weeks" }
+  { point: 21, description: "A couple weeks", complexity: "A task that takes a couple weeks" },
+  { point: 40, description: "More than a couple weeks", complexity: "A task that takes more than a sprint" },
+  { point: '?', description: "Unknown", complexity: "Unable to provide a meaningful estimate" }
 ])
 </script>
 

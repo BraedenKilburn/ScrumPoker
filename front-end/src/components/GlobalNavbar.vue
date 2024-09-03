@@ -23,7 +23,7 @@ function toggleDarkMode() {
       Scrum Poker
     </router-link>
     <p v-if="roomId">Room ID: <strong>{{ roomId }}</strong></p>
-    <VButton :icon severity="secondary" @click="toggleDarkMode()" />
+    <VButton :icon severity="secondary" rounded @click="toggleDarkMode()" />
   </nav>
 </template>
 
