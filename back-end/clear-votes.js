@@ -9,103 +9,128 @@ import {
   PostToConnectionCommand,
 } from '@aws-sdk/client-apigatewaymanagementapi'
 
-// Initialize DynamoDBDocumentClient
+// Initialize DynamoDBDocumentClient and ApiGatewayManagementApiClient
 const ddbClient = new DynamoDBClient({})
 const ddb = DynamoDBDocumentClient.from(ddbClient)
-
-async function clearVotes(roomId) {
-  try {
-    // Query to get all users in the room
-    const queryParams = {
-      TableName: 'scrum-poker',
-      KeyConditionExpression: 'room_id = :roomId',
-      ExpressionAttributeValues: {
-        ':roomId': roomId,
-      },
-    }
-
-    const queryResult = await ddb.send(new QueryCommand(queryParams))
-
-    // Clear the votes for each user in the room
-    for (const item of queryResult.Items) {
-      const updateParams = {
-        TableName: 'scrum-poker',
-        Key: {
-          room_id: item.room_id,
-          connection_id: item.connection_id,
-        },
-        UpdateExpression: 'SET point_estimate = :newValue',
-        ExpressionAttributeValues: {
-          ':newValue': null, // or an empty string if you prefer
-        },
-      }
-      await ddb.send(new UpdateCommand(updateParams))
-    }
-
-    // Notify all users in the room that votes have been cleared
-    await notifyUsersOfClearVotes(roomId, queryResult.Items)
-  } catch (error) {
-    console.error('Error clearing votes:', error)
-    throw new Error('Could not clear votes')
-  }
-}
-
-async function notifyUsersOfClearVotes(roomId, users) {
-  try {
-    const message = {
-      message: 'VotesCleared',
-    }
-
-    // Send the message to each connection in the room
-    for (const user of users) {
-      await sendToClient(user.connection_id, JSON.stringify(message))
-    }
-  } catch (error) {
-    console.error('Error notifying users of cleared votes:', error)
-  }
-}
-
-// Initialize ApiGatewayManagementApiClient
 let apigwManagementApi
-async function sendToClient(connectionId, data) {
-  try {
-    const params = {
-      ConnectionId: connectionId,
-      Data: Buffer.from(data),
-    }
-    await apigwManagementApi.send(new PostToConnectionCommand(params))
-  } catch (error) {
-    console.error(`Failed to send data to connection ${connectionId}:`, error)
-    // Optionally, handle stale connections here by deleting them from DynamoDB
-  }
-}
 
 export const handler = async (event) => {
   const { roomId } = JSON.parse(event.body)
   const { connectionId, domainName, stage } = event.requestContext
 
-  apigwManagementApi = new ApiGatewayManagementApiClient({
-    endpoint: `https://${domainName}/${stage}`,
-  })
+  apigwManagementApi = initializeApiGatewayManagementClient(domainName, stage)
 
   try {
-    await clearVotes(roomId)
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: `Votes cleared successfully for room ${roomId}`,
-      }),
-    }
+    const users = await clearVotesInRoom(roomId)
+    await updateVotesVisible(roomId, false)
+    await notifyUsers(roomId, users, 'VotesCleared')
+
+    return successResponse(`Votes cleared successfully for room ${roomId}`)
   } catch (error) {
-    const errorMessage = {
-      message: 'error',
-      details: 'Failed to clear votes',
-    }
-    await sendToClient(connectionId, JSON.stringify(errorMessage))
-    console.error('Error during clearVotes:', error)
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: 'Failed to clear votes' }),
-    }
+    return handleError(connectionId, 'Failed to clear votes', error)
+  }
+}
+
+// Initialize the ApiGatewayManagementApiClient
+function initializeApiGatewayManagementClient(domainName, stage) {
+  return new ApiGatewayManagementApiClient({
+    endpoint: `https://${domainName}/${stage}`,
+  })
+}
+
+// Clear votes for all users in the room and return the list of users
+async function clearVotesInRoom(roomId) {
+  const users = await getUsersInRoom(roomId)
+
+  const updatePromises = users.map((user) =>
+    updateUserVote(user.room_id, user.connection_id, null),
+  )
+  await Promise.all(updatePromises)
+
+  return users
+}
+
+// Get all users in the room
+async function getUsersInRoom(roomId) {
+  const queryParams = {
+    TableName: 'scrum-poker',
+    KeyConditionExpression: 'room_id = :roomId',
+    ExpressionAttributeValues: {
+      ':roomId': roomId,
+    },
+  }
+
+  const result = await ddb.send(new QueryCommand(queryParams))
+  return result.Items || []
+}
+
+// Update a user's vote
+async function updateUserVote(roomId, connectionId, newValue) {
+  const updateParams = {
+    TableName: 'scrum-poker',
+    Key: {
+      room_id: roomId,
+      connection_id: connectionId,
+    },
+    UpdateExpression: 'SET point_estimate = :newValue',
+    ExpressionAttributeValues: {
+      ':newValue': newValue,
+    },
+  }
+  await ddb.send(new UpdateCommand(updateParams))
+}
+
+// Update the votes_visible attribute in the scrum-poker-rooms table
+async function updateVotesVisible(roomId, visible) {
+  const updateParams = {
+    TableName: 'scrum-poker-rooms',
+    Key: { room_id: roomId },
+    UpdateExpression: 'SET votes_visible = :visible',
+    ExpressionAttributeValues: {
+      ':visible': visible,
+    },
+  }
+  await ddb.send(new UpdateCommand(updateParams))
+}
+
+// Notify all users in the room with a specific message
+async function notifyUsers(roomId, users, message) {
+  const notification = {
+    message,
+  }
+
+  const notifyPromises = users.map((user) =>
+    sendToClient(user.connection_id, JSON.stringify(notification)),
+  )
+  await Promise.all(notifyPromises)
+}
+
+// Send data to a specific client via WebSocket
+async function sendToClient(connectionId, data) {
+  const params = {
+    ConnectionId: connectionId,
+    Data: Buffer.from(data),
+  }
+  await apigwManagementApi.send(new PostToConnectionCommand(params))
+}
+
+// Handle errors and notify the client
+async function handleError(connectionId, message, error) {
+  console.error(message, error)
+  await sendToClient(
+    connectionId,
+    JSON.stringify({ message: 'error', details: message }),
+  )
+  return {
+    statusCode: 500,
+    body: JSON.stringify({ message }),
+  }
+}
+
+// Success response
+function successResponse(message) {
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ message }),
   }
 }
