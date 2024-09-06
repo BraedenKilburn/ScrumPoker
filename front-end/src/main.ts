@@ -14,10 +14,20 @@ import Button from 'primevue/button';
 import ToastService from 'primevue/toastservice'
 import Dialog from 'primevue/dialog';
 
+import VueGtag from "vue-gtag";
+
 import '@/assets/main.scss'
 
 const app = createApp(App)
 app.use(router)
+
+app.use(
+  VueGtag,
+  {
+    config: { id: import.meta.env.VITE_GTAG_ID },
+  },
+  router
+)
 
 const pinia = createPinia()
 app.use(pinia)
