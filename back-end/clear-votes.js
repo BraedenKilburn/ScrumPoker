@@ -1,5 +1,6 @@
 import {
   DynamoDBDocumentClient,
+  BatchWriteCommand,
   UpdateCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb'
@@ -42,12 +43,36 @@ function initializeApiGatewayManagementClient(domainName, stage) {
 async function clearVotesInRoom(roomId) {
   const users = await getUsersInRoom(roomId)
 
-  const updatePromises = users.map((user) =>
-    updateUserVote(user.room_id, user.connection_id, null),
-  )
-  await Promise.all(updatePromises)
+  const updatePromises = users.map((user) => ({
+    PutRequest: {
+      Item: {
+        room_id: user.room_id,
+        connection_id: user.connection_id,
+        point_estimate: null, // Clear the vote
+      }
+    }
+  }))
 
+  await batchWriteToDynamoDB('scrum-poker', updatePromises)
   return users
+}
+
+async function batchWriteToDynamoDB(tableName, items) {
+  const BATCH_SIZE = 25
+  const batches = []
+
+  // Split the items into batches of 25 (DynamoDB's max limit for batch operations)
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const batch = {
+      RequestItems: {
+        [tableName]: items.slice(i, i + BATCH_SIZE)
+      }
+    }
+    batches.push(ddb.send(new BatchWriteCommand(batch)))
+  }
+
+  // Execute all batches in parallel
+  await Promise.all(batches)
 }
 
 // Get all users in the room
@@ -62,22 +87,6 @@ async function getUsersInRoom(roomId) {
 
   const result = await ddb.send(new QueryCommand(queryParams))
   return result.Items || []
-}
-
-// Update a user's vote
-async function updateUserVote(roomId, connectionId, newValue) {
-  const updateParams = {
-    TableName: 'scrum-poker',
-    Key: {
-      room_id: roomId,
-      connection_id: connectionId,
-    },
-    UpdateExpression: 'SET point_estimate = :newValue',
-    ExpressionAttributeValues: {
-      ':newValue': newValue,
-    },
-  }
-  await ddb.send(new UpdateCommand(updateParams))
 }
 
 // Update the votes_visible attribute in the scrum-poker-rooms table
@@ -95,14 +104,13 @@ async function updateVotesVisible(roomId, visible) {
 
 // Notify all users in the room with a specific message
 async function notifyUsers(roomId, users, message) {
-  const notification = {
-    message,
-  }
+  const notification = { message }
 
   const notifyPromises = users.map((user) =>
     sendToClient(user.connection_id, JSON.stringify(notification)),
   )
-  await Promise.all(notifyPromises)
+
+  await Promise.allSettled(notifyPromises)
 }
 
 // Send data to a specific client via WebSocket
