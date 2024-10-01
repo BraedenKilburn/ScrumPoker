@@ -1,6 +1,5 @@
 import {
   DynamoDBDocumentClient,
-  BatchWriteCommand,
   UpdateCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb'
@@ -22,9 +21,14 @@ export const handler = async (event) => {
   apigwManagementApi = initializeApiGatewayManagementClient(domainName, stage)
 
   try {
-    const users = await clearVotesInRoom(roomId)
-    await updateVotesVisible(roomId, false)
+    const users = await getUsersInRoom(roomId)
+
+    // Notify users before updating the database
     await notifyUsers(roomId, users, 'VotesCleared')
+
+    // Proceed to update the database after notifying users
+    await updateVotesVisible(roomId, false)
+    await clearVotesInRoom(roomId)
 
     return successResponse(`Votes cleared successfully for room ${roomId}`)
   } catch (error) {
@@ -37,42 +41,6 @@ function initializeApiGatewayManagementClient(domainName, stage) {
   return new ApiGatewayManagementApiClient({
     endpoint: `https://${domainName}/${stage}`,
   })
-}
-
-// Clear votes for all users in the room and return the list of users
-async function clearVotesInRoom(roomId) {
-  const users = await getUsersInRoom(roomId)
-
-  const updatePromises = users.map((user) => ({
-    PutRequest: {
-      Item: {
-        room_id: user.room_id,
-        connection_id: user.connection_id,
-        point_estimate: null, // Clear the vote
-      }
-    }
-  }))
-
-  await batchWriteToDynamoDB('scrum-poker', updatePromises)
-  return users
-}
-
-async function batchWriteToDynamoDB(tableName, items) {
-  const BATCH_SIZE = 25
-  const batches = []
-
-  // Split the items into batches of 25 (DynamoDB's max limit for batch operations)
-  for (let i = 0; i < items.length; i += BATCH_SIZE) {
-    const batch = {
-      RequestItems: {
-        [tableName]: items.slice(i, i + BATCH_SIZE)
-      }
-    }
-    batches.push(ddb.send(new BatchWriteCommand(batch)))
-  }
-
-  // Execute all batches in parallel
-  await Promise.all(batches)
 }
 
 // Get all users in the room
@@ -89,6 +57,17 @@ async function getUsersInRoom(roomId) {
   return result.Items || []
 }
 
+// Notify all users in the room with a specific message
+async function notifyUsers(roomId, users, message) {
+  const notification = { message }
+
+  const notifyPromises = users.map((user) =>
+    sendToClient(user.connection_id, JSON.stringify(notification)),
+  )
+
+  await Promise.allSettled(notifyPromises)
+}
+
 // Update the votes_visible attribute in the scrum-poker-rooms table
 async function updateVotesVisible(roomId, visible) {
   const updateParams = {
@@ -102,15 +81,26 @@ async function updateVotesVisible(roomId, visible) {
   await ddb.send(new UpdateCommand(updateParams))
 }
 
-// Notify all users in the room with a specific message
-async function notifyUsers(roomId, users, message) {
-  const notification = { message }
+// Clear votes for all users in the room and return the list of users
+async function clearVotesInRoom(roomId) {
+  const users = await getUsersInRoom(roomId)
 
-  const notifyPromises = users.map((user) =>
-    sendToClient(user.connection_id, JSON.stringify(notification)),
-  )
+  const updatePromises = users.map((user) => {
+    const params = {
+      TableName: 'scrum-poker',
+      Key: {
+        room_id: user.room_id,
+        connection_id: user.connection_id,
+      },
+      UpdateExpression: 'SET point_estimate = :null',
+      ExpressionAttributeValues: {
+        ':null': null,
+      },
+    }
+    return ddb.send(new UpdateCommand(params))
+  })
 
-  await Promise.allSettled(notifyPromises)
+  await Promise.all(updatePromises)
 }
 
 // Send data to a specific client via WebSocket
