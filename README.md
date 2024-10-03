@@ -43,3 +43,40 @@ The Scrum Poker App includes the following features:
 - **Vote Submission:** Users can submit their estimates for tasks. These votes are hidden until revealed by the session admin.
 - **Vote Concealment:** Votes remain concealed until the admin decides to reveal them, ensuring unbiased estimation.
 - **Real-Time Updates:** All activities, including joining rooms, submitting votes, and revealing estimates, are updated in real-time for all participants through WebSockets.
+
+## Types of Users
+
+### Admin
+
+**Role Assignment:** The user who creates a room is automatically designated as the admin.
+
+**Privileges:**
+
+- **Reveal Votes:** Admins can reveal all participants' votes.
+- **Hide Votes:** Admins can hide the votes after revealing them.
+- **Clear Votes:** Admins can clear all votes to start a new voting round.
+
+**Responsibilities:**
+
+- **Session Control:** Admins manage the flow of the estimation session.
+- **Room Management:** When the admin leaves the room, the room is automatically destroyed, and all participants are removed.
+
+**Limitations:**
+
+- Admin rights are not transferable within the app.
+
+---
+
+### Participant
+
+**Role Assignment:** Users who join an existing room are participants.
+
+**Abilities:**
+
+- **Submit Votes:** Participants can submit their own estimates for tasks.
+- **Clear Own Votes:** Participants can clear their own votes if they wish to change them before they are revealed.
+
+**Restrictions:**
+
+- **No Access to Admin Controls:** Participants cannot reveal, hide, or clear votes for all users.
+- **Session Viewing:** Participants can view the voting status as controlled by the admin.
