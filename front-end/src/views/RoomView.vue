@@ -83,7 +83,7 @@ function toggleVoteVisibility() {
 }
 
 // Available points for voting
-const points = ref(['40', '21', '13', '8', '5', '3', '?']);
+const points = ref(['40', '21', '13', '8', '5', '3', '2', '1', '?']);
 
 /**
  * Submit a vote for the user.
