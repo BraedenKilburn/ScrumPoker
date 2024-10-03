@@ -2,7 +2,7 @@ import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
   ApiGatewayManagementApiClient,
-  PostToConnectionCommand,
+  PostToConnectionCommand
 } from '@aws-sdk/client-apigatewaymanagementapi'
 
 // Initialize DynamoDBDocumentClient
@@ -14,7 +14,7 @@ async function sendToClient(connectionId, data) {
   try {
     const params = {
       ConnectionId: connectionId,
-      Data: Buffer.from(data),
+      Data: Buffer.from(data)
     }
     await apigwManagementApi.send(new PostToConnectionCommand(params))
   } catch (error) {
@@ -27,7 +27,7 @@ export const handler = async (event) => {
   const connectionId = event.requestContext.connectionId
 
   apigwManagementApi = new ApiGatewayManagementApiClient({
-    endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
+    endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`
   })
 
   try {
@@ -36,32 +36,32 @@ export const handler = async (event) => {
       TableName: 'scrum-poker-connections',
       Item: {
         connection_id: connectionId,
-        connectedAt: new Date().toISOString(),
-      },
+        connectedAt: new Date().toISOString()
+      }
     }
     await ddb.send(new PutCommand(params))
 
     // Prepare the response message
     const response = {
       message: 'Connected successfully',
-      connectionId: connectionId,
+      connectionId: connectionId
     }
     await sendToClient(connectionId, JSON.stringify(response))
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: 'Connection ID sent successfully' }),
+      body: JSON.stringify({ message: 'Connection ID sent successfully' })
     }
   } catch (error) {
     const errorMessage = {
       message: 'error',
-      details: 'Error conencting to backend websocket',
+      details: 'Error conencting to backend websocket'
     }
     await sendToClient(connectionId, JSON.stringify(errorMessage))
     console.error('Error during $connect:', error)
     return {
       statusCode: 500,
-      body: JSON.stringify({ message: 'Failed to connect' }),
+      body: JSON.stringify({ message: 'Failed to connect' })
     }
   }
 }

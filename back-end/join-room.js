@@ -1,13 +1,8 @@
-import {
-  DynamoDBDocumentClient,
-  PutCommand,
-  QueryCommand,
-  GetCommand,
-} from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, PutCommand, QueryCommand, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
   ApiGatewayManagementApiClient,
-  PostToConnectionCommand,
+  PostToConnectionCommand
 } from '@aws-sdk/client-apigatewaymanagementapi'
 
 // Initialize DynamoDBDocumentClient
@@ -22,7 +17,7 @@ export const handler = async (event) => {
   const { connectionId, domainName, stage } = event.requestContext
 
   apigwManagementApi = new ApiGatewayManagementApiClient({
-    endpoint: `https://${domainName}/${stage}`,
+    endpoint: `https://${domainName}/${stage}`
   })
 
   try {
@@ -31,15 +26,31 @@ export const handler = async (event) => {
     await addUserToRoom(roomId, connectionId, username)
     await notifyRoomOfNewUser(roomId, connectionId, username)
 
+    // Determine if the current user is the admin (i.e., creator of the room)
+    const isAdmin = await checkIfUserIsAdmin(roomId, connectionId)
+
     return {
       statusCode: 200,
       body: JSON.stringify({
         message: `Joined room ${roomId} successfully`,
-      }),
+        isAdmin: isAdmin
+      })
     }
   } catch (error) {
     return handleJoinRoomError(connectionId, error)
   }
+}
+
+/**
+ * Checks if the user with the given connection ID is the admin of the specified room.
+ *
+ * @param {string} roomId - The ID of the room to check.
+ * @param {string} connectionId - The connection ID of the user to check.
+ * @returns {Promise<boolean>} A promise that resolves to true if the user is the admin, otherwise false.
+ */
+async function checkIfUserIsAdmin(roomId, connectionId) {
+  const room = await getRoom(roomId)
+  return room.admin === connectionId
 }
 
 // Ensure the room exists and create it if it doesn't
@@ -57,7 +68,7 @@ async function ensureRoomExists(roomId, connectionId) {
 async function getRoom(roomId) {
   const getParams = {
     TableName: 'scrum-poker-rooms',
-    Key: { room_id: roomId },
+    Key: { room_id: roomId }
   }
   const roomCheck = await ddb.send(new GetCommand(getParams))
   return roomCheck.Item
@@ -69,8 +80,8 @@ async function createRoom(roomId, connectionId) {
     Item: {
       room_id: roomId,
       votes_visible: false,
-      admin: connectionId,
-    },
+      admin: connectionId
+    }
   }
   await ddb.send(new PutCommand(putParams))
 }
@@ -79,10 +90,7 @@ async function createRoom(roomId, connectionId) {
 async function ensureUsernameIsUnique(roomId, username, connectionId) {
   const existingUser = await checkUsernameInRoom(roomId, username)
   if (existingUser) {
-    await sendErrorToClient(
-      connectionId,
-      'Username is already taken in this room',
-    )
+    await sendErrorToClient(connectionId, 'Username is already taken in this room')
     throw new Error('Username is already taken in this room')
   }
 }
@@ -94,8 +102,8 @@ async function checkUsernameInRoom(roomId, username) {
     FilterExpression: 'username = :username',
     ExpressionAttributeValues: {
       ':roomId': roomId,
-      ':username': username,
-    },
+      ':username': username
+    }
   }
   const result = await ddb.send(new QueryCommand(queryParams))
   return result.Items.length > 0
@@ -109,8 +117,8 @@ async function addUserToRoom(roomId, connectionId, username) {
       room_id: roomId,
       connection_id: connectionId,
       username: username,
-      point_estimate: null, // or initial value
-    },
+      point_estimate: null // or initial value
+    }
   }
   await ddb.send(new PutCommand(putParams))
 }
@@ -120,7 +128,7 @@ async function notifyRoomOfNewUser(roomId, connectionId, username) {
   const newUser = {
     connection_id: connectionId,
     username: username,
-    point_estimate: null,
+    point_estimate: null
   }
   await broadcastToRoom(roomId, newUser)
 }
@@ -128,8 +136,11 @@ async function notifyRoomOfNewUser(roomId, connectionId, username) {
 async function broadcastToRoom(roomId, newUser) {
   try {
     const users = await getUsersInRoom(roomId)
-    await sendUserJoinedMessage(users, newUser)
-    await sendExistingUsersList(newUser.connection_id, users)
+    const room = await getRoom(roomId)
+    const isAdmin = room.admin === newUser.connection_id
+
+    await sendUserJoinedMessage(users, newUser, isAdmin)
+    await sendExistingUsersList(newUser.connection_id, users, isAdmin)
   } catch (error) {
     console.error('Error broadcasting to room:', error)
   }
@@ -139,16 +150,17 @@ async function getUsersInRoom(roomId) {
   const queryParams = {
     TableName: 'scrum-poker',
     KeyConditionExpression: 'room_id = :roomId',
-    ExpressionAttributeValues: { ':roomId': roomId },
+    ExpressionAttributeValues: { ':roomId': roomId }
   }
   const result = await ddb.send(new QueryCommand(queryParams))
   return result.Items
 }
 
-async function sendUserJoinedMessage(users, newUser) {
+async function sendUserJoinedMessage(users, newUser, isAdmin) {
   const message = {
     message: 'UserJoined',
     user: newUser,
+    isAdmin
   }
   for (const user of users) {
     if (user.connection_id !== newUser.connection_id) {
@@ -157,10 +169,11 @@ async function sendUserJoinedMessage(users, newUser) {
   }
 }
 
-async function sendExistingUsersList(connectionId, users) {
+async function sendExistingUsersList(connectionId, users, isAdmin) {
   const existingUsersMessage = {
     message: 'ExistingUsers',
     users,
+    isAdmin
   }
   await sendToClient(connectionId, JSON.stringify(existingUsersMessage))
 }
@@ -171,14 +184,14 @@ async function handleJoinRoomError(connectionId, error) {
   await sendErrorToClient(connectionId, 'Failed to join room')
   return {
     statusCode: 500,
-    body: JSON.stringify({ message: 'Failed to join room' }),
+    body: JSON.stringify({ message: 'Failed to join room' })
   }
 }
 
 async function sendErrorToClient(connectionId, details) {
   const errorMessage = {
     message: 'error',
-    details,
+    details
   }
   await sendToClient(connectionId, JSON.stringify(errorMessage))
 }
@@ -188,7 +201,7 @@ async function sendToClient(connectionId, data) {
   try {
     const params = {
       ConnectionId: connectionId,
-      Data: Buffer.from(data),
+      Data: Buffer.from(data)
     }
     await apigwManagementApi.send(new PostToConnectionCommand(params))
   } catch (error) {

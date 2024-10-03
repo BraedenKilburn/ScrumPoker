@@ -2,25 +2,62 @@ import {
   DynamoDBDocumentClient,
   DeleteCommand,
   QueryCommand,
+  GetCommand,
+  BatchWriteCommand
 } from '@aws-sdk/lib-dynamodb'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
   ApiGatewayManagementApiClient,
-  PostToConnectionCommand,
+  PostToConnectionCommand
 } from '@aws-sdk/client-apigatewaymanagementapi'
 
 // Initialize DynamoDBDocumentClient
 const ddbClient = new DynamoDBClient({})
 const ddb = DynamoDBDocumentClient.from(ddbClient)
 
+// Initialize ApiGatewayManagementApiClient
+let apigwManagementApi
+
+export const handler = async (event) => {
+  const connectionId = event.requestContext.connectionId
+  const { domainName, stage } = event.requestContext
+
+  apigwManagementApi = new ApiGatewayManagementApiClient({
+    endpoint: `https://${domainName}/${stage}`
+  })
+
+  try {
+    // Remove connection ID from the connections table
+    await removeConnectionId(connectionId)
+
+    // Handle user disconnection from rooms
+    await handleUserDisconnection(connectionId)
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: 'Disconnected successfully'
+      })
+    }
+  } catch (error) {
+    console.error('Error during $disconnect:', error)
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        message: 'Failed to disconnect'
+      })
+    }
+  }
+}
+
+// Remove the connection ID from the connections table
 async function removeConnectionId(connectionId) {
   try {
-    // Remove the connection ID from the connections table
     const params = {
       TableName: 'scrum-poker-connections',
       Key: {
-        connection_id: connectionId,
-      },
+        connection_id: connectionId
+      }
     }
     await ddb.send(new DeleteCommand(params))
   } catch (error) {
@@ -28,107 +65,168 @@ async function removeConnectionId(connectionId) {
   }
 }
 
-async function removeUserFromRooms(connectionId) {
+// Handle user disconnection from rooms
+async function handleUserDisconnection(connectionId) {
   try {
-    // Query the rooms table to find all rooms where the user is present
+    // Query the scrum-poker table to find all rooms where the user is present
     const queryParams = {
       TableName: 'scrum-poker',
-      IndexName: 'connection_id-index', // Assuming you have a secondary index on connection_id
+      IndexName: 'connection_id-index',
       KeyConditionExpression: 'connection_id = :connectionId',
       ExpressionAttributeValues: {
-        ':connectionId': connectionId,
-      },
+        ':connectionId': connectionId
+      }
     }
 
     const queryResult = await ddb.send(new QueryCommand(queryParams))
 
-    // Remove the user from each room they are part of and notify others
     for (const item of queryResult.Items) {
-      const deleteParams = {
-        TableName: 'scrum-poker',
-        Key: {
-          room_id: item.room_id,
-          connection_id: connectionId,
-        },
+      const roomId = item.room_id
+      const username = item.username
+
+      // Check if the user is the admin of the room
+      const isAdmin = await checkIfUserIsAdmin(roomId, connectionId)
+
+      if (isAdmin) {
+        // Admin disconnected; destroy the room
+        await notifyRoomClosed(roomId)
+        await destroyRoom(roomId)
+        await removeUsersFromRoom(roomId)
+      } else {
+        // Non-admin user disconnected; remove them from the room
+        await leaveRoom(roomId, connectionId, username)
+        await notifyUsersOfDeparture(roomId, username)
       }
-      await ddb.send(new DeleteCommand(deleteParams))
-
-      // Notify other users in the room
-      await notifyUsersOfDeparture(item.room_id, connectionId)
     }
   } catch (error) {
-    console.error('Error removing user from rooms:', error)
+    console.error('Error handling user disconnection from rooms:', error)
   }
 }
 
-async function notifyUsersOfDeparture(roomId, departedConnectionId) {
-  try {
-    // Query to get all remaining connections in the room
-    const queryParams = {
+// Function to check if the user is the admin of the room
+async function checkIfUserIsAdmin(roomId, connectionId) {
+  const params = {
+    TableName: 'scrum-poker-rooms',
+    Key: { room_id: roomId }
+  }
+
+  const result = await ddb.send(new GetCommand(params))
+
+  if (!result.Item) {
+    throw new Error('Room not found.')
+  }
+
+  return result.Item.admin === connectionId
+}
+
+// Notify all participants that the room has been closed
+async function notifyRoomClosed(roomId) {
+  const participants = await getUsersInRoom(roomId)
+
+  const message = {
+    message: 'RoomClosed'
+  }
+
+  const notifyPromises = participants.map((participant) =>
+    sendToClient(participant.connection_id, JSON.stringify(message))
+  )
+
+  await Promise.allSettled(notifyPromises)
+}
+
+// Function to destroy the room when the admin disconnects
+async function destroyRoom(roomId) {
+  // Delete the room from scrum-poker-rooms
+  await ddb.send(
+    new DeleteCommand({
+      TableName: 'scrum-poker-rooms',
+      Key: { room_id: roomId }
+    })
+  )
+}
+
+// Remove all users from the room
+async function removeUsersFromRoom(roomId) {
+  // Get all participants in the room
+  const participants = await getUsersInRoom(roomId)
+
+  // Delete all participants from scrum-poker
+  if (participants.length > 0) {
+    const deleteRequests = participants.map((participant) => ({
+      DeleteRequest: {
+        Key: {
+          room_id: participant.room_id,
+          connection_id: participant.connection_id
+        }
+      }
+    }))
+
+    // DynamoDB batch write allows up to 25 items per request
+    const batches = []
+    while (deleteRequests.length > 0) {
+      batches.push(deleteRequests.splice(0, 25))
+    }
+
+    for (const batch of batches) {
+      await ddb.send(
+        new BatchWriteCommand({
+          RequestItems: {
+            'scrum-poker': batch
+          }
+        })
+      )
+    }
+  }
+}
+
+// Remove the user from the room
+async function leaveRoom(roomId, connectionId, username) {
+  // Delete the user from the scrum-poker table
+  await ddb.send(
+    new DeleteCommand({
       TableName: 'scrum-poker',
-      KeyConditionExpression: 'room_id = :roomId',
-      ExpressionAttributeValues: {
-        ':roomId': roomId,
-      },
-    }
-    const result = await ddb.send(new QueryCommand(queryParams))
-
-    // Prepare the message to notify remaining users
-    const message = {
-      message: 'UserLeft',
-      connection_id: departedConnectionId,
-    }
-
-    // Send the message to each remaining connection in the room
-    for (const item of result.Items) {
-      await sendToClient(item.connection_id, JSON.stringify(message))
-    }
-  } catch (error) {
-    console.error('Error notifying users of departure:', error)
-  }
+      Key: {
+        room_id: roomId,
+        connection_id: connectionId
+      }
+    })
+  )
 }
 
-// Initialize ApiGatewayManagementApiClient
-let apigwManagementApi
+// Notify all remaining users in the room that a user has left
+async function notifyUsersOfDeparture(roomId, departedUsername) {
+  const participants = await getUsersInRoom(roomId)
+
+  const message = {
+    message: 'UserLeft',
+    username: departedUsername
+  }
+
+  const notifyPromises = participants.map((participant) =>
+    sendToClient(participant.connection_id, JSON.stringify(message))
+  )
+
+  await Promise.allSettled(notifyPromises)
+}
+
+// Get all users in the room
+async function getUsersInRoom(roomId) {
+  const queryParams = {
+    TableName: 'scrum-poker',
+    KeyConditionExpression: 'room_id = :roomId',
+    ExpressionAttributeValues: {
+      ':roomId': roomId
+    }
+  }
+  const result = await ddb.send(new QueryCommand(queryParams))
+  return result.Items || []
+}
+
+// Send data to a specific client via WebSocket
 async function sendToClient(connectionId, data) {
-  try {
-    const params = {
-      ConnectionId: connectionId,
-      Data: Buffer.from(data),
-    }
-    await apigwManagementApi.send(new PostToConnectionCommand(params))
-  } catch (error) {
-    console.error(`Failed to send data to connection ${connectionId}:`, error)
-    // Optionally, handle stale connections here by deleting them from DynamoDB
+  const params = {
+    ConnectionId: connectionId,
+    Data: Buffer.from(data)
   }
-}
-
-export const handler = async (event) => {
-  const connectionId = event.requestContext.connectionId
-  apigwManagementApi = new ApiGatewayManagementApiClient({
-    endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
-  })
-
-  try {
-    // Remove connection ID from the connections table
-    await removeConnectionId(connectionId)
-
-    // Remove user from all rooms they were part of and notify others
-    await removeUserFromRooms(connectionId)
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: 'Disconnected successfully',
-      }),
-    }
-  } catch (error) {
-    console.error('Error during $disconnect:', error)
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        message: 'Failed to disconnect',
-      }),
-    }
-  }
+  await apigwManagementApi.send(new PostToConnectionCommand(params))
 }

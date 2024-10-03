@@ -1,12 +1,13 @@
 import {
   DynamoDBDocumentClient,
+  GetCommand,
   QueryCommand,
-  UpdateCommand,
+  UpdateCommand
 } from '@aws-sdk/lib-dynamodb'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
   ApiGatewayManagementApiClient,
-  PostToConnectionCommand,
+  PostToConnectionCommand
 } from '@aws-sdk/client-apigatewaymanagementapi'
 
 // Initialize DynamoDBDocumentClient and ApiGatewayManagementApiClient
@@ -21,6 +22,12 @@ export const handler = async (event) => {
   apigwManagementApi = initializeApiGatewayManagementClient(domainName, stage)
 
   try {
+    // Check if the requesting user is the admin
+    const isAdmin = await checkIfAdmin(roomId, connectionId)
+    if (!isAdmin) {
+      return forbiddenResponse('Only the admin can reveal votes.')
+    }
+
     await revealVotesAndNotifyUsers(roomId)
     return successResponse('Votes revealed successfully')
   } catch (error) {
@@ -31,8 +38,24 @@ export const handler = async (event) => {
 // Initialize the ApiGatewayManagementApiClient
 function initializeApiGatewayManagementClient(domainName, stage) {
   return new ApiGatewayManagementApiClient({
-    endpoint: `https://${domainName}/${stage}`,
+    endpoint: `https://${domainName}/${stage}`
   })
+}
+
+// Function to check if the requesting user is the admin of the room
+async function checkIfAdmin(roomId, connectionId) {
+  const params = {
+    TableName: 'scrum-poker-rooms',
+    Key: { room_id: roomId }
+  }
+
+  const result = await ddb.send(new GetCommand(params))
+
+  if (!result.Item) {
+    throw new Error('Room not found.')
+  }
+
+  return result.Item.admin === connectionId
 }
 
 // Update the votes_visible attribute in the scrum-poker-rooms table
@@ -42,8 +65,8 @@ async function updateVotesVisible(roomId) {
     Key: { room_id: roomId },
     UpdateExpression: 'SET votes_visible = :votesVisible',
     ExpressionAttributeValues: {
-      ':votesVisible': true,
-    },
+      ':votesVisible': true
+    }
   }
   await ddb.send(new UpdateCommand(params))
 }
@@ -54,8 +77,8 @@ async function revealPointEstimates(roomId) {
     TableName: 'scrum-poker',
     KeyConditionExpression: 'room_id = :roomId',
     ExpressionAttributeValues: {
-      ':roomId': roomId,
-    },
+      ':roomId': roomId
+    }
   }
   const result = await ddb.send(new QueryCommand(params))
   return result.Items || []
@@ -66,7 +89,7 @@ async function notifyUsersOfRevealedVotes(roomId, pointEstimates) {
   for (const item of pointEstimates) {
     const data = JSON.stringify({
       message: 'RevealVotes',
-      point_estimates: pointEstimates,
+      point_estimates: pointEstimates
     })
     await sendToClient(item.connection_id, data)
   }
@@ -83,7 +106,7 @@ async function revealVotesAndNotifyUsers(roomId) {
 async function sendToClient(connectionId, data) {
   const params = {
     ConnectionId: connectionId,
-    Data: Buffer.from(data),
+    Data: Buffer.from(data)
   }
   await apigwManagementApi.send(new PostToConnectionCommand(params))
 }
@@ -91,13 +114,10 @@ async function sendToClient(connectionId, data) {
 // Handle errors and notify the client
 async function handleError(connectionId, message, error) {
   console.error(message, error)
-  await sendToClient(
-    connectionId,
-    JSON.stringify({ message: 'error', details: message }),
-  )
+  await sendToClient(connectionId, JSON.stringify({ message: 'error', details: message }))
   return {
     statusCode: 500,
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message })
   }
 }
 
@@ -105,6 +125,14 @@ async function handleError(connectionId, message, error) {
 function successResponse(message) {
   return {
     statusCode: 200,
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message })
+  }
+}
+
+// Forbidden response
+function forbiddenResponse(message) {
+  return {
+    statusCode: 403,
+    body: JSON.stringify({ message })
   }
 }

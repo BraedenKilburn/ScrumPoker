@@ -2,12 +2,12 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   UpdateCommand,
-  QueryCommand,
+  QueryCommand
 } from '@aws-sdk/lib-dynamodb'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
   ApiGatewayManagementApiClient,
-  PostToConnectionCommand,
+  PostToConnectionCommand
 } from '@aws-sdk/client-apigatewaymanagementapi'
 
 // Initialize DynamoDBDocumentClient
@@ -20,12 +20,12 @@ async function submitPointEstimate(roomId, connectionId, pointEstimate) {
       TableName: 'scrum-poker',
       Key: {
         room_id: roomId,
-        connection_id: connectionId,
+        connection_id: connectionId
       },
       UpdateExpression: 'SET point_estimate = :pointEstimate',
       ExpressionAttributeValues: {
-        ':pointEstimate': pointEstimate,
-      },
+        ':pointEstimate': pointEstimate
+      }
     }
     await ddb.send(new UpdateCommand(params))
   } catch (error) {
@@ -41,8 +41,8 @@ async function notifyUsersOfVote(roomId, votingConnectionId, pointEstimate) {
       TableName: 'scrum-poker',
       KeyConditionExpression: 'room_id = :roomId',
       ExpressionAttributeValues: {
-        ':roomId': roomId,
-      },
+        ':roomId': roomId
+      }
     }
 
     const queryResult = await ddb.send(new QueryCommand(queryParams))
@@ -51,7 +51,7 @@ async function notifyUsersOfVote(roomId, votingConnectionId, pointEstimate) {
     const message = {
       message: 'UserVoted',
       connection_id: votingConnectionId,
-      point_estimate: pointEstimate,
+      point_estimate: pointEstimate
     }
 
     // Send the message to each connection in the room, except the one that just voted
@@ -71,7 +71,7 @@ async function sendToClient(connectionId, data) {
   try {
     const params = {
       ConnectionId: connectionId,
-      Data: Buffer.from(data),
+      Data: Buffer.from(data)
     }
     await apigwManagementApi.send(new PostToConnectionCommand(params))
   } catch (error) {
@@ -85,8 +85,8 @@ async function getRoomState(roomId) {
     const params = {
       TableName: 'scrum-poker-rooms',
       Key: {
-        room_id: roomId,
-      },
+        room_id: roomId
+      }
     }
     const result = await ddb.send(new GetCommand(params))
     return result.Item || {}
@@ -101,7 +101,7 @@ export const handler = async (event) => {
   const { connectionId, domainName, stage } = event.requestContext
 
   apigwManagementApi = new ApiGatewayManagementApiClient({
-    endpoint: `https://${domainName}/${stage}`,
+    endpoint: `https://${domainName}/${stage}`
   })
 
   try {
@@ -120,22 +120,19 @@ export const handler = async (event) => {
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: 'Point estimate submitted successfully',
-      }),
+        message: 'Point estimate submitted successfully'
+      })
     }
   } catch (error) {
     const errorMessage = {
       message: 'error',
-      details: 'Failed to submit vote',
+      details: 'Failed to submit vote'
     }
-    await sendToClient(
-      event.requestContext.connectionId,
-      JSON.stringify(errorMessage),
-    )
+    await sendToClient(event.requestContext.connectionId, JSON.stringify(errorMessage))
     console.error('Error during submitVote:', error)
     return {
       statusCode: 500,
-      body: JSON.stringify({ message: 'Failed to submit point estimate' }),
+      body: JSON.stringify({ message: 'Failed to submit point estimate' })
     }
   }
 }

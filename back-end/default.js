@@ -1,6 +1,6 @@
 import {
   ApiGatewayManagementApiClient,
-  PostToConnectionCommand,
+  PostToConnectionCommand
 } from '@aws-sdk/client-apigatewaymanagementapi'
 
 // Initialize the API Gateway Management API client
@@ -9,13 +9,13 @@ async function sendToClient(connectionId, message) {
   try {
     const params = {
       ConnectionId: connectionId,
-      Data: Buffer.from(message),
+      Data: Buffer.from(message)
     }
     await apigwManagementApi.send(new PostToConnectionCommand(params))
   } catch (error) {
     console.error('Error sending message to client:', error)
     if (error.statusCode === 410) {
-      console.log(`Found stale connection, deleting ${connectionId}`)
+      console.log(`Found stale connection, id: ${connectionId}`)
       // Handle stale connection if necessary
     }
   }
@@ -32,7 +32,7 @@ export const handler = async (event) => {
   const REGION = 'us-east-1'
   apigwManagementApi = new ApiGatewayManagementApiClient({
     region: REGION,
-    endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
+    endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`
   })
 
   try {
@@ -40,13 +40,13 @@ export const handler = async (event) => {
     await sendToClient(connectionId, message)
 
     return {
-      statusCode: 200,
+      statusCode: 200
     }
   } catch (error) {
     console.error('Error handling $default route:', error)
     return {
       statusCode: 500,
-      body: JSON.stringify({ message: 'Failed to process request' }),
+      body: JSON.stringify({ message: 'Failed to process request' })
     }
   }
 }
