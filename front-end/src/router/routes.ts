@@ -2,25 +2,27 @@ import type { AsyncComponentLoader } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 
-const roomView: AsyncComponentLoader = () => import(/* webpackChunkName: "room" */ '@/views/RoomView.vue');
-const NotFoundView: AsyncComponentLoader = () => import(/* webpackChunkName: "not-found" */ '@/views/NotFoundView.vue');
+const roomView: AsyncComponentLoader = () =>
+  import(/* webpackChunkName: "room" */ '@/views/RoomView.vue')
+const NotFoundView: AsyncComponentLoader = () =>
+  import(/* webpackChunkName: "not-found" */ '@/views/NotFoundView.vue')
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'Home',
-    component: HomeView,
+    component: HomeView
   },
   {
     path: '/room/:id',
     name: 'Room',
     component: roomView,
-    props: true,
+    props: true
   },
   {
     path: '/:pathMatch(.*)*',
-    component: NotFoundView,
-  },
+    component: NotFoundView
+  }
 ]
 
 export default routes

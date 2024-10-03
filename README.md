@@ -12,6 +12,7 @@ The front end of the application is built using Vue.js, providing a user-friendl
 - **Directory:** [front-end](front-end)
 
 ### Key Front End Features:
+
 - **User-Friendly Interface:** Intuitive design for easy navigation and interaction.
 - **Real-Time Updates:** Seamless integration with the back end to reflect real-time changes.
 - **Responsive Design:** Optimized for various screen sizes and devices.
@@ -24,6 +25,7 @@ The back end of the application is built using AWS Lambda, providing a serverles
 - **Directory:** [back-end](back-end)
 
 ### Key Back End Features:
+
 - **Serverless Architecture:** Built using AWS Lambda for automatic scaling and reduced operational overhead.
 - **WebSocket Communication:** Ensures real-time interaction between the front end and back end.
 - **Scalability:** Efficiently handles multiple rooms and participants simultaneously.

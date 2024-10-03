@@ -7,14 +7,14 @@ import PrimeVue from 'primevue/config'
 import Lara from '@primevue/themes/lara'
 import 'primeicons/primeicons.css'
 
-import Card from 'primevue/card';
-import FloatLabel from 'primevue/floatlabel';
-import InputText from 'primevue/inputtext';
-import Button from 'primevue/button';
+import Card from 'primevue/card'
+import FloatLabel from 'primevue/floatlabel'
+import InputText from 'primevue/inputtext'
+import Button from 'primevue/button'
 import ToastService from 'primevue/toastservice'
-import Dialog from 'primevue/dialog';
+import Dialog from 'primevue/dialog'
 
-import VueGtag from "vue-gtag";
+import VueGtag from 'vue-gtag'
 
 import '@/assets/main.scss'
 
@@ -24,7 +24,7 @@ app.use(router)
 app.use(
   VueGtag,
   {
-    config: { id: import.meta.env.VITE_GTAG_ID },
+    config: { id: import.meta.env.VITE_GTAG_ID }
   },
   router
 )
@@ -36,7 +36,7 @@ app.use(PrimeVue, {
   theme: {
     preset: Lara,
     options: {
-      darkModeSelector: '.p-dark',
+      darkModeSelector: '.p-dark'
     }
   }
 })

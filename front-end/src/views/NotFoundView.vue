@@ -29,7 +29,7 @@ main {
   padding: 1rem;
 
   h1 {
-    margin: 0
+    margin: 0;
   }
 
   a {
