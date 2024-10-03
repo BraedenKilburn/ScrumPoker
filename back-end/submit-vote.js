@@ -109,7 +109,7 @@ export const handler = async (event) => {
     const roomState = await getRoomState(roomId)
 
     // Determine whether to show the actual point estimate or a placeholder
-    const pointPlaceholder = roomState.votes_visible ? pointEstimate : '?'
+    const pointPlaceholder = (roomState.votes_visible || !pointEstimate) ? pointEstimate : '?'
 
     // Submit the user's point estimate
     await submitPointEstimate(roomId, connectionId, pointEstimate)
