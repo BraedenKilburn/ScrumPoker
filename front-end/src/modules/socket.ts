@@ -16,11 +16,18 @@ export type Message = {
 }
 
 let socket: WebSocket
+let pingInterval: ReturnType<typeof setInterval>
 export function connectWebSocket(apiUrl: string, onMessage: (message: Message) => void) {
   socket = new WebSocket(apiUrl)
 
   socket.onopen = () => {
     console.log('WebSocket connected')
+    // Start sending pings every 30 seconds
+    pingInterval = setInterval(function() {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ action: 'ping' }));
+      }
+   }, 30000);
   }
 
   socket.onmessage = (event) => {
@@ -30,10 +37,19 @@ export function connectWebSocket(apiUrl: string, onMessage: (message: Message) =
 
   socket.onclose = (event) => {
     console.log('WebSocket disconnected', event)
+
+    // Clear the ping interval when the socket is closed
+    clearInterval(pingInterval);
+
     onMessage({
       message: 'error',
-      details: 'WebSocket disconnected, try reloading the page',
+      details: 'WebSocket closed, attempting to reconnect',
     })
+
+    // Attempt to reconnect every 5 seconds
+    setTimeout(() => {
+      connectWebSocket(apiUrl, onMessage)
+    }, 5000)
   }
 
   socket.onerror = (error) => {
@@ -42,6 +58,7 @@ export function connectWebSocket(apiUrl: string, onMessage: (message: Message) =
       message: 'error',
       details: 'WebSocket error, try reloading the page',
     })
+    socket.close()
   }
 }
 

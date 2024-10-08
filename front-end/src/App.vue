@@ -54,6 +54,8 @@ function handleWebSocketMessage(data: Message) {
     case 'RoomClosed':
       router.push({ name: 'Home' })
       break
+    case 'pong':
+      break
     case 'notification':
       if (!data.details) return
       addNotification(data.details)
