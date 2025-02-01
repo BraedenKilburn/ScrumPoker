@@ -20,11 +20,10 @@ const router = useRouter()
 function join() {
   if (!roomId.value || !username.value) return
 
-  store.roomId = roomId.value
   store.setUsername(username.value)
   store.addParticipant({
     username: username.value,
-    point_estimate: null,
+    point_estimate: undefined,
   })
 
   router.push({ name: 'Room', params: { id: roomId.value.toLowerCase() } })

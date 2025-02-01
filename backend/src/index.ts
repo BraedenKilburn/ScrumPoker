@@ -1,13 +1,12 @@
 import { InMemoryRoomManager } from "./roomManager";
 import { MessageHandler } from "./messageHandler";
-import { parseCookies } from "./utils";
 
 const roomManager = new InMemoryRoomManager();
 
 const server = Bun.serve<WebSocketData>({
   fetch(req, server) {
-    const { username } = parseCookies(req.headers.get("cookie"));
     const roomId = new URL(req.url).searchParams.get("roomId");
+    const username = new URL(req.url).searchParams.get("username");
 
     if (!username) return new Response("Username is required", { status: 400 });
     if (!roomId) return new Response("Room ID is required", { status: 400 });
@@ -15,10 +14,7 @@ const server = Bun.serve<WebSocketData>({
     try {
       roomManager.joinRoom(roomId, username);
 
-      if (server.upgrade(req, {
-        data: { username, roomId },
-        headers: {"Set-Cookie": `username=${username};` },
-      })) return;
+      if (server.upgrade(req, { data: { username, roomId } })) return;
     } catch (error) {
       return new Response((error as Error).message, { status: 400 });
     }
@@ -26,11 +22,12 @@ const server = Bun.serve<WebSocketData>({
     return new Response("Upgrade failed", { status: 500 });
   },
   websocket: {
+    idleTimeout: 960,
     open(ws) {
       const { roomId, username } = ws.data;
       ws.subscribe(roomId);
 
-      const joinMessage = MessageHandler.createMessage('userJoined', { username } );
+      const joinMessage = MessageHandler.createMessage('userJoined', { username });
       ws.publish(roomId, joinMessage);
 
       const participants = Object.fromEntries(roomManager.getRoomVotes(roomId));

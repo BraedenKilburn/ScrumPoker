@@ -73,14 +73,11 @@ function handleWebSocketMessage({ type, data }: Message) {
       addNotification(data.details)
       break
     case 'error':
-      if (!data.details) return
-      if (data.details === 'Username is already taken in this room') {
-        router.push({ name: 'Home' })
-      }
+      if (!data.message) return
       toast.add({
         severity: 'error',
         summary: 'Error',
-        detail: data.details,
+        detail: data.message,
         life: 3000
       })
       break
@@ -101,6 +98,7 @@ if (!roomId.value) {
 const wsUrl = computed(() => {
   const url = new URL(import.meta.env.VITE_SOCKET_URL)
   url.searchParams.append('roomId', roomId.value)
+  url.searchParams.append('username', username.value)
   return url;
 })
 

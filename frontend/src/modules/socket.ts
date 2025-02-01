@@ -18,21 +18,19 @@ export function connectWebSocket(apiUrl: URL, onMessage: (message: Message) => v
 
   socket.onclose = (event) => {
     console.log('WebSocket disconnected', event)
-
-    onMessage({
+    if (!event.wasClean) onMessage({
       type: 'error',
       data: {
         message: 'WebSocket closed, attempting to reconnect',
       },
     })
+
+    onMessage({ type: 'roomClosed', data: {} })
   }
 
   socket.onerror = (event) => {
     console.error('WebSocket error:', event)
-    onMessage({
-      type: 'roomClosed',
-      data: {}
-    })
+    onMessage({ type: 'roomClosed', data: {} })
   }
 
   return socket
@@ -40,10 +38,7 @@ export function connectWebSocket(apiUrl: URL, onMessage: (message: Message) => v
 
 export function submitVote(data: { vote?: string }) {
   socket.send(
-    JSON.stringify({
-      type: 'submitVote',
-      data
-    })
+    JSON.stringify({ type: 'submitVote', data })
   )
 }
 
