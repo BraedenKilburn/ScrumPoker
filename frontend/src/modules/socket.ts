@@ -18,13 +18,6 @@ export function connectWebSocket(apiUrl: URL, onMessage: (message: Message) => v
 
   socket.onclose = (event) => {
     console.log('WebSocket disconnected', event)
-    if (!event.wasClean) onMessage({
-      type: 'error',
-      data: {
-        message: 'WebSocket closed, attempting to reconnect',
-      },
-    })
-
     onMessage({ type: 'roomClosed', data: {} })
   }
 
