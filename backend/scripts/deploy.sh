@@ -60,7 +60,9 @@ cd "$(dirname "$0")/.." || handle_error "Failed to navigate to backend directory
 
 # Build and tag Docker image
 echo "Building Docker image..."
-IMAGE_TAG="${ENVIRONMENT}-$(date +%Y%m%d-%H%M%S)"
+
+# IMAGE_TAG="${ENVIRONMENT}-$(date +%Y%m%d-%H%M%S)"
+IMAGE_TAG="latest"
 if ! docker build -t ${ECR_REPO_NAME}:${IMAGE_TAG} \
     --build-arg NODE_ENV=${ENVIRONMENT} \
     -f Dockerfile .; then
@@ -95,7 +97,8 @@ fi
 
 if ! NEW_TASK_INFO=$(aws ecs register-task-definition \
     --region ${AWS_REGION} \
-    --cli-input-json "${NEW_TASK_DEFINITION}"); then
+    --cli-input-json "${NEW_TASK_DEFINITION}" \
+    --no-paginate); then
     handle_error "Failed to register new task definition"
 fi
 
