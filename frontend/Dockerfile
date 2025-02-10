@@ -32,11 +32,4 @@ RUN pnpm install
 COPY . .
 RUN pnpm run build
 
-# Production stage
-FROM alpine/git AS deploy
-
-WORKDIR /app
-
-COPY --from=build /app/dist .
-
 CMD ["echo", "Finished"]

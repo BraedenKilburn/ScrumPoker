@@ -2,7 +2,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      target: deploy
+      target: build
     env_file:
       - ./frontend/.env.production
     depends_on:
