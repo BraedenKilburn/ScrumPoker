@@ -2,7 +2,7 @@
   <footer>
     <a
       link
-      href="https://github.com/BraedenKilburn/ScrumPoker/tree/main"
+      href="https://github.com/BraedenKilburn/ScrumPoker"
       target="_blank"
       rel="noopener"
     >
