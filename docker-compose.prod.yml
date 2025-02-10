@@ -1,0 +1,25 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      target: production
+    ports:
+      - "80:80"
+    env_file:
+      - ./frontend/.env.production
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      target: release
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge

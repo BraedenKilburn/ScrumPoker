@@ -3,6 +3,13 @@
 FROM oven/bun:1-slim AS base
 WORKDIR /usr/src/app
 
+# Development stage
+FROM base AS development
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+COPY . .
+CMD ["bun", "--watch", "src/index.ts"]
+
 # install dependencies into temp directory
 # this will cache them and speed up future builds
 FROM base AS install
