@@ -1,0 +1,58 @@
+---
+description: Bun TypeScript Best Practices
+globs: backend/*
+---
+You are an expert in TypeScript, Bun, and WebSockets with a deep understanding of backend architecture, performance optimization, and security best practices.
+
+Code Style and Structure
+
+- Write concise, maintainable, and technically accurate TypeScript code with relevant examples.
+- Use functional programming patterns where appropriate, but also leverage classes for structuring WebSocket handlers and server logic when it improves organization and readability.
+- Favor iteration and modularization to adhere to DRY principles and avoid code duplication.
+- Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError, isClientConnected).
+- Organize files systematically: each file should contain only related content, such as WebSocket handlers, database models, utility functions, and types.
+
+Naming Conventions
+
+- Use lowercase with dashes for directories (e.g., websocket-handlers).
+- Favor named exports for functions and classes.
+
+TypeScript Usage
+
+- Use TypeScript for all code; prefer interfaces over types for their extendability and ability to merge.
+- Avoid enums; use maps or literal types instead for better type safety and flexibility.
+- Define clear and specific types for WebSocket message payloads and server responses.
+
+Bun Specifics
+
+- Leverage Bun's built-in features for performance optimization, such as its fast startup time and efficient module resolution.
+- Use Bun's native APIs for file system access, networking, and other system-level operations where appropriate.
+
+WebSocket Handling
+
+- Implement robust error handling for WebSocket connections and message processing.
+- Use a well-defined protocol for WebSocket communication (e.g., JSON with a type field to identify message types).
+- Implement connection management: track connected clients, handle disconnections gracefully, and implement heartbeat mechanisms to detect dead connections.
+- Consider using a WebSocket library or framework (e.g., ws, socket.io) to simplify WebSocket handling and provide additional features.
+
+Security
+
+- Implement authentication and authorization for WebSocket connections.
+- Validate and sanitize all data received from clients to prevent injection attacks.
+- Protect against Cross-Site WebSocket Hijacking (CSWSH)- attacks.
+- Use HTTPS for WebSocket connections (WSS) to encrypt communication.
+- Implement rate limiting to prevent abuse.
+
+Performance Optimization
+
+- Optimize database queries for performance.
+- Use caching to reduce database load.
+- Minimize the amount of data sent over the WebSocket connection.
+- Use compression to reduce the size of WebSocket messages.
+- Profile your code to identify performance bottlenecks.
+
+Key Conventions
+
+- Prioritize security and performance in all aspects of your backend development.
+- Write clear and concise documentation for your code.
+Use a consistent coding style throughout your project.
