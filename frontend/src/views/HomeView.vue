@@ -23,7 +23,7 @@ function join() {
   store.setUsername(username.value)
   store.addParticipant({
     username: username.value,
-    point_estimate: undefined,
+    point_estimate: undefined
   })
 
   router.push({ name: 'Room', params: { id: roomId.value.toLowerCase() } })
@@ -39,28 +39,30 @@ const disabled = computed(() => !roomId.value || !username.value)
       <h1>Welcome to Scrum&nbsp;Poker</h1>
       <p>Enter a username and a room ID to join an existing room or create a new room.</p>
     </div>
-    <VCard class="home-card">
-      <template #content>
-        <FloatLabel variant="on">
-          <InputText
-            id="username"
-            v-model.trim="username"
-            autocomplete="off"
-            size="large"
-            autofocus
-          />
-          <label for="username">Username</label>
-        </FloatLabel>
-        <FloatLabel variant="on">
-          <InputText id="roomId" v-model.trim="roomId" autocomplete="off" size="large" />
-          <label for="roomId">Room ID</label>
-        </FloatLabel>
-      </template>
+    <form @submit.prevent="join">
+      <VCard class="home-card">
+        <template #content>
+          <FloatLabel variant="on">
+            <InputText
+              id="username"
+              v-model.trim="username"
+              autocomplete="off"
+              size="large"
+              autofocus
+            />
+            <label for="username">Username</label>
+          </FloatLabel>
+          <FloatLabel variant="on">
+            <InputText id="roomId" v-model.trim="roomId" autocomplete="off" size="large" />
+            <label for="roomId">Room ID</label>
+          </FloatLabel>
+        </template>
 
-      <template #footer>
-        <VButton class="join-button" label="Join Room" :disabled @click="join" />
-      </template>
-    </VCard>
+        <template #footer>
+          <VButton type="submit" class="join-button" label="Join Room" :disabled />
+        </template>
+      </VCard>
+    </form>
   </main>
 </template>
 

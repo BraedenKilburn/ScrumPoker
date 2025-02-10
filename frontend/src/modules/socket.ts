@@ -18,15 +18,20 @@ export function connectWebSocket(apiUrl: URL, onMessage: (message: Message) => v
 
   socket.onclose = (event) => {
     console.log('WebSocket disconnected', event)
-    onMessage({ type: 'roomClosed', data: {} })
   }
 
   socket.onerror = (event) => {
     console.error('WebSocket error:', event)
-    onMessage({ type: 'roomClosed', data: {} })
+    onMessage({ type: 'roomClosed', data: { reason: 'WebSocket error' } })
   }
 
   return socket
+}
+
+export function transferAdmin(newAdmin: string) {
+  socket.send(
+    JSON.stringify({ type: 'transferAdmin', data: { newAdmin } })
+  )
 }
 
 export function submitVote(data: { vote?: string }) {

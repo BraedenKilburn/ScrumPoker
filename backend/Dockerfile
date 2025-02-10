@@ -8,6 +8,7 @@ FROM base AS development
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 COPY . .
+EXPOSE 3000/tcp
 CMD ["bun", "--watch", "src/index.ts"]
 
 # install dependencies into temp directory

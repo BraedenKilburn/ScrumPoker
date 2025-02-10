@@ -27,11 +27,35 @@ interface RoomManager {
   joinRoom(roomId: string, username: string): void;
 
   /**
+   * Transfer the admin rights of a room to another user
+   * @param roomId - The ID of the room to transfer the admin rights for
+   * @param currentAdmin - The current admin of the room
+   * @param newAdmin - The new admin of the room
+   */
+  transferAdmin(roomId: string, currentAdmin: string, newAdmin: string): void;
+
+  /**
+   * Check if a user is the admin of a room
+   * @param roomId - The ID of the room to check the admin rights for
+   * @param username - The username of the user to check the admin rights for
+   * @returns Whether the user is the admin of the room
+   */
+  isAdmin(roomId: string, username: string): boolean;
+
+  /**
+   * Get the admin of a room
+   * @param roomId - The ID of the room to get the admin of
+   * @returns The admin of the room
+   */
+  getAdmin(roomId: string): string | null;
+
+  /**
    * Leave a room, if the room is empty, it will be deleted.
    * @param roomId - The ID of the room to leave
    * @param username - The username of the user to leave the room
+   * @returns Whether the room should be destroyed
    */
-  leaveRoom(roomId: string, username: string): void;
+  leaveRoom(roomId: string, username: string): { shouldDestroyRoom: boolean };
 
   /**
    * Submit a vote for a user in a room
@@ -44,15 +68,17 @@ interface RoomManager {
   /**
    * Set the visibility of the votes in a room
    * @param roomId - The ID of the room to set the visibility of the votes for
+   * @param username - The username of the user trying to set the visibility of the votes
    * @param revealed - Whether the votes are revealed
    */
-  setVoteVisibility(roomId: string, revealed: boolean): void;
+  setVoteVisibility(roomId: string, username: string, revealed: boolean): void;
 
   /**
    * Clear the votes in a room
    * @param roomId - The ID of the room to clear the votes for
+   * @param username - The username of the user trying to clear the votes
    */
-  clearVotes(roomId: string): void;
+  clearVotes(roomId: string, username: string): void;
 
   /**
    * Get the users in a room

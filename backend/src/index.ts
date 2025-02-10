@@ -31,7 +31,8 @@ const server = Bun.serve<WebSocketData>({
       ws.publish(roomId, joinMessage);
 
       const participants = Object.fromEntries(roomManager.getRoomVotes(roomId));
-      const welcomeMessage = MessageHandler.createMessage('joinRoomSuccess', { participants });
+      const admin = roomManager.getAdmin(roomId);
+      const welcomeMessage = MessageHandler.createMessage('joinRoomSuccess', { participants, admin });
       ws.send(welcomeMessage);
     },
     message(ws, message) {
@@ -46,19 +47,24 @@ const server = Bun.serve<WebSocketData>({
             break;
 
           case 'revealVotes':
-            roomManager.setVoteVisibility(roomId, true);
+            roomManager.setVoteVisibility(roomId, username, true);
             server.publish(roomId, MessageHandler.createVoteStatusMessage(roomId, roomManager));
             break;
 
           case 'hideVotes':
-            roomManager.setVoteVisibility(roomId, false);
+            roomManager.setVoteVisibility(roomId, username, false);
             server.publish(roomId, MessageHandler.createVoteStatusMessage(roomId, roomManager));
             break;
 
           case "clearVotes":
-            roomManager.clearVotes(roomId);
-            roomManager.setVoteVisibility(roomId, false);
+            roomManager.clearVotes(roomId, username);
+            roomManager.setVoteVisibility(roomId, username, false);
             ws.publish(roomId, MessageHandler.createMessage("votesCleared"));
+            break;
+
+          case "transferAdmin":
+            roomManager.transferAdmin(roomId, username, msg.data.newAdmin);
+            server.publish(roomId, MessageHandler.createMessage("adminTransferred", { newAdmin: msg.data.newAdmin }));
             break;
 
           default:
@@ -75,12 +81,16 @@ const server = Bun.serve<WebSocketData>({
     },
     close(ws) {
       const { roomId, username } = ws.data;
+      if (!roomId || !username) return;
 
-      roomManager.leaveRoom(roomId, username);
-
-      const leaveMessage = MessageHandler.createMessage('userLeft', { username });
-      ws.publish(roomId, leaveMessage);
-      ws.unsubscribe(roomId);
+      const { shouldDestroyRoom } = roomManager.leaveRoom(roomId, username);
+      if (shouldDestroyRoom) {
+        const message = MessageHandler.createMessage('roomClosed', { reason: 'Admin left the room' });
+        server.publish(roomId, message);
+      } else {
+        const message = MessageHandler.createMessage('userLeft', { username });
+        server.publish(roomId, message);
+      }
     },
   },
 });

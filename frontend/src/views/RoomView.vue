@@ -13,29 +13,40 @@ import {
   hideVotes,
   revealVotes,
   submitVote,
+  transferAdmin,
   type Message
 } from '@/modules/socket'
 import { useRootStore } from '@/stores/root'
 import PointAccordion from '@/components/PointAccordion.vue'
 
 const toast = useToast()
-function addNotification(message: string) {
+function addNotification(detail: string) {
   toast.add({
     severity: 'info',
     summary: 'Notification',
-    detail: message,
+    detail,
+    life: 3000
+  })
+}
+
+function addErrorNotification(summary: string, detail: string) {
+  toast.add({
+    severity: 'error',
+    summary,
+    detail,
     life: 3000
   })
 }
 
 const router = useRouter()
 const store = useRootStore()
-const { username, votesVisible, participants } = storeToRefs(store)
+const { username, votesVisible, participants, isAdmin, adminUsername } = storeToRefs(store)
 
 function handleWebSocketMessage({ type, data }: Message) {
   switch (type) {
     case 'joinRoomSuccess':
       participants.value = new Map(Object.entries(data.participants))
+      store.setAdmin(data.admin)
       break
     case 'userJoined':
       if (!data.username) return
@@ -46,6 +57,12 @@ function handleWebSocketMessage({ type, data }: Message) {
       if (!data.username) return
       store.removeParticipant(data.username)
       addNotification(`${data.username ?? 'A user'} left the room`)
+      break
+    }
+    case 'adminTransferred': {
+      if (!data.newAdmin) return
+      store.setAdmin(data.newAdmin)
+      addNotification(`Admin role transferred to ${data.newAdmin}`)
       break
     }
     case 'userVoted':
@@ -66,6 +83,8 @@ function handleWebSocketMessage({ type, data }: Message) {
       votesVisible.value = false
       break
     case 'roomClosed':
+      addErrorNotification('Room Closed', data.reason)
+      store.$reset()
       router.push({ name: 'Home' })
       break
     case 'notification':
@@ -74,12 +93,7 @@ function handleWebSocketMessage({ type, data }: Message) {
       break
     case 'error':
       if (!data.message) return
-      toast.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: data.message,
-        life: 3000
-      })
+      addErrorNotification('Error', data.message)
       break
     default:
       console.error('Unknown message:', data)
@@ -99,7 +113,7 @@ const wsUrl = computed(() => {
   const url = new URL(import.meta.env.VITE_SOCKET_URL)
   url.searchParams.append('roomId', roomId.value)
   url.searchParams.append('username', username.value)
-  return url;
+  return url
 })
 
 let socket: WebSocket
@@ -121,7 +135,11 @@ function join() {
  */
 const members = computed(() => {
   return Array.from(participants.value.entries())
-    .map(([name, point]) => ({ name, point }))
+    .map(([name, point]) => ({
+      name,
+      point,
+      isAdmin: name === adminUsername.value
+    }))
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
@@ -155,7 +173,7 @@ function vote(point?: string) {
  */
 function clearMyVote() {
   store.pointEstimate = undefined
-  vote();
+  vote()
 }
 
 /**
@@ -164,6 +182,14 @@ function clearMyVote() {
 function clearAllVotes() {
   clearVotes()
   store.clearVotes()
+}
+
+/**
+ * Make a user an admin.
+ */
+function makeAdmin(name: string) {
+  if (!isAdmin.value || name === store.adminUsername) return
+  transferAdmin(name)
 }
 
 const copiedRoomLink = ref(false)
@@ -189,6 +215,7 @@ onBeforeRouteLeave(() => {
         <VButton severity="danger" label="Leave Room" />
       </RouterLink>
       <VButton
+        v-if="isAdmin"
         :label="votesVisible ? 'Hide Votes' : 'Reveal Votes'"
         severity="success"
         :disabled="!votesVisible && !hasVotes"
@@ -204,6 +231,17 @@ onBeforeRouteLeave(() => {
 
     <div class="container">
       <DataTable :value="members" row-hover>
+        <Column header="Admin" style="width: 1px; text-align: center">
+          <template #body="{ data }">
+            <i
+              :class="{
+                'pi pi-star-fill': data.name === store.adminUsername,
+                'pi pi-star': isAdmin && data.name !== store.adminUsername
+              }"
+              @click="makeAdmin(data.name)"
+            />
+          </template>
+        </Column>
         <Column field="name" header="Name" />
         <Column field="point" header="Point" />
       </DataTable>
@@ -218,9 +256,11 @@ onBeforeRouteLeave(() => {
         <VButton
           label="Clear My Vote"
           severity="secondary"
+          :disabled="!store.pointEstimate"
           @click="clearMyVote"
         />
         <VButton
+          v-if="isAdmin"
           label="Clear All Votes"
           severity="danger"
           :disabled="!hasVotes"
@@ -231,12 +271,7 @@ onBeforeRouteLeave(() => {
 
     <PointAccordion />
 
-    <VDialog
-      :closable="false"
-      :visible="isMissingUsername"
-      modal
-      header="Welcome"
-    >
+    <VDialog :closable="false" :visible="isMissingUsername" modal header="Welcome">
       <p>Please enter a username to join the room.</p>
       <InputText id="username" v-model="usernameModel" autocomplete="off" autofocus />
       <template #footer>
@@ -274,6 +309,23 @@ main {
 
     .p-datatable {
       width: 80%;
+
+      td {
+        .pi-star-fill {
+          color: #ffd700;
+        }
+
+        .pi-star {
+          display: none;
+          cursor: pointer;
+        }
+
+        &:hover {
+          .pi-star {
+            display: block;
+          }
+        }
+      }
     }
 
     .options {

@@ -13,19 +13,9 @@ export type User = {
 
 export const useRootStore = defineStore('root', () => {
   /**
-   * All participants in the room.
-   */
-  const participants = ref<Map<string, string | undefined>>(new Map())
-
-  /**
    * The current user's username.
    */
   const username = ref<string>('')
-
-  /**
-   * The current user's point estimate.
-   */
-  const pointEstimate = ref<string | undefined>(undefined)
 
   /**
    * Update the username and save it in localStorage.
@@ -35,6 +25,26 @@ export const useRootStore = defineStore('root', () => {
     username.value = name
     Cookies.set(usernameKey, name)
   }
+
+  /**
+   * Whether the current user is the admin
+   */
+  const isAdmin = ref(false)
+  const adminUsername = ref('')
+
+  /**
+   * Set the admin of the room.
+   * @param newAdmin The admin's username.
+   */
+  function setAdmin(newAdmin: string) {
+    adminUsername.value = newAdmin
+    isAdmin.value = newAdmin === username.value
+  }
+
+  /**
+   * All participants in the room.
+   */
+  const participants = ref<Map<string, string | undefined>>(new Map())
 
   /**
    * Adds a participant to the room.
@@ -51,6 +61,11 @@ export const useRootStore = defineStore('root', () => {
   function removeParticipant(username: string) {
     participants.value.delete(username)
   }
+
+  /**
+   * The current user's point estimate.
+   */
+  const pointEstimate = ref<string | undefined>(undefined)
 
   /**
    * Set the user's point estimate.
@@ -95,11 +110,17 @@ export const useRootStore = defineStore('root', () => {
   function $reset() {
     participants.value = new Map()
     username.value = ''
+    isAdmin.value = false
+    adminUsername.value = ''
   }
 
   return {
     username,
     setUsername,
+
+    isAdmin,
+    adminUsername,
+    setAdmin,
 
     participants,
     addParticipant,
