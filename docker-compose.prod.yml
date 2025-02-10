@@ -2,13 +2,13 @@ services:
   frontend:
     build:
       context: ./frontend
-      target: production
-    ports:
-      - "80:80"
+      target: deploy
     env_file:
       - ./frontend/.env.production
     depends_on:
       - backend
+    volumes:
+      - frontend_build:/app
 
   backend:
     build:
@@ -20,6 +20,5 @@ services:
       - NODE_ENV=production
     restart: unless-stopped
 
-networks:
-  default:
-    driver: bridge
+volumes:
+  frontend_build:

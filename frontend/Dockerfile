@@ -33,11 +33,10 @@ COPY . .
 RUN pnpm run build
 
 # Production stage
-FROM nginx:alpine AS production
+FROM alpine/git AS deploy
 
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-EXPOSE 80
+COPY --from=build /app/dist .
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["echo", "Finished"]
