@@ -72,16 +72,24 @@ The production build will be available at:
 
 ## Project Structure
 
-├── frontend/ # Vue 3 frontend application
-│ ├── src/ # Source files
-│ ├── public/ # Static files
-│ ├── Dockerfile # Frontend Docker configuration
-│ └── nginx.conf # Nginx configuration for production
-├── backend/ # Bun backend application
-│ ├── src/ # Source files
-│ └── Dockerfile # Backend Docker configuration
-├── docker-compose.dev.yml # Development Docker Compose configuration
-└── docker-compose.prod.yml # Production Docker Compose configuration
+```bash
+├── backend # Bun backend application
+│   ├── Dockerfile
+│   ├── bun.lock
+│   ├── package.json
+│   ├── src
+│   ├── tsconfig.json
+│   └── types.d.ts
+├── docker-compose.dev.yml
+├── docker-compose.prod.yml
+└── frontend # Vue 3 frontend application
+    ├── Dockerfile
+    ├── env.d.ts
+    ├── index.html
+    ├── package.json
+    ├── src
+    └── vite.config.ts
+```
 
 ## Development
 
