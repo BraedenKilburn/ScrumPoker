@@ -15,6 +15,33 @@ type WebSocketMessage = {
  */
 type Vote = string | null;
 
+type Room = {
+  /**
+   * All users in the room
+   */
+  users: Set<string>;
+
+  /**
+   * The votes in the room for each user
+   */
+  votes: Map<string, Vote>;
+
+  /**
+   * Whether the votes are revealed for the room
+   */
+  revealed: boolean;
+
+  /**
+   * Whether the votes are locked
+   */
+  locked: boolean;
+
+  /**
+   * The admin of the room
+   */
+  admin: string;
+};
+
 /**
  * A manager for rooms
  */
@@ -108,6 +135,21 @@ interface RoomManager {
    * @returns A map of usernames to their votes
    */
   getRoomVotes(roomId: string): Map<string, Vote>;
+
+  /**
+   * Set the lock state of votes in a room
+   * @param roomId - The ID of the room to set the lock state for
+   * @param username - The username of the user trying to set the lock state
+   * @param locked - Whether the votes should be locked
+   */
+  setVoteLock(roomId: string, username: string, locked: boolean): void;
+
+  /**
+   * Get the lock state of votes in a room
+   * @param roomId - The ID of the room to get the lock state from
+   * @returns Whether the votes are locked
+   */
+  getRoomLockState(roomId: string): boolean;
 }
 
 /**

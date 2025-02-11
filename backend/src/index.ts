@@ -32,7 +32,8 @@ const server = Bun.serve<WebSocketData>({
 
       const participants = Object.fromEntries(roomManager.getRoomVotes(roomId));
       const admin = roomManager.getAdmin(roomId);
-      const welcomeMessage = MessageHandler.createMessage('joinRoomSuccess', { participants, admin });
+      const locked = roomManager.getRoomLockState(roomId);
+      const welcomeMessage = MessageHandler.createMessage('joinRoomSuccess', { participants, admin, locked });
       ws.send(welcomeMessage);
     },
     message(ws, message) {
@@ -65,6 +66,16 @@ const server = Bun.serve<WebSocketData>({
           case "transferAdmin":
             roomManager.transferAdmin(roomId, username, msg.data.newAdmin);
             server.publish(roomId, MessageHandler.createMessage("adminTransferred", { newAdmin: msg.data.newAdmin }));
+            break;
+
+          case 'lockVotes':
+            roomManager.setVoteLock(roomId, username, true);
+            server.publish(roomId, MessageHandler.createMessage("voteLockStatus", { locked: true }));
+            break;
+
+          case 'unlockVotes':
+            roomManager.setVoteLock(roomId, username, false);
+            server.publish(roomId, MessageHandler.createMessage("voteLockStatus", { locked: false }));
             break;
 
           default:

@@ -94,6 +94,11 @@ export const useRootStore = defineStore('root', () => {
   const votesVisible = ref(false)
 
   /**
+   * If the users are allowed to change their votes.
+   */
+  const votesLocked = ref(false)
+
+  /**
    * Clear the votes of all participants.
    */
   function clearVotes() {
@@ -102,6 +107,7 @@ export const useRootStore = defineStore('root', () => {
       participants.value.set(username, undefined)
     })
     votesVisible.value = false
+    votesLocked.value = false
   }
 
   /**
@@ -112,6 +118,7 @@ export const useRootStore = defineStore('root', () => {
     username.value = ''
     isAdmin.value = false
     adminUsername.value = ''
+    votesLocked.value = false
   }
 
   return {
@@ -132,6 +139,8 @@ export const useRootStore = defineStore('root', () => {
 
     votesVisible,
     clearVotes,
+
+    votesLocked,
 
     $reset
   }

@@ -2,6 +2,7 @@
 import Cookies from 'js-cookie'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import PMessage from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import { computed, ref } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
@@ -14,6 +15,8 @@ import {
   revealVotes,
   submitVote,
   transferAdmin,
+  lockVotes,
+  unlockVotes,
   type Message
 } from '@/modules/socket'
 import { useRootStore } from '@/stores/root'
@@ -40,13 +43,21 @@ function addErrorNotification(summary: string, detail: string) {
 
 const router = useRouter()
 const store = useRootStore()
-const { username, votesVisible, participants, isAdmin, adminUsername } = storeToRefs(store)
+const {
+  username,
+  votesVisible,
+  participants,
+  isAdmin,
+  adminUsername,
+  votesLocked
+} = storeToRefs(store)
 
 function handleWebSocketMessage({ type, data }: Message) {
   switch (type) {
     case 'joinRoomSuccess':
       participants.value = new Map(Object.entries(data.participants))
       store.setAdmin(data.admin)
+      votesLocked.value = data.locked
       break
     case 'userJoined':
       if (!data.username) return
@@ -81,6 +92,9 @@ function handleWebSocketMessage({ type, data }: Message) {
     case 'votesCleared':
       store.clearVotes()
       votesVisible.value = false
+      break
+    case 'voteLockStatus':
+      votesLocked.value = data.locked
       break
     case 'roomClosed':
       addErrorNotification('Room Closed', data.reason)
@@ -156,6 +170,14 @@ function toggleVoteVisibility() {
   else revealVotes()
 }
 
+/**
+ * Toggle the lock state of votes.
+ */
+function toggleVoteLock() {
+  if (votesLocked.value) unlockVotes()
+  else lockVotes()
+}
+
 // Available points for voting
 const points = ref(['40', '21', '13', '8', '5', '3', '2', '1', '?'])
 
@@ -212,19 +234,30 @@ onBeforeRouteLeave(() => {
   <main>
     <div class="actions">
       <RouterLink :to="{ name: 'Home' }">
-        <VButton severity="danger" label="Leave Room" />
+        <VButton severity="danger" label="Leave Room" size="small" />
       </RouterLink>
       <VButton
         v-if="isAdmin"
         :label="votesVisible ? 'Hide Votes' : 'Reveal Votes'"
         severity="success"
         :disabled="!votesVisible && !hasVotes"
+        size="small"
         @click="toggleVoteVisibility()"
+      />
+      <VButton
+        v-if="isAdmin"
+        :label="votesLocked ? 'Unlock Votes' : 'Lock Votes'"
+        severity="info"
+        :disabled="!hasVotes"
+        size="small"
+        :icon="votesLocked ? 'pi pi-lock' : 'pi pi-unlock'"
+        @click="toggleVoteLock"
       />
       <VButton
         severity="secondary"
         label="Copy Room Link"
         :icon="copiedRoomLink ? 'pi pi-check' : 'pi pi-clipboard'"
+        size="small"
         @click="copyRoomLink"
       />
     </div>
@@ -247,16 +280,25 @@ onBeforeRouteLeave(() => {
       </DataTable>
 
       <div class="options">
+        <PMessage v-if="votesLocked && !isAdmin" severity="info" size="small">
+          <template #icon>
+            <i class="pi pi-lock" />
+          </template>
+          The votes are locked.
+        </PMessage>
         <VButton
           v-for="point in points"
           :key="point"
           :label="point.toString()"
+          :disabled="votesLocked"
+          size="small"
           @click="vote(point)"
         />
         <VButton
           label="Clear My Vote"
           severity="secondary"
-          :disabled="!store.pointEstimate"
+          :disabled="!store.pointEstimate || votesLocked"
+          size="small"
           @click="clearMyVote"
         />
         <VButton
@@ -264,6 +306,7 @@ onBeforeRouteLeave(() => {
           label="Clear All Votes"
           severity="danger"
           :disabled="!hasVotes"
+          size="small"
           @click="clearAllVotes"
         />
       </div>
@@ -273,10 +316,10 @@ onBeforeRouteLeave(() => {
 
     <VDialog :closable="false" :visible="isMissingUsername" modal header="Welcome">
       <p>Please enter a username to join the room.</p>
-      <InputText id="username" v-model="usernameModel" autocomplete="off" autofocus />
-      <template #footer>
-        <VButton label="Submit" :disabled="!usernameModel" @click="join" />
-      </template>
+      <form @submit.prevent="join">
+        <InputText id="username" v-model="usernameModel" autocomplete="off" autofocus />
+        <VButton label="Submit" :disabled="!usernameModel" type="submit" />
+      </form>
     </VDialog>
   </main>
 </template>
@@ -294,11 +337,20 @@ main {
   }
 
   .actions {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    display: grid;
     gap: 1rem;
     width: 100%;
+    padding: 1rem 0;
+    grid-template-columns: repeat(2, 1fr);
+
+    :deep(.p-button) {
+      width: 100%;
+    }
+
+    @media (min-width: 768px) {
+      justify-content: center;
+      grid-template-columns: repeat(auto-fit, minmax(150px, max-content));
+    }
   }
 
   .container {
@@ -336,15 +388,15 @@ main {
   }
 }
 
-.p-dialog-content,
-.p-dialog-footer {
+.p-dialog-content {
   p {
     margin-top: 0;
   }
 
-  input,
-  button {
-    width: 100%;
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 }
 </style>

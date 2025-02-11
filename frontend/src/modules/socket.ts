@@ -57,3 +57,15 @@ export function hideVotes() {
     JSON.stringify({ type: 'hideVotes' })
   )
 }
+
+export function lockVotes() {
+  socket.send(
+    JSON.stringify({ type: 'lockVotes' })
+  )
+}
+
+export function unlockVotes() {
+  socket.send(
+    JSON.stringify({ type: 'unlockVotes' })
+  )
+}

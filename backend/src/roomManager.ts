@@ -1,25 +1,3 @@
-type Room = {
-  /**
-   * All users in the room
-   */
-  users: Set<string>;
-
-  /**
-   * The votes in the room for each user
-   */
-  votes: Map<string, Vote>;
-
-  /**
-   * Whether the votes are revealed for the room
-   */
-  revealed: boolean;
-
-  /**
-   * The admin of the room
-   */
-  admin: string;
-};
-
 export class InMemoryRoomManager implements RoomManager {
   private rooms = new Map<string, Room>();
 
@@ -30,6 +8,7 @@ export class InMemoryRoomManager implements RoomManager {
         users: new Set(),
         votes: new Map(),
         revealed: false,
+        locked: false,
         admin: username,
       };
       this.rooms.set(roomId, room);
@@ -85,7 +64,7 @@ export class InMemoryRoomManager implements RoomManager {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error("Room does not exist");
     if (!room.users.has(username)) throw new Error("User not in room");
-
+    if (room.locked) throw new Error("Votes are locked");
     room.votes.set(username, !!vote ? vote : null);
   }
 
@@ -101,9 +80,9 @@ export class InMemoryRoomManager implements RoomManager {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error("Room does not exist");
     if (room.admin !== username) throw new Error("Only the admin can clear votes");
-    room.votes.forEach((_, username) => {
-      room.votes.set(username, null);
-    });
+
+    room.votes.forEach((_, username) => room.votes.set(username, null));
+    room.locked = false;
   }
 
   getRoomUsers(roomId: string) {
@@ -136,5 +115,18 @@ export class InMemoryRoomManager implements RoomManager {
         .entries()
         .map(([key, value]) => [key, value == null ? value : "?"])
       );
+  }
+
+  setVoteLock(roomId: string, username: string, locked: boolean) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error("Room does not exist");
+    if (room.admin !== username) throw new Error("Only the admin can lock/unlock votes");
+
+    room.locked = locked;
+  }
+
+  getRoomLockState(roomId: string): boolean {
+    const room = this.rooms.get(roomId);
+    return room ? room.locked : false;
   }
 }
