@@ -5,6 +5,7 @@ A real-time Scrum Poker application built with Vue 3 and Bun. This application a
 ## Tech Stack
 
 ### Frontend
+
 - Vue 3 with TypeScript
 - Vite
 - PrimeVue Components
@@ -12,6 +13,7 @@ A real-time Scrum Poker application built with Vue 3 and Bun. This application a
 - SCSS for styling
 
 ### Backend
+
 - Bun Runtime
 - TypeScript
 - WebSocket Server
@@ -19,6 +21,7 @@ A real-time Scrum Poker application built with Vue 3 and Bun. This application a
 ## Getting Started
 
 ### Prerequisites
+
 - Docker & Docker Compose
 - PNPM (for frontend package management)
 - Bun (for backend development)
@@ -47,6 +50,7 @@ docker compose -f docker-compose.dev.yml up --build
 ```
 
 The application will be available at:
+
 - Frontend: http://localhost:8080
 - Backend WebSocket: ws://localhost:3000
 
@@ -67,6 +71,7 @@ docker compose -f docker-compose.prod.yml up --build
 ```
 
 The production build will be available at:
+
 - Frontend: http://localhost (port 80)
 - Backend: ws://api.yourdomain.com (port 3000)
 
@@ -94,12 +99,14 @@ The production build will be available at:
 ## Development
 
 ### Frontend Development
+
 - Uses Vite's hot module replacement
 - PrimeVue components for UI
 - TypeScript for type safety
 - SCSS for styling
 
 ### Backend Development
+
 - Bun's built-in WebSocket server
 - TypeScript for type safety
 - Hot reloading in development
