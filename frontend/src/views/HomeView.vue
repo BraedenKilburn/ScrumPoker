@@ -37,7 +37,7 @@ const disabled = computed(() => !roomId.value || !username.value)
   <main>
     <div class="intro">
       <h1>Welcome to Scrum&nbsp;Poker</h1>
-      <p>Enter a username and a room ID to join an existing room or create a new room.</p>
+      <p>Enter a username and a room ID to join or create a room.</p>
     </div>
     <form @submit.prevent="join">
       <VCard class="home-card">
@@ -69,8 +69,12 @@ const disabled = computed(() => !roomId.value || !username.value)
 <style lang="scss">
 .home-card {
   --p-card-body-gap: 1.5rem;
+  --p-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 
   width: 90vw;
+  @media (min-width: 768px) {
+    width: 50vw;
+  }
 
   .p-card-content {
     display: flex;
@@ -81,10 +85,6 @@ const disabled = computed(() => !roomId.value || !username.value)
     input {
       width: 100%;
     }
-  }
-
-  @media (min-width: 768px) {
-    width: 50vw;
   }
 }
 </style>
