@@ -37,9 +37,14 @@ const server = Bun.serve<WebSocketData>({
       ws.send(welcomeMessage);
     },
     message(ws, message) {
-      const { roomId, username } = ws.data;
+      // Keep the connection alive
+      if (message === 'ping') {
+        ws.send('pong');
+        return;
+      }
 
       try {
+        const { roomId, username } = ws.data;
         const msg = MessageHandler.parseMessage(message as string) as WebSocketMessage;
         switch (msg.type) {
           case 'submitVote':
