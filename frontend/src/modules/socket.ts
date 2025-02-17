@@ -25,8 +25,8 @@ export function connectWebSocket(apiUrl: URL, onMessage: (message: Message) => v
   }
 
   socket.onmessage = (event) => {
+    if (event.data === 'pong') return
     const message = JSON.parse(event.data)
-    if (message === 'pong') return
     onMessage(message)
   }
 
