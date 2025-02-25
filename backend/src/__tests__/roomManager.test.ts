@@ -135,4 +135,75 @@ describe("InMemoryRoomManager", () => {
       expect(roomManager.getRoomUsers("room1")).toEqual(["admin"]);
     });
   });
+
+  describe("removeParticipant", () => {
+    const roomId = "room1";
+    const admin = "admin";
+
+    beforeEach(() => {
+      roomManager.joinRoom(roomId, admin);
+      roomManager.joinRoom(roomId, "user1");
+      roomManager.joinRoom(roomId, "user2");
+    });
+
+    test("admin should be able to remove a participant", () => {
+      roomManager.removeParticipant(roomId, admin, "user1");
+
+      // Verify user was removed
+      const users = roomManager.getRoomUsers(roomId);
+      expect(users).toEqual([admin, "user2"]);
+      expect(users).not.toContain("user1");
+
+      // Verify their vote was removed
+      const votes = roomManager.getRoomVotes(roomId);
+      expect(votes.has("user1")).toBe(false);
+    });
+
+    test("should throw error if room does not exist", () => {
+      expect(() => roomManager.removeParticipant("nonexistent", admin, "user1"))
+        .toThrow("Room does not exist");
+    });
+
+    test("should throw error if non-admin tries to remove a participant", () => {
+      expect(() => roomManager.removeParticipant(roomId, "user1", "user2"))
+        .toThrow("Only the admin can remove participants");
+    });
+
+    test("should throw error if participant does not exist in room", () => {
+      expect(() => roomManager.removeParticipant(roomId, admin, "nonexistent"))
+        .toThrow("Participant not found in room");
+    });
+
+    test("should throw error if admin tries to remove themselves", () => {
+      expect(() => roomManager.removeParticipant(roomId, admin, admin))
+        .toThrow("Admin cannot remove themselves");
+    });
+
+    test("should remove participant's vote when they are removed", () => {
+      // Submit a vote for the user
+      roomManager.submitVote(roomId, "user1", "5");
+
+      // Verify the vote exists
+      roomManager.setVoteVisibility(roomId, admin, true);
+      expect(roomManager.getRoomVotes(roomId).get("user1")).toBe("5");
+
+      // Remove the participant
+      roomManager.removeParticipant(roomId, admin, "user1");
+
+      // Verify the vote was removed
+      const votes = roomManager.getRoomVotes(roomId);
+      expect(votes.has("user1")).toBe(false);
+    });
+
+    test("should work correctly when removing multiple participants", () => {
+      roomManager.removeParticipant(roomId, admin, "user1");
+      roomManager.removeParticipant(roomId, admin, "user2");
+
+      // Verify only admin remains
+      const users = roomManager.getRoomUsers(roomId);
+      expect(users).toEqual([admin]);
+      expect(users).not.toContain("user1");
+      expect(users).not.toContain("user2");
+    });
+  });
 });

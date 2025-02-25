@@ -33,7 +33,11 @@ export function connectWebSocket(apiUrl: URL, onMessage: (message: Message) => v
   socket.onclose = (event) => {
     console.log('WebSocket disconnected', event)
     clearPingInterval()
-    onMessage({ type: 'roomClosed', data: { reason: 'WebSocket disconnected' } })
+
+    // Removed by admin comes with it's own notification in the room view
+    if (event.reason === 'Removed by admin') return;
+
+    onMessage({ type: 'roomClosed', data: { reason: event.reason ?? 'WebSocket disconnected' } })
   }
 
   socket.onerror = (event) => {
@@ -84,5 +88,11 @@ export function lockVotes() {
 export function unlockVotes() {
   socket.send(
     JSON.stringify({ type: 'unlockVotes' })
+  )
+}
+
+export function removeParticipant(participant: string) {
+  socket.send(
+    JSON.stringify({ type: 'removeParticipant', data: { participant } })
   )
 }

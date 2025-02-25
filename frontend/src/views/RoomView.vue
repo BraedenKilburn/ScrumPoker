@@ -17,6 +17,7 @@ import {
   transferAdmin,
   lockVotes,
   unlockVotes,
+  removeParticipant,
   type Message
 } from '@/modules/socket'
 import { useRootStore } from '@/stores/root'
@@ -95,6 +96,16 @@ function handleWebSocketMessage({ type, data }: Message) {
       break
     case 'voteLockStatus':
       votesLocked.value = data.locked
+      break
+    case 'participantRemoved':
+      if (!data.participant) return
+      store.removeParticipant(data.participant)
+      addNotification(`${data.participant} was removed from the room by ${data.removedBy}`)
+      break
+    case 'youWereRemoved':
+      addErrorNotification('Removed from Room', `You were removed from the room by ${data.removedBy}`)
+      store.$reset()
+      router.push({ name: 'Home' })
       break
     case 'roomClosed':
       addErrorNotification('Room Closed', data.reason)
@@ -214,6 +225,14 @@ function makeAdmin(name: string) {
   transferAdmin(name)
 }
 
+/**
+ * Remove a participant from the room.
+ */
+function handleRemoveParticipant(name: string) {
+  if (!isAdmin.value || name === store.username) return
+  removeParticipant(name)
+}
+
 const copiedRoomLink = ref(false)
 /**
  * Copy the room link to the clipboard.
@@ -271,12 +290,23 @@ onBeforeRouteLeave(() => {
                 'pi pi-star-fill': data.name === store.adminUsername,
                 'pi pi-star': isAdmin && data.name !== store.adminUsername
               }"
+              aria-label="Make admin"
               @click="makeAdmin(data.name)"
             />
           </template>
         </Column>
         <Column field="name" header="Name" />
         <Column field="point" header="Point" />
+        <Column v-if="isAdmin" header="Remove" style="width: 1px; text-align: center">
+          <template #body="{ data }">
+            <i
+              v-if="data.name !== store.username"
+              class="pi pi-trash remove-icon"
+              aria-label="Remove participant"
+              @click="handleRemoveParticipant(data.name)"
+            />
+          </template>
+        </Column>
       </DataTable>
 
       <div class="options">
@@ -375,6 +405,17 @@ main {
         &:hover {
           .pi-star {
             display: block;
+          }
+        }
+
+        .pi-trash.remove-icon {
+          color: red;
+          cursor: pointer;
+          opacity: 0.6;
+          transition: opacity 0.2s ease;
+
+          &:hover {
+            opacity: 1;
           }
         }
       }

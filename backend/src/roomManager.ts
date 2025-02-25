@@ -129,4 +129,16 @@ export class InMemoryRoomManager implements RoomManager {
     const room = this.rooms.get(roomId);
     return room ? room.locked : false;
   }
+
+  removeParticipant(roomId: string, adminUsername: string, participantToRemove: string) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error("Room does not exist");
+    if (room.admin !== adminUsername) throw new Error("Only the admin can remove participants");
+    if (!room.users.has(participantToRemove)) throw new Error("Participant not found in room");
+    if (participantToRemove === adminUsername) throw new Error("Admin cannot remove themselves");
+
+    // Remove the participant from the room
+    room.users.delete(participantToRemove);
+    room.votes.delete(participantToRemove);
+  }
 }

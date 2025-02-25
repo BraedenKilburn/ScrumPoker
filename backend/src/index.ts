@@ -1,9 +1,11 @@
 import { InMemoryRoomManager } from "./roomManager";
 import { MessageHandler } from "./messageHandler";
+import { ConnectionManager } from "./connectionManager";
 
+const connectionManager = new ConnectionManager();
 const roomManager = new InMemoryRoomManager();
 
-const server = Bun.serve<WebSocketData>({
+const server = Bun.serve<WebSocketData, undefined>({
   fetch(req, server) {
     const roomId = new URL(req.url).searchParams.get("roomId");
     const username = new URL(req.url).searchParams.get("username");
@@ -27,6 +29,9 @@ const server = Bun.serve<WebSocketData>({
       const { roomId, username } = ws.data;
       ws.subscribe(roomId);
 
+      // Register the connection
+      connectionManager.registerConnection(roomId, username, ws);
+
       const joinMessage = MessageHandler.createMessage('userJoined', { username });
       ws.publish(roomId, joinMessage);
 
@@ -43,8 +48,8 @@ const server = Bun.serve<WebSocketData>({
         return;
       }
 
+      const { roomId, username } = ws.data;
       try {
-        const { roomId, username } = ws.data;
         const msg = MessageHandler.parseMessage(message as string) as WebSocketMessage;
         switch (msg.type) {
           case 'submitVote':
@@ -83,23 +88,34 @@ const server = Bun.serve<WebSocketData>({
             server.publish(roomId, MessageHandler.createMessage("voteLockStatus", { locked: false }));
             break;
 
+          case 'removeParticipant':
+            const participantToRemove = msg.data.participant;
+            if (!participantToRemove) break;
+
+            // Remove the participant from the room and the connection
+            roomManager.removeParticipant(roomId, username, participantToRemove);
+            connectionManager.removeParticipant(roomId, participantToRemove, username);
+            break;
+
           default:
             ws.send(MessageHandler.createMessage("error", { message: "Unknown message type" }));
         }
       } catch (error) {
-        console.error(`Invalid JSON received from ${username} in ${roomId}:`, message);
-
         const errorMessage = MessageHandler.createMessage('error', {
           message: (error as Error).message,
         });
         ws.send(errorMessage);
       }
     },
-    close(ws) {
+    close(ws, _, reason) {
       const { roomId, username } = ws.data;
       if (!roomId || !username) return;
 
+      // Remove the connection
+      connectionManager.removeConnection(roomId, username);
+
       const { shouldDestroyRoom } = roomManager.leaveRoom(roomId, username);
+      if (reason === 'Removed by admin') return;
       if (shouldDestroyRoom) {
         const message = MessageHandler.createMessage('roomClosed', { reason: 'Admin left the room' });
         server.publish(roomId, message);
