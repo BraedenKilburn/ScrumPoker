@@ -150,6 +150,14 @@ interface RoomManager {
    * @returns Whether the votes are locked
    */
   getRoomLockState(roomId: string): boolean;
+
+  /**
+   * Remove a participant from a room (admin only)
+   * @param roomId - The ID of the room to remove the participant from
+   * @param adminUsername - The username of the admin requesting the removal
+   * @param participantToRemove - The username of the participant to remove
+   */
+  removeParticipant(roomId: string, adminUsername: string, participantToRemove: string): void;
 }
 
 /**
