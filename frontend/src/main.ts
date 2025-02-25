@@ -41,6 +41,7 @@ app.use(PrimeVue, {
   }
 })
 app.use(ToastService)
+
 app.component('FloatLabel', FloatLabel)
 app.component('InputText', InputText)
 app.component('VButton', Button)
