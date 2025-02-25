@@ -132,7 +132,7 @@ describe('ConnectionManager', () => {
       // Check that the connection was closed properly
       expect(mockWs1.closed).toBe(true);
       expect(mockWs1.closeCode).toBe(1000);
-      expect(mockWs1.closeReason).toBe('Removed by room admin');
+      expect(mockWs1.closeReason).toBe('Removed by admin');
 
       // Check that the user was notified
       expect(mockWs1.sent.length).toBe(1);

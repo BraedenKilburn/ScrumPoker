@@ -43,6 +43,15 @@ export class ConnectionManager {
   }
 
   /**
+   * Get all connections in a room
+   * @param roomId - The room ID
+   * @returns A map of username to WebSocket connection
+   */
+  getRoomConnections(roomId: string): Map<string, ServerWebSocket<WebSocketData>> | undefined {
+    return this.connections.get(roomId);
+  }
+
+  /**
    * Remove a participant from a room and close their connection
    * @param roomId - The room ID
    * @param participantToRemove - The username of the participant to remove
@@ -59,19 +68,23 @@ export class ConnectionManager {
     }));
 
     // Close the connection
-    connection.close(1000, "Removed by room admin");
+    connection.close(1000, "Removed by admin");
 
     // Remove from our registry
-    return this.removeConnection(roomId, participantToRemove);
-  }
+    const removed = this.removeConnection(roomId, participantToRemove);
 
-  /**
-   * Get all connections in a room
-   * @param roomId - The room ID
-   * @returns A map of username to WebSocket connection
-   */
-  getRoomConnections(roomId: string): Map<string, ServerWebSocket<WebSocketData>> | undefined {
-    return this.connections.get(roomId);
+    // Notify all remaining users in the room that a participant was removed
+    const remainingConnections = this.getRoomConnections(roomId);
+    if (!remainingConnections) return removed;
+    remainingConnections.forEach((ws) => {
+      const message = MessageHandler.createMessage("participantRemoved", {
+        removedBy,
+        participant: participantToRemove
+      });
+      ws.send(message);
+    });
+
+    return removed;
   }
 
   /**

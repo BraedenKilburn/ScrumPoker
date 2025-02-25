@@ -89,18 +89,12 @@ const server = Bun.serve<WebSocketData, undefined>({
             break;
 
           case 'removeParticipant':
-            const participantToRemove = msg.data.participantToRemove;
+            const participantToRemove = msg.data.participant;
             if (!participantToRemove) break;
 
             // Remove the participant from the room and the connection
             roomManager.removeParticipant(roomId, username, participantToRemove);
             connectionManager.removeParticipant(roomId, participantToRemove, username);
-
-            // Notify all users in the room that a participant was removed
-            server.publish(roomId, MessageHandler.createMessage("participantRemoved", {
-              removedBy: username,
-              participant: participantToRemove
-            }));
             break;
 
           default:
@@ -113,7 +107,7 @@ const server = Bun.serve<WebSocketData, undefined>({
         ws.send(errorMessage);
       }
     },
-    close(ws) {
+    close(ws, _, reason) {
       const { roomId, username } = ws.data;
       if (!roomId || !username) return;
 
@@ -121,6 +115,7 @@ const server = Bun.serve<WebSocketData, undefined>({
       connectionManager.removeConnection(roomId, username);
 
       const { shouldDestroyRoom } = roomManager.leaveRoom(roomId, username);
+      if (reason === 'Removed by admin') return;
       if (shouldDestroyRoom) {
         const message = MessageHandler.createMessage('roomClosed', { reason: 'Admin left the room' });
         server.publish(roomId, message);
