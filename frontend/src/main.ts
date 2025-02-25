@@ -4,7 +4,7 @@ import App from '@/App.vue'
 import router from '@/router'
 
 import PrimeVue from 'primevue/config'
-import Lara from '@primevue/themes/lara'
+import Lara from '@primeuix/themes/lara'
 import 'primeicons/primeicons.css'
 
 import Card from 'primevue/card'
