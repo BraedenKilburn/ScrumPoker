@@ -7,7 +7,7 @@
     "test:watch": "bun test --watch --coverage"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.5"
+    "@types/bun": "^1.2.6"
   },
   "peerDependencies": {
     "typescript": "^5.8.2"
