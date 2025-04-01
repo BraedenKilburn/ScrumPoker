@@ -18,6 +18,7 @@ import {
   lockVotes,
   unlockVotes,
   removeParticipant,
+  stopReconnection,
   type Message
 } from '@/modules/socket'
 import { useRootStore } from '@/stores/root'
@@ -44,14 +45,8 @@ function addErrorNotification(summary: string, detail: string) {
 
 const router = useRouter()
 const store = useRootStore()
-const {
-  username,
-  votesVisible,
-  participants,
-  isAdmin,
-  adminUsername,
-  votesLocked
-} = storeToRefs(store)
+const { username, votesVisible, participants, isAdmin, adminUsername, votesLocked } =
+  storeToRefs(store)
 
 function handleWebSocketMessage({ type, data }: Message) {
   switch (type) {
@@ -103,7 +98,10 @@ function handleWebSocketMessage({ type, data }: Message) {
       addNotification(`${data.participant} was removed from the room by ${data.removedBy}`)
       break
     case 'youWereRemoved':
-      addErrorNotification('Removed from Room', `You were removed from the room by ${data.removedBy}`)
+      addErrorNotification(
+        'Removed from Room',
+        `You were removed from the room by ${data.removedBy}`
+      )
       store.$reset()
       router.push({ name: 'Home' })
       break
@@ -163,9 +161,35 @@ const members = computed(() => {
     .map(([name, point]) => ({
       name,
       point,
-      isAdmin: name === adminUsername.value
+      isAdmin: name === adminUsername.value,
+      isCurrentUser: name === username.value
     }))
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => {
+      // When votes are visible, sort by point estimates
+      if (votesVisible.value) {
+        // Handle null/undefined points - move them to the end
+        if (a.point == null) return 1
+        if (b.point == null) return -1
+
+        // Special handling for '?' - move to end but before null/undefined
+        if (a.point === '?' && b.point !== '?') return 1
+        if (b.point === '?' && a.point !== '?') return -1
+
+        // For numeric points, convert to numbers and compare
+        const pointA = a.point === '?' ? Infinity : Number(a.point)
+        const pointB = b.point === '?' ? Infinity : Number(b.point)
+
+        // If points are different, sort by point value
+        if (pointA !== pointB) return pointA - pointB
+      } else {
+        // When votes are hidden, show current user first
+        if (a.isCurrentUser) return -1
+        if (b.isCurrentUser) return 1
+      }
+
+      // For same points or when votes are hidden, sort alphabetically
+      return a.name.localeCompare(b.name)
+    })
 })
 
 /**
@@ -244,6 +268,7 @@ function copyRoomLink() {
 
 // Reset the store and close the WebSocket connection when navigating away
 onBeforeRouteLeave(() => {
+  stopReconnection()
   socket.close()
   store.$reset()
 })
@@ -398,13 +423,12 @@ main {
         }
 
         .pi-star {
-          display: none;
           cursor: pointer;
-        }
+          opacity: 0.3;
+          transition: opacity 0.3s ease;
 
-        &:hover {
-          .pi-star {
-            display: block;
+          &:hover {
+            opacity: 1;
           }
         }
 

@@ -1,11 +1,6 @@
 <template>
   <footer>
-    <a
-      link
-      href="https://github.com/BraedenKilburn/ScrumPoker"
-      target="_blank"
-      rel="noopener"
-    >
+    <a link href="https://github.com/BraedenKilburn/ScrumPoker" target="_blank" rel="noopener">
       <i class="pi pi-github" />
       Created by Braeden Kilburn
     </a>
