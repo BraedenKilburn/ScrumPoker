@@ -423,13 +423,12 @@ main {
         }
 
         .pi-star {
-          display: none;
           cursor: pointer;
-        }
+          opacity: 0.3;
+          transition: opacity 0.3s ease;
 
-        &:hover {
-          .pi-star {
-            display: block;
+          &:hover {
+            opacity: 1;
           }
         }
 
