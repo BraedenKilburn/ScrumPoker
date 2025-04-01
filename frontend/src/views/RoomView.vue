@@ -18,6 +18,7 @@ import {
   lockVotes,
   unlockVotes,
   removeParticipant,
+  stopReconnection,
   type Message
 } from '@/modules/socket'
 import { useRootStore } from '@/stores/root'
@@ -44,14 +45,8 @@ function addErrorNotification(summary: string, detail: string) {
 
 const router = useRouter()
 const store = useRootStore()
-const {
-  username,
-  votesVisible,
-  participants,
-  isAdmin,
-  adminUsername,
-  votesLocked
-} = storeToRefs(store)
+const { username, votesVisible, participants, isAdmin, adminUsername, votesLocked } =
+  storeToRefs(store)
 
 function handleWebSocketMessage({ type, data }: Message) {
   switch (type) {
@@ -103,7 +98,10 @@ function handleWebSocketMessage({ type, data }: Message) {
       addNotification(`${data.participant} was removed from the room by ${data.removedBy}`)
       break
     case 'youWereRemoved':
-      addErrorNotification('Removed from Room', `You were removed from the room by ${data.removedBy}`)
+      addErrorNotification(
+        'Removed from Room',
+        `You were removed from the room by ${data.removedBy}`
+      )
       store.$reset()
       router.push({ name: 'Home' })
       break
@@ -244,6 +242,7 @@ function copyRoomLink() {
 
 // Reset the store and close the WebSocket connection when navigating away
 onBeforeRouteLeave(() => {
+  stopReconnection()
   socket.close()
   store.$reset()
 })

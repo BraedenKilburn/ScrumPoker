@@ -24,7 +24,6 @@ const server = Bun.serve<WebSocketData, undefined>({
     return new Response("Upgrade failed", { status: 500 });
   },
   websocket: {
-    idleTimeout: 960,
     open(ws) {
       const { roomId, username } = ws.data;
       ws.subscribe(roomId);

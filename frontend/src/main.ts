@@ -21,7 +21,7 @@ app.use(router)
 
 const gtag = createGtag({
   tagId: import.meta.env.VITE_GTAG_ID,
-  pageTracker: { router },
+  pageTracker: { router }
 })
 app.use(gtag)
 
