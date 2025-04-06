@@ -26,7 +26,7 @@
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.5.0",
     "@vue/tsconfig": "^0.7.0",
-    "eslint": "^9.23.0",
+    "eslint": "^9.24.0",
     "eslint-plugin-vue": "^10.0.0",
     "js-cookie": "^3.0.5",
     "npm-audit-resolver": "3.0.0-RC.0",
@@ -34,9 +34,9 @@
     "prettier": "^3.5.3",
     "primeicons": "^7.0.0",
     "primevue": "^4.3.3",
-    "sass": "^1.86.1",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.4",
+    "sass": "^1.86.3",
+    "typescript": "~5.8.3",
+    "vite": "^6.2.5",
     "vite-plugin-vue-devtools": "^7.7.2",
     "vue": "^3.5.13",
     "vue-gtag": "^3.2.0",
@@ -44,6 +44,6 @@
     "vue-tsc": "^2.2.8"
   },
   "dependencies": {
-    "@primeuix/themes": "^1.0.0"
+    "@primeuix/themes": "^1.0.1"
   }
 }
