@@ -2,7 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from '@/App.vue'
 import router from '@/router'
-import { createGtag } from 'vue-gtag'
+import { configure } from 'vue-gtag'
 
 import PrimeVue from 'primevue/config'
 import Lara from '@primeuix/themes/lara'
@@ -19,11 +19,10 @@ import '@/assets/main.scss'
 const app = createApp(App)
 app.use(router)
 
-const gtag = createGtag({
+configure({
   tagId: import.meta.env.VITE_GTAG_ID,
   pageTracker: { router }
 })
-app.use(gtag)
 
 const pinia = createPinia()
 app.use(pinia)

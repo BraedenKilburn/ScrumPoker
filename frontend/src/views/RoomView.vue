@@ -186,7 +186,6 @@ const members = computed(() => {
         if (a.isCurrentUser) return -1
         if (b.isCurrentUser) return 1
       }
-
       // For same points or when votes are hidden, sort alphabetically
       return a.name.localeCompare(b.name)
     })
