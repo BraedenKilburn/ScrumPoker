@@ -269,7 +269,7 @@ function copyRoomLink() {
 
 // Reset the store and close the WebSocket connection when navigating away
 onBeforeRouteLeave(() => {
-  socket.close()
+  socket.close(1000, 'User left room')
   store.$reset()
 })
 </script>

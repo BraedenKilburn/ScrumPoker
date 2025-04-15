@@ -22,6 +22,11 @@ services:
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 networks:
   default:

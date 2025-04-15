@@ -18,6 +18,13 @@ services:
       - '127.0.0.1:3000:3000'
     environment:
       - NODE_ENV=production
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+        compress: "true"
+        tag: "scrum-poker-backend"
     restart: unless-stopped
 
 volumes:
