@@ -6,6 +6,11 @@ import { logger } from "./logger";
 const connectionManager = new ConnectionManager();
 const roomManager = new InMemoryRoomManager();
 
+const ErrorCodes = {
+  Unknown: 4000,
+  UsernameTaken: 4001,
+} as const;
+
 const server = Bun.serve<WebSocketData, undefined>({
   fetch(req, server) {
     const roomId = new URL(req.url).searchParams.get("roomId");
@@ -13,22 +18,7 @@ const server = Bun.serve<WebSocketData, undefined>({
 
     if (!username) return new Response("Username is required", { status: 400 });
     if (!roomId) return new Response("Room ID is required", { status: 400 });
-
-    try {
-      roomManager.joinRoom(roomId, username);
-
-      const ip =
-        req.headers.get("x-forwarded-for") ||
-        req.headers.get("x-real-ip") ||
-        req.headers.get("cf-connecting-ip") ||
-        "unknown";
-      logger.websocket(`Connection attempt`, { roomId, username, ip });
-
-      if (server.upgrade(req, { data: { username, roomId } })) return;
-    } catch (error) {
-      logger.error(`Connection failed`, { roomId, username, error: (error as Error).message });
-      return new Response((error as Error).message, { status: 400 });
-    }
+    if (server.upgrade(req, { data: { username, roomId } })) return;
 
     logger.error(`Upgrade failed`, { roomId, username });
     return new Response("Upgrade failed", { status: 500 });
@@ -37,6 +27,15 @@ const server = Bun.serve<WebSocketData, undefined>({
     idleTimeout: 960,
     open(ws) {
       const { roomId, username } = ws.data;
+
+      // Join the room, if the username is taken, close the connection
+      try {
+        roomManager.joinRoom(roomId, username);
+      } catch (error: any) {
+        ws.close(ErrorCodes.UsernameTaken, error.message);
+        return;
+      }
+
       ws.subscribe(roomId);
 
       // Register the connection
@@ -124,14 +123,15 @@ const server = Bun.serve<WebSocketData, undefined>({
       const { roomId, username } = ws.data;
       if (!roomId || !username) return;
 
-       // Log the disconnection with detailed information
-       const log = code === 1000 ? logger.websocket : logger.error;
-       log(`Connection closed`, {
-        roomId,
-        username,
-        code,
-        reason: reason || 'No reason provided'
-      });
+      // Add logging for close reasons
+      const log = code === 1000 ? logger.websocket : logger.error;
+      switch (code) {
+        case ErrorCodes.UsernameTaken:
+          logger.error(`Username taken`, { roomId, username, code, reason });
+          return;
+        default:
+          log(`Connection closed`, { roomId, username, code, reason });
+      }
 
       // Remove the connection
       connectionManager.removeConnection(roomId, username);
