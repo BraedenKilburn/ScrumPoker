@@ -4,35 +4,21 @@ export type Message = {
 }
 
 let socket: WebSocket
-let pingInterval: number
-function startPingInterval() {
-  // Send ping every 45 seconds
-  pingInterval = setInterval(() => {
-    if (socket.readyState === WebSocket.OPEN) socket.send('ping')
-  }, 1000 * 45)
-}
-
-function clearPingInterval() {
-  if (pingInterval) clearInterval(pingInterval)
-}
 
 export function connectWebSocket(apiUrl: URL, onMessage: (message: Message) => void): WebSocket {
   socket = new WebSocket(apiUrl)
 
   socket.onopen = () => {
     console.log('WebSocket connected')
-    startPingInterval()
   }
 
   socket.onmessage = (event) => {
-    if (event.data === 'pong') return
     const message = JSON.parse(event.data)
     onMessage(message)
   }
 
   socket.onclose = (event) => {
     console.log('WebSocket disconnected', event)
-    clearPingInterval()
 
     // Removed by admin comes with it's own notification in the room view
     if (event.reason === 'Removed by admin') return;
@@ -42,7 +28,6 @@ export function connectWebSocket(apiUrl: URL, onMessage: (message: Message) => v
 
   socket.onerror = (event) => {
     console.error('WebSocket error:', event)
-    clearPingInterval()
     onMessage({ type: 'roomClosed', data: { reason: 'WebSocket error' } })
   }
 

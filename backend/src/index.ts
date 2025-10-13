@@ -25,6 +25,7 @@ const server = Bun.serve<WebSocketData, undefined>({
   },
   websocket: {
     idleTimeout: 960,
+    sendPings: true,
     open(ws) {
       const { roomId, username } = ws.data;
 
@@ -53,12 +54,6 @@ const server = Bun.serve<WebSocketData, undefined>({
       ws.send(welcomeMessage);
     },
     message(ws, message) {
-      // Keep the connection alive
-      if (message === 'ping') {
-        ws.send('pong');
-        return;
-      }
-
       const { roomId, username } = ws.data;
       try {
         const msg = MessageHandler.parseMessage(message as string) as WebSocketMessage;
