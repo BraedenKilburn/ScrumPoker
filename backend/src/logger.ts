@@ -8,40 +8,40 @@ const colors = {
   magenta: "\x1b[35m",
   cyan: "\x1b[36m",
   gray: "\x1b[90m",
-  brightGreen: "\x1b[92m"
+  brightGreen: "\x1b[92m",
 };
 
 export const logger = {
   info: (message: string, data?: any) => {
     console.log(
       `${colors.green}[INFO]${colors.reset} ${colors.gray}${new Date().toISOString()}${colors.reset} - ${message}`,
-      data ? data : ''
+      data ? data : "",
     );
   },
   warn: (message: string, data?: any) => {
     console.log(
       `${colors.yellow}[WARN]${colors.reset} ${colors.gray}${new Date().toISOString()}${colors.reset} - ${message}`,
-      data ? data : ''
+      data ? data : "",
     );
   },
   error: (message: string, error?: any) => {
     console.error(
       `${colors.red}[ERROR]${colors.reset} ${colors.gray}${new Date().toISOString()}${colors.reset} - ${message}`,
-      error ? error : ''
+      error ? error : "",
     );
   },
   debug: (message: string, data?: any) => {
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== "production") {
       console.log(
         `${colors.cyan}[DEBUG]${colors.reset} ${colors.gray}${new Date().toISOString()}${colors.reset} - ${message}`,
-        data ? data : ''
+        data ? data : "",
       );
     }
   },
   websocket: (message: string, data?: any) => {
     console.log(
       `${colors.magenta}[WEBSOCKET]${colors.reset} ${colors.gray}${new Date().toISOString()}${colors.reset} - ${message}`,
-      data ? data : ''
+      data ? data : "",
     );
-  }
+  },
 };

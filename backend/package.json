@@ -1,13 +1,19 @@
 {
   "name": "scrum-poker-be",
-  "module": "index.ts",
   "type": "module",
+  "module": "index.ts",
   "scripts": {
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
     "test": "bun test --coverage",
     "test:watch": "bun test --watch --coverage"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.11"
+    "@types/bun": "^1.3.11",
+    "oxfmt": "^0.47.0",
+    "oxlint": "^1.62.0"
   },
   "peerDependencies": {
     "typescript": "^6.0.2"

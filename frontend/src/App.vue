@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import Toast from 'primevue/toast'
-import { keepTheme } from '@/modules/darkMode'
-import GlobalNavbar from '@/components/GlobalNavbar.vue'
-import GlobalFooter from '@/components/GlobalFooter.vue'
+import Toast from "primevue/toast";
+import { keepTheme } from "@/modules/darkMode";
+import GlobalNavbar from "@/components/GlobalNavbar.vue";
+import GlobalFooter from "@/components/GlobalFooter.vue";
 
-keepTheme()
+keepTheme();
 </script>
 
 <template>
