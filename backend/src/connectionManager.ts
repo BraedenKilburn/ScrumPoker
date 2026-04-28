@@ -1,4 +1,5 @@
 import type { ServerWebSocket } from "bun";
+import type { WebSocketData } from "@shared/types";
 import { MessageHandler } from "./messageHandler";
 
 export class ConnectionManager {
@@ -63,9 +64,12 @@ export class ConnectionManager {
     if (!connection) return false;
 
     // Send a message to the user that they've been removed
-    connection.send(MessageHandler.createMessage("youWereRemoved", {
-      removedBy
-    }));
+    connection.send(
+      MessageHandler.createMessage({
+        type: "youWereRemoved",
+        data: { removedBy },
+      }),
+    );
 
     // Close the connection
     connection.close(1000, "Removed by admin");
@@ -77,11 +81,12 @@ export class ConnectionManager {
     const remainingConnections = this.getRoomConnections(roomId);
     if (!remainingConnections) return removed;
     remainingConnections.forEach((ws) => {
-      const message = MessageHandler.createMessage("participantRemoved", {
-        removedBy,
-        participant: participantToRemove
-      });
-      ws.send(message);
+      ws.send(
+        MessageHandler.createMessage({
+          type: "participantRemoved",
+          data: { removedBy, participant: participantToRemove },
+        }),
+      );
     });
 
     return removed;
