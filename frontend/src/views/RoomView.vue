@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Cookies from "js-cookie";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import PMessage from "primevue/message";
@@ -147,7 +146,7 @@ if (!isMissingUsername.value) connectWebSocket(wsUrl.value, handleWebSocketMessa
 
 // If entered room without a username (e.g., from a link),
 // prompt the user to enter a username and join the room.
-const usernameModel = ref(Cookies.get(usernameKey) ?? "");
+const usernameModel = ref(localStorage.getItem(usernameKey) ?? "");
 function join() {
   if (!roomId.value || !usernameModel.value) return;
   store.setUsername(usernameModel.value);
@@ -392,7 +391,7 @@ main {
   flex-direction: column;
   align-items: center;
   gap: 1rem;
-  padding: 0 1rem;
+  padding: clamp(1rem, 3vw, 3rem);
 
   h1 {
     margin: 0;
