@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import Cookies from 'js-cookie'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
-import PMessage from 'primevue/message'
-import { useToast } from 'primevue/usetoast'
-import { computed, ref } from 'vue'
-import { onBeforeRouteLeave, useRouter } from 'vue-router'
-import { storeToRefs } from 'pinia'
-import { usernameKey } from '@/modules/constants'
+import Cookies from "js-cookie";
+import DataTable from "primevue/datatable";
+import Column from "primevue/column";
+import PMessage from "primevue/message";
+import { useToast } from "primevue/usetoast";
+import { computed, ref } from "vue";
+import { onBeforeRouteLeave, useRouter } from "vue-router";
+import { storeToRefs } from "pinia";
+import { usernameKey } from "@/modules/constants";
+import type { ServerMessage } from "@shared/types";
 import {
   connectWebSocket,
+  disconnect,
+  onConnectionStatusChange,
   clearVotes,
   hideVotes,
   revealVotes,
@@ -18,140 +21,137 @@ import {
   lockVotes,
   unlockVotes,
   removeParticipant,
-  type Message
-} from '@/modules/socket'
-import { useRootStore } from '@/stores/root'
-import PointAccordion from '@/components/PointAccordion.vue'
+  type ConnectionStatus,
+} from "@/modules/socket";
+import { useRootStore } from "@/stores/root";
+import PointAccordion from "@/components/PointAccordion.vue";
 
-const toast = useToast()
+const toast = useToast();
 function addNotification(detail: string) {
   toast.add({
-    severity: 'info',
-    summary: 'Notification',
+    severity: "info",
+    summary: "Notification",
     detail,
-    life: 3000
-  })
+    life: 3000,
+  });
 }
 
 function addErrorNotification(summary: string, detail: string) {
   toast.add({
-    severity: 'error',
+    severity: "error",
     summary,
     detail,
-    life: 3000
-  })
+    life: 3000,
+  });
 }
 
-const router = useRouter()
-const store = useRootStore()
-const {
-  username,
-  votesVisible,
-  participants,
-  isAdmin,
-  adminUsername,
-  votesLocked
-} = storeToRefs(store)
+const router = useRouter();
+const store = useRootStore();
+const { username, votesVisible, participants, isAdmin, adminUsername, votesLocked } =
+  storeToRefs(store);
 
-function handleWebSocketMessage({ type, data }: Message) {
-  switch (type) {
-    case 'joinRoomSuccess':
-      participants.value = new Map(Object.entries(data.participants))
-      store.setAdmin(data.admin)
-      votesLocked.value = data.locked
-      break
-    case 'userJoined':
-      if (!data.username) return
-      store.addParticipant({ username: data.username })
-      addNotification(`${data.username} joined the room`)
-      break
-    case 'userLeft': {
-      if (!data.username) return
-      store.removeParticipant(data.username)
-      addNotification(`${data.username ?? 'A user'} left the room`)
-      break
-    }
-    case 'adminTransferred': {
-      if (!data.newAdmin) return
-      store.setAdmin(data.newAdmin)
-      addNotification(`Admin role transferred to ${data.newAdmin}`)
-      break
-    }
-    case 'userVoted':
-      if (!data.username) return
-      store.setParticipantPointEstimate(data.username, data.vote)
-      break
-    case 'voteStatus':
-      if (!data.votes) return
-      participants.value = new Map(Object.entries(data.votes))
-      votesVisible.value = data.revealed
+const connectionStatus = ref<ConnectionStatus>("disconnected");
+onConnectionStatusChange((status) => {
+  connectionStatus.value = status;
+});
+
+function handleWebSocketMessage(msg: ServerMessage) {
+  switch (msg.type) {
+    case "joinRoomSuccess":
+      participants.value = new Map(Object.entries(msg.data.participants));
+      store.setAdmin(msg.data.admin);
+      votesLocked.value = msg.data.locked;
+      break;
+    case "userJoined":
+      store.addParticipant({ username: msg.data.username });
+      addNotification(`${msg.data.username} joined the room`);
+      break;
+    case "userLeft":
+      store.removeParticipant(msg.data.username);
+      addNotification(`${msg.data.username} left the room`);
+      break;
+    case "adminTransferred":
+      store.setAdmin(msg.data.newAdmin);
+      addNotification(`Admin role transferred to ${msg.data.newAdmin}`);
+      break;
+    case "userVoted":
+      store.setParticipantPointEstimate(msg.data.username, msg.data.vote);
+      break;
+    case "voteStatus":
+      participants.value = new Map(Object.entries(msg.data.votes));
+      votesVisible.value = msg.data.revealed;
 
       // If we're hiding votes, set the user's point estimate
       // to it's initial value.
-      if (!data.revealed) store.setUserPointEstimate()
-      break
-    case 'votesCleared':
-      store.clearVotes()
-      votesVisible.value = false
-      break
-    case 'voteLockStatus':
-      votesLocked.value = data.locked
-      break
-    case 'participantRemoved':
-      if (!data.participant) return
-      store.removeParticipant(data.participant)
-      addNotification(`${data.participant} was removed from the room by ${data.removedBy}`)
-      break
-    case 'youWereRemoved':
-      addErrorNotification('Removed from Room', `You were removed from the room by ${data.removedBy}`)
-      store.$reset()
-      router.push({ name: 'Home' })
-      break
-    case 'roomClosed':
-      addErrorNotification('Room Closed', data.reason)
-      store.$reset()
-      router.push({ name: 'Home' })
-      break
-    case 'notification':
-      if (!data.details) return
-      addNotification(data.details)
-      break
-    case 'error':
-      if (!data.message) return
-      addErrorNotification('Error', data.message)
-      break
+      if (!msg.data.revealed) store.setUserPointEstimate();
+      break;
+    case "votesCleared":
+      store.clearVotes();
+      votesVisible.value = false;
+      break;
+    case "voteLockStatus":
+      votesLocked.value = msg.data.locked;
+      break;
+    case "participantRemoved":
+      store.removeParticipant(msg.data.participant);
+      addNotification(`${msg.data.participant} was removed from the room by ${msg.data.removedBy}`);
+      break;
+    case "youWereRemoved":
+      addErrorNotification(
+        "Removed from Room",
+        `You were removed from the room by ${msg.data.removedBy}`,
+      );
+      store.$reset();
+      router.push({ name: "Home" });
+      break;
+    case "roomClosed":
+      addErrorNotification("Room Closed", msg.data.reason);
+      store.$reset();
+      router.push({ name: "Home" });
+      break;
+    case "notification":
+      addNotification(msg.data.details);
+      break;
+    case "userDisconnected":
+      addNotification(`${msg.data.username} lost connection`);
+      break;
+    case "userReconnected":
+      addNotification(`${msg.data.username} reconnected`);
+      break;
+    case "error":
+      addErrorNotification("Error", msg.data.message);
+      break;
     default:
-      console.error('Unknown message:', data)
+      console.error("Unknown message:", msg);
   }
 }
 
 // Room ID
-const props = defineProps<{ id: string }>()
-const roomId = computed(() => props.id?.toLowerCase() ?? '')
+const props = defineProps<{ id: string }>();
+const roomId = computed(() => props.id?.toLowerCase() ?? "");
 if (!roomId.value) {
-  addNotification('No room ID provided')
-  router.push({ name: 'Home' })
+  addNotification("No room ID provided");
+  router.push({ name: "Home" });
 }
 
 // WebSocket URL
 const wsUrl = computed(() => {
-  const url = new URL(import.meta.env.VITE_SOCKET_URL)
-  url.searchParams.append('roomId', roomId.value)
-  url.searchParams.append('username', username.value)
-  return url
-})
+  const url = new URL(import.meta.env.VITE_SOCKET_URL);
+  url.searchParams.append("roomId", roomId.value);
+  url.searchParams.append("username", username.value);
+  return url;
+});
 
-let socket: WebSocket
-const isMissingUsername = computed(() => !username.value)
-if (!isMissingUsername.value) socket = connectWebSocket(wsUrl.value, handleWebSocketMessage)
+const isMissingUsername = computed(() => !username.value);
+if (!isMissingUsername.value) connectWebSocket(wsUrl.value, handleWebSocketMessage);
 
 // If entered room without a username (e.g., from a link),
 // prompt the user to enter a username and join the room.
-const usernameModel = ref(Cookies.get(usernameKey) ?? '')
+const usernameModel = ref(Cookies.get(usernameKey) ?? "");
 function join() {
-  if (!roomId.value || !usernameModel.value) return
-  store.setUsername(usernameModel.value)
-  socket = connectWebSocket(wsUrl.value, handleWebSocketMessage)
+  if (!roomId.value || !usernameModel.value) return;
+  store.setUsername(usernameModel.value);
+  connectWebSocket(wsUrl.value, handleWebSocketMessage);
 }
 
 /**
@@ -164,118 +164,125 @@ const members = computed(() => {
       name,
       point,
       isAdmin: name === adminUsername.value,
-      isCurrentUser: name === username.value
+      isCurrentUser: name === username.value,
     }))
     .sort((a, b) => {
       // When votes are visible, sort by point estimates
       if (votesVisible.value) {
         // Handle null/undefined points - move them to the end
-        if (a.point == null) return 1
-        if (b.point == null) return -1
+        if (a.point == null) return 1;
+        if (b.point == null) return -1;
 
         // Special handling for '?' - move to end but before null/undefined
-        if (a.point === '?' && b.point !== '?') return 1
-        if (b.point === '?' && a.point !== '?') return -1
+        if (a.point === "?" && b.point !== "?") return 1;
+        if (b.point === "?" && a.point !== "?") return -1;
 
         // For numeric points, convert to numbers and compare
-        const pointA = a.point === '?' ? Infinity : Number(a.point)
-        const pointB = b.point === '?' ? Infinity : Number(b.point)
+        const pointA = a.point === "?" ? Infinity : Number(a.point);
+        const pointB = b.point === "?" ? Infinity : Number(b.point);
 
         // If points are different, sort by point value
-        if (pointA !== pointB) return pointA - pointB
+        if (pointA !== pointB) return pointA - pointB;
       } else {
         // When votes are hidden, show current user first
-        if (a.isCurrentUser) return -1
-        if (b.isCurrentUser) return 1
+        if (a.isCurrentUser) return -1;
+        if (b.isCurrentUser) return 1;
       }
       // For same points or when votes are hidden, sort alphabetically
-      return a.name.localeCompare(b.name)
-    })
-})
+      return a.name.localeCompare(b.name);
+    });
+});
 
 /**
  * Check if at least one member has voted.
  */
-const hasVotes = computed(() => members.value.some(({ point }) => point != null))
+const hasVotes = computed(() => members.value.some(({ point }) => point != null));
 
 /**
  * Toggle the visibility of all votes.
  */
 function toggleVoteVisibility() {
-  if (votesVisible.value) hideVotes()
-  else revealVotes()
+  if (votesVisible.value) hideVotes();
+  else revealVotes();
 }
 
 /**
  * Toggle the lock state of votes.
  */
 function toggleVoteLock() {
-  if (votesLocked.value) unlockVotes()
-  else lockVotes()
+  if (votesLocked.value) unlockVotes();
+  else lockVotes();
 }
 
 // Available points for voting
-const points = ref(['40', '21', '13', '8', '5', '3', '2', '1', '?'])
+const points = ref(["40", "21", "13", "8", "5", "3", "2", "1", "?"]);
 
 /**
  * Submit a vote for the user.
  * @param point The point estimate to vote for.
  */
 function vote(point?: string) {
-  store.setUserPointEstimate(point)
-  submitVote({ vote: point })
+  store.setUserPointEstimate(point);
+  submitVote({ vote: point });
 }
 
 /**
  * Clear the user's vote.
  */
 function clearMyVote() {
-  store.pointEstimate = undefined
-  vote()
+  store.pointEstimate = undefined;
+  vote();
 }
 
 /**
  * Clear all votes in the room.
  */
 function clearAllVotes() {
-  clearVotes()
-  store.clearVotes()
+  clearVotes();
+  store.clearVotes();
 }
 
 /**
  * Make a user an admin.
  */
 function makeAdmin(name: string) {
-  if (!isAdmin.value || name === store.adminUsername) return
-  transferAdmin(name)
+  if (!isAdmin.value || name === store.adminUsername) return;
+  transferAdmin(name);
 }
 
 /**
  * Remove a participant from the room.
  */
 function handleRemoveParticipant(name: string) {
-  if (!isAdmin.value || name === store.username) return
-  removeParticipant(name)
+  if (!isAdmin.value || name === store.username) return;
+  removeParticipant(name);
 }
 
-const copiedRoomLink = ref(false)
+const copiedRoomLink = ref(false);
 /**
  * Copy the room link to the clipboard.
  */
 function copyRoomLink() {
-  navigator.clipboard.writeText(window.location.href)
-  copiedRoomLink.value = true
+  navigator.clipboard.writeText(window.location.href);
+  copiedRoomLink.value = true;
 }
 
 // Reset the store and close the WebSocket connection when navigating away
 onBeforeRouteLeave(() => {
-  socket.close(1000, 'User left room')
-  store.$reset()
-})
+  disconnect();
+  store.$reset();
+});
 </script>
 
 <template>
   <main>
+    <PMessage v-if="connectionStatus === 'reconnecting'" severity="warn" class="reconnect-banner">
+      <template #icon>
+        <i class="pi pi-spin pi-spinner" />
+      </template>
+      Connection lost. Attempting to reconnect...
+    </PMessage>
+
     <div class="actions">
       <RouterLink :to="{ name: 'Home' }">
         <VButton severity="danger" label="Leave Room" size="small" />
@@ -313,7 +320,7 @@ onBeforeRouteLeave(() => {
             <i
               :class="{
                 'pi pi-star-fill': data.name === store.adminUsername,
-                'pi pi-star': isAdmin && data.name !== store.adminUsername
+                'pi pi-star': isAdmin && data.name !== store.adminUsername,
               }"
               aria-label="Make admin"
               @click="makeAdmin(data.name)"
@@ -389,6 +396,10 @@ main {
 
   h1 {
     margin: 0;
+  }
+
+  .reconnect-banner {
+    width: 100%;
   }
 
   .actions {

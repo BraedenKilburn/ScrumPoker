@@ -1,8 +1,36 @@
+import type { Vote } from "@shared/types";
+
+export type Room = {
+  users: Set<string>;
+  votes: Map<string, Vote>;
+  revealed: boolean;
+  locked: boolean;
+  admin: string;
+};
+
+export interface RoomManager {
+  joinRoom(roomId: string, username: string): Room;
+  transferAdmin(roomId: string, currentAdmin: string, newAdmin: string): void;
+  isAdmin(roomId: string, username: string): boolean;
+  getAdmin(roomId: string): string | null;
+  leaveRoom(roomId: string, username: string): { shouldDestroyRoom: boolean };
+  submitVote(roomId: string, username: string, vote: Vote): void;
+  setVoteVisibility(roomId: string, username: string, revealed: boolean): void;
+  clearVotes(roomId: string, username: string): void;
+  getRoomUsers(roomId: string): string[];
+  getRoomVisibility(roomId: string): boolean;
+  getUsersVote(roomId: string, username: string): Vote;
+  getRoomVotes(roomId: string): Map<string, Vote>;
+  setVoteLock(roomId: string, username: string, locked: boolean): void;
+  getRoomLockState(roomId: string): boolean;
+  removeParticipant(roomId: string, adminUsername: string, participantToRemove: string): void;
+  isUserInRoom(roomId: string, username: string): boolean;
+}
+
 export class InMemoryRoomManager implements RoomManager {
   private rooms = new Map<string, Room>();
 
   joinRoom(roomId: string, username: string) {
-    // Create room if it doesn't exist
     if (!this.rooms.has(roomId)) {
       const room: Room = {
         users: new Set(),
@@ -14,12 +42,11 @@ export class InMemoryRoomManager implements RoomManager {
       this.rooms.set(roomId, room);
     }
 
-    // Check if username is already taken
     const room = this.rooms.get(roomId)!;
     if (room.users.has(username)) throw new Error("Username is already taken");
 
-    room.users.add(username); // Add user to room
-    room.votes.set(username, null); // Initialize with no vote
+    room.users.add(username);
+    room.votes.set(username, null);
     return room;
   }
 
@@ -49,10 +76,8 @@ export class InMemoryRoomManager implements RoomManager {
     room.users.delete(username);
     room.votes.delete(username);
 
-    // Check if the leaving user is the admin
     const isAdmin = room.admin === username;
 
-    // If no users left or admin left, destroy the room
     if (room.users.size === 0 || isAdmin) {
       this.rooms.delete(roomId);
     }
@@ -65,7 +90,7 @@ export class InMemoryRoomManager implements RoomManager {
     if (!room) throw new Error("Room does not exist");
     if (!room.users.has(username)) throw new Error("User not in room");
     if (room.locked) throw new Error("Votes are locked");
-    room.votes.set(username, !!vote ? vote : null);
+    room.votes.set(username, vote ? vote : null);
   }
 
   setVoteVisibility(roomId: string, username: string, revealed: boolean) {
@@ -101,20 +126,16 @@ export class InMemoryRoomManager implements RoomManager {
     if (!room.users.has(username)) throw new Error("User not in room");
 
     const vote = room.votes.get(username) ?? null;
-    return room.revealed ? vote : (vote == null ? null : "?");
+    return room.revealed ? vote : vote == null ? null : "?";
   }
 
   getRoomVotes(roomId: string) {
     const room = this.rooms.get(roomId);
     if (!room) return new Map();
 
-    // If votes aren't revealed, return placeholders
     return room.revealed
       ? room.votes
-      : new Map(room.votes
-        .entries()
-        .map(([key, value]) => [key, value == null ? value : "?"])
-      );
+      : new Map(room.votes.entries().map(([key, value]) => [key, value == null ? value : "?"]));
   }
 
   setVoteLock(roomId: string, username: string, locked: boolean) {
@@ -137,8 +158,12 @@ export class InMemoryRoomManager implements RoomManager {
     if (!room.users.has(participantToRemove)) throw new Error("Participant not found in room");
     if (participantToRemove === adminUsername) throw new Error("Admin cannot remove themselves");
 
-    // Remove the participant from the room
     room.users.delete(participantToRemove);
     room.votes.delete(participantToRemove);
+  }
+
+  isUserInRoom(roomId: string, username: string): boolean {
+    const room = this.rooms.get(roomId);
+    return room ? room.users.has(username) : false;
   }
 }

@@ -1,0 +1,53 @@
+# Dependencies
+frontend/node_modules
+backend/node_modules
+
+# Build outputs
+frontend/dist
+frontend/dist-ssr
+backend/dist
+
+# Git
+.git
+.gitignore
+
+# Editor directories and files
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+logs
+*.log
+
+# Test coverage
+frontend/coverage
+backend/coverage
+
+# Docker files
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Environment files
+frontend/.env*
+!frontend/.env.development
+!frontend/.env.production
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Cache
+.cache
+.temp
+
+# Misc
+*.local
+.DS_Store
+.cursor
+AGENTS.md
+README.md

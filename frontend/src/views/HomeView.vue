@@ -1,36 +1,36 @@
 <script setup lang="ts">
-import Cookies from 'js-cookie'
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { usernameKey } from '@/modules/constants'
-import { useRootStore } from '@/stores/root'
+import Cookies from "js-cookie";
+import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
+import { usernameKey } from "@/modules/constants";
+import { useRootStore } from "@/stores/root";
 
 // Username
-const username = ref(Cookies.get(usernameKey) ?? '')
+const username = ref(Cookies.get(usernameKey) ?? "");
 
 // Room ID
-const roomId = ref('')
+const roomId = ref("");
 
-const store = useRootStore()
-const router = useRouter()
+const store = useRootStore();
+const router = useRouter();
 
 /**
  * If the username and room ID are not empty, join the room.
  */
 function join() {
-  if (!roomId.value || !username.value) return
+  if (!roomId.value || !username.value) return;
 
-  store.setUsername(username.value)
+  store.setUsername(username.value);
   store.addParticipant({
     username: username.value,
-    point_estimate: undefined
-  })
+    point_estimate: undefined,
+  });
 
-  router.push({ name: 'Room', params: { id: roomId.value.toLowerCase() } })
+  router.push({ name: "Room", params: { id: roomId.value.toLowerCase() } });
 }
 
 // Disable the join button if the room ID or username is empty.
-const disabled = computed(() => !roomId.value || !username.value)
+const disabled = computed(() => !roomId.value || !username.value);
 </script>
 
 <template>

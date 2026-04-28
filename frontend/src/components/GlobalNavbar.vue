@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { isDarkMode, setTheme } from '@/modules/darkMode'
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+import { isDarkMode, setTheme } from "@/modules/darkMode";
 
 // Room ID display
-const route = useRoute()
-const roomId = computed(() => route.params.id)
+const route = useRoute();
+const roomId = computed(() => route.params.id);
 
 // Dark Mode Toggle
-const icon = computed(() => (isDarkMode.value ? 'pi pi-sun' : 'pi pi-moon'))
+const icon = computed(() => (isDarkMode.value ? "pi pi-sun" : "pi pi-moon"));
 function toggleDarkMode() {
-  setTheme(isDarkMode.value ? 'theme-light' : 'theme-dark')
+  setTheme(isDarkMode.value ? "theme-light" : "theme-dark");
 }
 </script>
 

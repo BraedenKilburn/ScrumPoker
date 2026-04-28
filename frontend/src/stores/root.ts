@@ -1,57 +1,57 @@
-import Cookies from 'js-cookie'
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
-import { usernameKey } from '@/modules/constants'
+import Cookies from "js-cookie";
+import { ref } from "vue";
+import { defineStore } from "pinia";
+import { usernameKey } from "@/modules/constants";
 
 /**
  * A user in the room.
  */
 export type User = {
-  username: string
-  point_estimate?: string
-}
+  username: string;
+  point_estimate?: string;
+};
 
-export const useRootStore = defineStore('root', () => {
+export const useRootStore = defineStore("root", () => {
   /**
    * The current user's username.
    */
-  const username = ref<string>('')
+  const username = ref<string>("");
 
   /**
    * Update the username and save it in localStorage.
    * @param name The username to set.
    */
   function setUsername(name: string) {
-    username.value = name
-    Cookies.set(usernameKey, name)
+    username.value = name;
+    Cookies.set(usernameKey, name);
   }
 
   /**
    * Whether the current user is the admin
    */
-  const isAdmin = ref(false)
-  const adminUsername = ref('')
+  const isAdmin = ref(false);
+  const adminUsername = ref("");
 
   /**
    * Set the admin of the room.
    * @param newAdmin The admin's username.
    */
   function setAdmin(newAdmin: string) {
-    adminUsername.value = newAdmin
-    isAdmin.value = newAdmin === username.value
+    adminUsername.value = newAdmin;
+    isAdmin.value = newAdmin === username.value;
   }
 
   /**
    * All participants in the room.
    */
-  const participants = ref<Map<string, string | undefined>>(new Map())
+  const participants = ref<Map<string, string | undefined>>(new Map());
 
   /**
    * Adds a participant to the room.
    * @param participant The participant to add.
    */
   function addParticipant(participant: User) {
-    participants.value.set(participant.username, participant.point_estimate)
+    participants.value.set(participant.username, participant.point_estimate);
   }
 
   /**
@@ -59,24 +59,24 @@ export const useRootStore = defineStore('root', () => {
    * @param username The username of the participant to remove.
    */
   function removeParticipant(username: string) {
-    participants.value.delete(username)
+    participants.value.delete(username);
   }
 
   /**
    * The current user's point estimate.
    */
-  const pointEstimate = ref<string | undefined>(undefined)
+  const pointEstimate = ref<string | undefined>(undefined);
 
   /**
    * Set the user's point estimate.
    * @param pointEstimate The point estimate to set.
    */
   function setUserPointEstimate(estimate?: string) {
-    if (!username.value) return
+    if (!username.value) return;
 
-    const vote = estimate ?? pointEstimate.value
-    participants.value.set(username.value, vote)
-    pointEstimate.value = vote
+    const vote = estimate ?? pointEstimate.value;
+    participants.value.set(username.value, vote);
+    pointEstimate.value = vote;
   }
 
   /**
@@ -85,40 +85,40 @@ export const useRootStore = defineStore('root', () => {
    * @param pointEstimate The point estimate to set.
    */
   function setParticipantPointEstimate(username: string, pointEstimate?: string) {
-    participants.value.set(username, pointEstimate)
+    participants.value.set(username, pointEstimate);
   }
 
   /**
    * The visibility of the votes.
    */
-  const votesVisible = ref(false)
+  const votesVisible = ref(false);
 
   /**
    * If the users are allowed to change their votes.
    */
-  const votesLocked = ref(false)
+  const votesLocked = ref(false);
 
   /**
    * Clear the votes of all participants.
    */
   function clearVotes() {
-    pointEstimate.value = undefined
+    pointEstimate.value = undefined;
     participants.value.forEach((_, username) => {
-      participants.value.set(username, undefined)
-    })
-    votesVisible.value = false
-    votesLocked.value = false
+      participants.value.set(username, undefined);
+    });
+    votesVisible.value = false;
+    votesLocked.value = false;
   }
 
   /**
    * Reset the store to its initial state.
    */
   function $reset() {
-    participants.value = new Map()
-    username.value = ''
-    isAdmin.value = false
-    adminUsername.value = ''
-    votesLocked.value = false
+    participants.value = new Map();
+    username.value = "";
+    isAdmin.value = false;
+    adminUsername.value = "";
+    votesLocked.value = false;
   }
 
   return {
@@ -142,6 +142,6 @@ export const useRootStore = defineStore('root', () => {
 
     votesLocked,
 
-    $reset
-  }
-})
+    $reset,
+  };
+});

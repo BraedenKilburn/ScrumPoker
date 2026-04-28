@@ -1,12 +1,14 @@
 services:
   frontend:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: frontend/Dockerfile
       target: development
     ports:
       - "8080:8080"
     volumes:
       - ./frontend:/app
+      - ./shared:/shared
       - /app/node_modules
     env_file:
       - ./frontend/.env.development
@@ -15,12 +17,14 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
       target: development
     ports:
       - "3000:3000"
     volumes:
       - ./backend:/usr/src/app
+      - ./shared:/shared
       - /usr/src/app/node_modules
     logging:
       driver: "json-file"

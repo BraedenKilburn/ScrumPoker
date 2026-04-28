@@ -1,35 +1,16 @@
-# Build stage
-FROM node:20-slim AS development
-
+FROM oven/bun:1-slim AS development
 WORKDIR /app
+COPY frontend/package.json frontend/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY frontend/ .
+COPY shared/ ../shared/
+CMD ["bun", "run", "dev", "--host"]
 
-# Install pnpm
-RUN npm install -g pnpm
-
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
-
-# Install dependencies
-RUN pnpm install
-
-# Copy source code
-COPY . .
-
-# Start development server
-CMD ["pnpm", "run", "dev", "--host"]
-
-# Production build stage
-FROM node:20-slim AS build
-
+FROM oven/bun:1-slim AS build
 WORKDIR /app
-
-# Install pnpm
-RUN npm install -g pnpm
-
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install
-
-COPY . .
-RUN pnpm run build
-
+COPY frontend/package.json frontend/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY frontend/ .
+COPY shared/ ../shared/
+RUN bun run build
 CMD ["echo", "Finished"]

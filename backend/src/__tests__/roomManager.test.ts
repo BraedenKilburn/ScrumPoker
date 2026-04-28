@@ -41,7 +41,9 @@ describe("InMemoryRoomManager", () => {
     });
 
     test("should not allow non-admin to clear votes", () => {
-      expect(() => roomManager.clearVotes("room1", "user1")).toThrow("Only the admin can clear votes");
+      expect(() => roomManager.clearVotes("room1", "user1")).toThrow(
+        "Only the admin can clear votes",
+      );
     });
   });
 
@@ -61,18 +63,19 @@ describe("InMemoryRoomManager", () => {
     });
 
     test("should throw error if room does not exist", () => {
-      expect(() => roomManager.transferAdmin("room2", admin, user))
-        .toThrow("Room does not exist");
+      expect(() => roomManager.transferAdmin("room2", admin, user)).toThrow("Room does not exist");
     });
 
     test("should not allow non-admin to transfer admin rights", () => {
-      expect(() => roomManager.transferAdmin(roomId, user, admin))
-        .toThrow("Only the admin can transfer admin rights");
+      expect(() => roomManager.transferAdmin(roomId, user, admin)).toThrow(
+        "Only the admin can transfer admin rights",
+      );
     });
 
     test("should throw error if user is not in room", () => {
-      expect(() => roomManager.transferAdmin(roomId, admin, "user2"))
-        .toThrow("New admin must be in the room");
+      expect(() => roomManager.transferAdmin(roomId, admin, "user2")).toThrow(
+        "New admin must be in the room",
+      );
     });
   });
 
@@ -107,12 +110,20 @@ describe("InMemoryRoomManager", () => {
     test("should get all votes in room", () => {
       roomManager.submitVote("room1", "admin", "5");
       roomManager.submitVote("room1", "user1", "3");
-      expect(roomManager.getRoomVotes("room1"))
-        .toEqual(new Map([["admin", "?"], ["user1", "?"]]));
+      expect(roomManager.getRoomVotes("room1")).toEqual(
+        new Map([
+          ["admin", "?"],
+          ["user1", "?"],
+        ]),
+      );
 
       roomManager.setVoteVisibility("room1", "admin", true);
-      expect(roomManager.getRoomVotes("room1"))
-        .toEqual(new Map([["admin", "5"], ["user1", "3"]]));
+      expect(roomManager.getRoomVotes("room1")).toEqual(
+        new Map([
+          ["admin", "5"],
+          ["user1", "3"],
+        ]),
+      );
     });
   });
 
@@ -123,8 +134,7 @@ describe("InMemoryRoomManager", () => {
       const result = roomManager.leaveRoom("room1", "admin");
       expect(result.shouldDestroyRoom).toBe(true);
       expect(roomManager.getRoomUsers("room1")).toEqual([]);
-      expect(() => roomManager.submitVote("room1", "user1", "5"))
-        .toThrow("Room does not exist");
+      expect(() => roomManager.submitVote("room1", "user1", "5")).toThrow("Room does not exist");
     });
 
     test("should not destroy room when non-admin leaves", () => {
@@ -160,23 +170,27 @@ describe("InMemoryRoomManager", () => {
     });
 
     test("should throw error if room does not exist", () => {
-      expect(() => roomManager.removeParticipant("nonexistent", admin, "user1"))
-        .toThrow("Room does not exist");
+      expect(() => roomManager.removeParticipant("nonexistent", admin, "user1")).toThrow(
+        "Room does not exist",
+      );
     });
 
     test("should throw error if non-admin tries to remove a participant", () => {
-      expect(() => roomManager.removeParticipant(roomId, "user1", "user2"))
-        .toThrow("Only the admin can remove participants");
+      expect(() => roomManager.removeParticipant(roomId, "user1", "user2")).toThrow(
+        "Only the admin can remove participants",
+      );
     });
 
     test("should throw error if participant does not exist in room", () => {
-      expect(() => roomManager.removeParticipant(roomId, admin, "nonexistent"))
-        .toThrow("Participant not found in room");
+      expect(() => roomManager.removeParticipant(roomId, admin, "nonexistent")).toThrow(
+        "Participant not found in room",
+      );
     });
 
     test("should throw error if admin tries to remove themselves", () => {
-      expect(() => roomManager.removeParticipant(roomId, admin, admin))
-        .toThrow("Admin cannot remove themselves");
+      expect(() => roomManager.removeParticipant(roomId, admin, admin)).toThrow(
+        "Admin cannot remove themselves",
+      );
     });
 
     test("should remove participant's vote when they are removed", () => {
@@ -204,6 +218,29 @@ describe("InMemoryRoomManager", () => {
       expect(users).toEqual([admin]);
       expect(users).not.toContain("user1");
       expect(users).not.toContain("user2");
+    });
+  });
+
+  describe("isUserInRoom", () => {
+    test("should return true for a user in the room", () => {
+      roomManager.joinRoom("room1", "admin");
+      expect(roomManager.isUserInRoom("room1", "admin")).toBe(true);
+    });
+
+    test("should return false for a user not in the room", () => {
+      roomManager.joinRoom("room1", "admin");
+      expect(roomManager.isUserInRoom("room1", "nonexistent")).toBe(false);
+    });
+
+    test("should return false for a non-existent room", () => {
+      expect(roomManager.isUserInRoom("nonexistent", "admin")).toBe(false);
+    });
+
+    test("should return false after user leaves", () => {
+      roomManager.joinRoom("room1", "admin");
+      roomManager.joinRoom("room1", "user1");
+      roomManager.leaveRoom("room1", "user1");
+      expect(roomManager.isUserInRoom("room1", "user1")).toBe(false);
     });
   });
 });

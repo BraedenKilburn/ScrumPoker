@@ -1,14 +1,15 @@
 # AGENTS.md
 
 - No root package manager config exists; work inside `frontend/` or `backend/`.
-- `frontend/` uses PNPM + Vite + Vue 3; `backend/` uses Bun.
+- `frontend/` uses Bun + Vite + Vue 3; `backend/` uses Bun.
+- `shared/` contains TypeScript types shared between frontend and backend (imported as `@shared/*`).
 - Respect the scoped rules in `.cursor/rules/vue-cursor-rules.mdc` and `.cursor/rules/bun-cursor-rules.mdc`.
 
 ## Commands
 
 - Dev stack: `docker compose -f docker-compose.dev.yml up --build`
 - Prod stack: `docker compose -f docker-compose.prod.yml up --build`
-- Frontend: `pnpm dev`, `pnpm build`, `pnpm type-check`, `pnpm lint`, `pnpm format`
+- Frontend: `bun run dev`, `bun run build`, `bun run type-check`, `bun run lint` (oxlint), `bun run fmt` (oxfmt)
 - Backend: `bun --watch src/index.ts` for local dev, `bun test` for coverage-enabled tests
 - Single backend test file: `bun test src/__tests__/roomManager.test.ts`
 
@@ -22,5 +23,5 @@
 
 ## Formatting
 
-- Frontend Prettier is configured for no semicolons, single quotes, no trailing commas, and `printWidth: 100`.
+- Frontend uses Oxc tooling: `oxlint` for linting and `oxfmt` for formatting.
 - Backend test coverage is enabled in `backend/bunfig.toml`.
