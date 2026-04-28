@@ -1,5 +1,5 @@
 {
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": true,
   "author": {
     "name": "Braeden Kilburn",
@@ -22,10 +22,8 @@
   "devDependencies": {
     "@primeuix/themes": "^2.0.3",
     "@tsconfig/node20": "^20.1.9",
-    "@types/js-cookie": "^3.0.6",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vue/tsconfig": "^0.9.1",
-    "js-cookie": "^3.0.5",
     "npm-audit-resolver": "3.0.0-RC.0",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0",
@@ -38,7 +36,6 @@
     "vite": "^8.0.7",
     "vite-plugin-vue-devtools": "^8.1.1",
     "vue": "^3.5.32",
-    "vue-gtag": "^3.7.0",
     "vue-router": "^5.0.4",
     "vue-tsc": "^3.2.6"
   }

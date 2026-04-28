@@ -1,4 +1,3 @@
-import Cookies from "js-cookie";
 import { ref } from "vue";
 import { defineStore } from "pinia";
 import { usernameKey } from "@/modules/constants";
@@ -23,7 +22,7 @@ export const useRootStore = defineStore("root", () => {
    */
   function setUsername(name: string) {
     username.value = name;
-    Cookies.set(usernameKey, name);
+    localStorage.setItem(usernameKey, name);
   }
 
   /**
