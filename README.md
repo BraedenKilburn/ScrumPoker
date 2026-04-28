@@ -9,7 +9,7 @@ A real-time Scrum Poker application built with Vue 3 and Bun. This application a
 - Vue 3 with TypeScript
 - Vite
 - PrimeVue Components
-- PNPM Package Manager
+- Bun Package Manager
 - SCSS for styling
 
 ### Backend
@@ -23,8 +23,7 @@ A real-time Scrum Poker application built with Vue 3 and Bun. This application a
 ### Prerequisites
 
 - Docker & Docker Compose
-- PNPM (for frontend package management)
-- Bun (for backend development)
+- Bun
 
 ### Development Setup
 
