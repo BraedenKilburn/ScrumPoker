@@ -1,379 +1,193 @@
 <script setup lang="ts">
-import DataTable from "primevue/datatable";
-import Column from "primevue/column";
 import PMessage from "primevue/message";
-import { useToast } from "primevue/usetoast";
-import { computed, ref } from "vue";
-import { onBeforeRouteLeave, useRouter } from "vue-router";
-import { storeToRefs } from "pinia";
-import { usernameKey } from "@/modules/constants";
-import type { ServerMessage } from "@shared/types";
-import {
-  connectWebSocket,
-  disconnect,
-  onConnectionStatusChange,
-  clearVotes,
-  hideVotes,
-  revealVotes,
-  submitVote,
-  transferAdmin,
-  lockVotes,
-  unlockVotes,
-  removeParticipant,
-  type ConnectionStatus,
-} from "@/modules/socket";
-import { useRootStore } from "@/stores/root";
-import PointAccordion from "@/components/PointAccordion.vue";
+import { onBeforeRouteLeave } from "vue-router";
+import spadeUrl from "@/assets/spade.svg";
+import ParticipantCard from "@/components/ParticipantCard.vue";
+import VotingProgress from "@/components/VotingProgress.vue";
+import VoteDistribution from "@/components/VoteDistribution.vue";
+import AdminSheet from "@/components/AdminSheet.vue";
+import HandStrip from "@/components/HandStrip.vue";
+import { useRoomSession } from "@/composables/useRoomSession";
 
-const toast = useToast();
-function addNotification(detail: string) {
-  toast.add({
-    severity: "info",
-    summary: "Notification",
-    detail,
-    life: 3000,
-  });
-}
-
-function addErrorNotification(summary: string, detail: string) {
-  toast.add({
-    severity: "error",
-    summary,
-    detail,
-    life: 3000,
-  });
-}
-
-const router = useRouter();
-const store = useRootStore();
-const { username, votesVisible, participants, isAdmin, adminUsername, votesLocked } =
-  storeToRefs(store);
-
-const connectionStatus = ref<ConnectionStatus>("disconnected");
-onConnectionStatusChange((status) => {
-  connectionStatus.value = status;
-});
-
-function handleWebSocketMessage(msg: ServerMessage) {
-  switch (msg.type) {
-    case "joinRoomSuccess":
-      participants.value = new Map(Object.entries(msg.data.participants));
-      store.setAdmin(msg.data.admin);
-      votesLocked.value = msg.data.locked;
-      break;
-    case "userJoined":
-      store.addParticipant({ username: msg.data.username });
-      addNotification(`${msg.data.username} joined the room`);
-      break;
-    case "userLeft":
-      store.removeParticipant(msg.data.username);
-      addNotification(`${msg.data.username} left the room`);
-      break;
-    case "adminTransferred":
-      store.setAdmin(msg.data.newAdmin);
-      addNotification(`Admin role transferred to ${msg.data.newAdmin}`);
-      break;
-    case "userVoted":
-      store.setParticipantPointEstimate(msg.data.username, msg.data.vote);
-      break;
-    case "voteStatus":
-      participants.value = new Map(Object.entries(msg.data.votes));
-      votesVisible.value = msg.data.revealed;
-
-      // If we're hiding votes, set the user's point estimate
-      // to it's initial value.
-      if (!msg.data.revealed) store.setUserPointEstimate();
-      break;
-    case "votesCleared":
-      store.clearVotes();
-      votesVisible.value = false;
-      break;
-    case "voteLockStatus":
-      votesLocked.value = msg.data.locked;
-      break;
-    case "participantRemoved":
-      store.removeParticipant(msg.data.participant);
-      addNotification(`${msg.data.participant} was removed from the room by ${msg.data.removedBy}`);
-      break;
-    case "youWereRemoved":
-      addErrorNotification(
-        "Removed from Room",
-        `You were removed from the room by ${msg.data.removedBy}`,
-      );
-      store.$reset();
-      router.push({ name: "Home" });
-      break;
-    case "roomClosed":
-      addErrorNotification("Room Closed", msg.data.reason);
-      store.$reset();
-      router.push({ name: "Home" });
-      break;
-    case "notification":
-      addNotification(msg.data.details);
-      break;
-    case "userDisconnected":
-      addNotification(`${msg.data.username} lost connection`);
-      break;
-    case "userReconnected":
-      addNotification(`${msg.data.username} reconnected`);
-      break;
-    case "error":
-      addErrorNotification("Error", msg.data.message);
-      break;
-    default:
-      console.error("Unknown message:", msg);
-  }
-}
-
-// Room ID
 const props = defineProps<{ id: string }>();
-const roomId = computed(() => props.id?.toLowerCase() ?? "");
-if (!roomId.value) {
-  addNotification("No room ID provided");
-  router.push({ name: "Home" });
-}
+const {
+  adminSheetOpen,
+  connectionStatus,
+  copiedRoomLink,
+  hasVotes,
+  isAdmin,
+  isMissingUsername,
+  members,
+  pointEstimate,
+  points,
+  roomId,
+  totalCount,
+  usernameModel,
+  votedCount,
+  votesLocked,
+  votesVisible,
+  clearAllVotes,
+  clearMyVote,
+  copyRoomLink,
+  handleRemoveParticipant,
+  join,
+  leaveRoom,
+  makeAdmin,
+  startNewRound,
+  teardownRoomSession,
+  toggleVoteLock,
+  toggleVoteVisibility,
+  vote,
+} = useRoomSession(props.id);
 
-// WebSocket URL
-const wsUrl = computed(() => {
-  const url = new URL(import.meta.env.VITE_SOCKET_URL);
-  url.searchParams.append("roomId", roomId.value);
-  url.searchParams.append("username", username.value);
-  return url;
-});
-
-const isMissingUsername = computed(() => !username.value);
-if (!isMissingUsername.value) connectWebSocket(wsUrl.value, handleWebSocketMessage);
-
-// If entered room without a username (e.g., from a link),
-// prompt the user to enter a username and join the room.
-const usernameModel = ref(localStorage.getItem(usernameKey) ?? "");
-function join() {
-  if (!roomId.value || !usernameModel.value) return;
-  store.setUsername(usernameModel.value);
-  connectWebSocket(wsUrl.value, handleWebSocketMessage);
-}
-
-/**
- * All members in the room with their point estimates.
- * Used to display the table of members and their votes.
- */
-const members = computed(() => {
-  return Array.from(participants.value.entries())
-    .map(([name, point]) => ({
-      name,
-      point,
-      isAdmin: name === adminUsername.value,
-      isCurrentUser: name === username.value,
-    }))
-    .sort((a, b) => {
-      // When votes are visible, sort by point estimates
-      if (votesVisible.value) {
-        // Handle null/undefined points - move them to the end
-        if (a.point == null) return 1;
-        if (b.point == null) return -1;
-
-        // Special handling for '?' - move to end but before null/undefined
-        if (a.point === "?" && b.point !== "?") return 1;
-        if (b.point === "?" && a.point !== "?") return -1;
-
-        // For numeric points, convert to numbers and compare
-        const pointA = a.point === "?" ? Infinity : Number(a.point);
-        const pointB = b.point === "?" ? Infinity : Number(b.point);
-
-        // If points are different, sort by point value
-        if (pointA !== pointB) return pointA - pointB;
-      } else {
-        // When votes are hidden, show current user first
-        if (a.isCurrentUser) return -1;
-        if (b.isCurrentUser) return 1;
-      }
-      // For same points or when votes are hidden, sort alphabetically
-      return a.name.localeCompare(b.name);
-    });
-});
-
-/**
- * Check if at least one member has voted.
- */
-const hasVotes = computed(() => members.value.some(({ point }) => point != null));
-
-/**
- * Toggle the visibility of all votes.
- */
-function toggleVoteVisibility() {
-  if (votesVisible.value) hideVotes();
-  else revealVotes();
-}
-
-/**
- * Toggle the lock state of votes.
- */
-function toggleVoteLock() {
-  if (votesLocked.value) unlockVotes();
-  else lockVotes();
-}
-
-// Available points for voting
-const points = ref(["40", "21", "13", "8", "5", "3", "2", "1", "?"]);
-
-/**
- * Submit a vote for the user.
- * @param point The point estimate to vote for.
- */
-function vote(point?: string) {
-  store.setUserPointEstimate(point);
-  submitVote({ vote: point });
-}
-
-/**
- * Clear the user's vote.
- */
-function clearMyVote() {
-  store.pointEstimate = undefined;
-  vote();
-}
-
-/**
- * Clear all votes in the room.
- */
-function clearAllVotes() {
-  clearVotes();
-  store.clearVotes();
-}
-
-/**
- * Make a user an admin.
- */
-function makeAdmin(name: string) {
-  if (!isAdmin.value || name === store.adminUsername) return;
-  transferAdmin(name);
-}
-
-/**
- * Remove a participant from the room.
- */
-function handleRemoveParticipant(name: string) {
-  if (!isAdmin.value || name === store.username) return;
-  removeParticipant(name);
-}
-
-const copiedRoomLink = ref(false);
-/**
- * Copy the room link to the clipboard.
- */
-function copyRoomLink() {
-  navigator.clipboard.writeText(window.location.href);
-  copiedRoomLink.value = true;
-}
-
-// Reset the store and close the WebSocket connection when navigating away
 onBeforeRouteLeave(() => {
-  disconnect();
-  store.$reset();
+  teardownRoomSession();
 });
 </script>
 
 <template>
   <main>
-    <PMessage v-if="connectionStatus === 'reconnecting'" severity="warn" class="reconnect-banner">
-      <template #icon>
-        <i class="pi pi-spin pi-spinner" />
-      </template>
-      Connection lost. Attempting to reconnect...
-    </PMessage>
+    <header class="room-header">
+      <div class="brand">
+        <div class="logo-tile" aria-hidden="true">
+          <img :src="spadeUrl" alt="" />
+        </div>
+        <div class="brand-text">
+          <span class="overline">ROOM</span>
+          <span class="room-id">{{ roomId.toUpperCase() }}</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button
+          class="ghost-btn invite"
+          :aria-label="copiedRoomLink ? 'Copied' : 'Invite'"
+          @click="copyRoomLink"
+        >
+          <i :class="copiedRoomLink ? 'pi pi-check' : 'pi pi-share-alt'" />
+          <span class="hide-mobile">{{ copiedRoomLink ? "Copied" : "Invite" }}</span>
+        </button>
+        <button class="ghost-btn leave" aria-label="Leave room" @click="leaveRoom">
+          <i class="pi pi-sign-out" />
+          <span class="hide-mobile">Leave</span>
+        </button>
+      </div>
+    </header>
 
-    <div class="actions">
-      <RouterLink :to="{ name: 'Home' }">
-        <VButton severity="danger" label="Leave Room" size="small" />
-      </RouterLink>
-      <VButton
-        v-if="isAdmin"
-        :label="votesVisible ? 'Hide Votes' : 'Reveal Votes'"
-        severity="success"
-        :disabled="!votesVisible && !hasVotes"
-        size="small"
-        @click="toggleVoteVisibility()"
-      />
-      <VButton
-        v-if="isAdmin"
-        :label="votesLocked ? 'Unlock Votes' : 'Lock Votes'"
-        severity="info"
-        :disabled="!hasVotes"
-        size="small"
-        :icon="votesLocked ? 'pi pi-lock' : 'pi pi-unlock'"
-        @click="toggleVoteLock"
-      />
-      <VButton
-        severity="secondary"
-        label="Copy Room Link"
-        :icon="copiedRoomLink ? 'pi pi-check' : 'pi pi-clipboard'"
-        size="small"
-        @click="copyRoomLink"
-      />
-    </div>
+    <div class="room-body">
+      <PMessage v-if="connectionStatus === 'reconnecting'" severity="warn" class="reconnect-banner">
+        <template #icon>
+          <i class="pi pi-spin pi-spinner" />
+        </template>
+        Connection lost. Attempting to reconnect...
+      </PMessage>
 
-    <div class="container">
-      <DataTable :value="members" row-hover>
-        <Column header="Admin" style="width: 1px; text-align: center">
-          <template #body="{ data }">
-            <i
-              :class="{
-                'pi pi-star-fill': data.name === store.adminUsername,
-                'pi pi-star': isAdmin && data.name !== store.adminUsername,
-              }"
-              aria-label="Make admin"
-              @click="makeAdmin(data.name)"
-            />
-          </template>
-        </Column>
-        <Column field="name" header="Name" />
-        <Column field="point" header="Point" />
-        <Column v-if="isAdmin" header="Remove" style="width: 1px; text-align: center">
-          <template #body="{ data }">
-            <i
-              v-if="data.name !== store.username"
-              class="pi pi-trash remove-icon"
-              aria-label="Remove participant"
-              @click="handleRemoveParticipant(data.name)"
-            />
-          </template>
-        </Column>
-      </DataTable>
-
-      <div class="options">
-        <PMessage v-if="votesLocked && !isAdmin" severity="info" size="small">
-          <template #icon>
-            <i class="pi pi-lock" />
-          </template>
-          The votes are locked.
-        </PMessage>
-        <VButton
-          v-for="point in points"
-          :key="point"
-          :label="point.toString()"
-          :disabled="votesLocked"
-          size="small"
-          @click="vote(point)"
-        />
-        <VButton
-          label="Clear My Vote"
-          severity="secondary"
-          :disabled="!store.pointEstimate || votesLocked"
-          size="small"
-          @click="clearMyVote"
-        />
-        <VButton
-          v-if="isAdmin"
-          label="Clear All Votes"
-          severity="danger"
+      <section v-if="isAdmin" class="control-bar surface-panel">
+        <span class="admin-chip"><i class="pi pi-crown" /> ADMIN</span>
+        <button
+          v-if="!votesVisible"
+          class="cta reveal"
           :disabled="!hasVotes"
-          size="small"
-          @click="clearAllVotes"
+          @click="toggleVoteVisibility"
+        >
+          <i class="pi pi-eye" />
+          Reveal Votes
+          <span class="muted">{{ votedCount }}/{{ totalCount }}</span>
+        </button>
+        <button v-else class="cta new-round" @click="startNewRound">
+          <i class="pi pi-refresh" />
+          New Round
+        </button>
+        <button
+          class="secondary"
+          :class="{ on: votesLocked }"
+          :disabled="!hasVotes"
+          @click="toggleVoteLock"
+        >
+          <i :class="votesLocked ? 'pi pi-lock' : 'pi pi-unlock'" />
+          {{ votesLocked ? "Locked" : "Lock" }}
+        </button>
+        <button class="secondary danger" :disabled="!hasVotes" @click="clearAllVotes">
+          <i class="pi pi-trash" />
+          Clear all
+        </button>
+        <span class="status">
+          {{ votesVisible ? "votes revealed" : `${votedCount} of ${totalCount} voted` }}
+        </span>
+      </section>
+
+      <div class="layout">
+        <section class="board surface-panel">
+          <div class="board-header">
+            <span class="vote-pill" :class="{ revealed: votesVisible }">
+              <span class="dot" />
+              {{ votesVisible ? "Votes revealed" : `${votedCount}/${totalCount} voted` }}
+            </span>
+          </div>
+          <div v-if="members.length" class="grid">
+            <ParticipantCard
+              v-for="m in members"
+              :key="m.name"
+              :name="m.name"
+              :point="m.point"
+              :is-admin="m.isAdmin"
+              :is-current-user="m.isCurrentUser"
+              :revealed="votesVisible"
+              :can-manage-admin="isAdmin && !m.isCurrentUser && !m.isAdmin"
+              :can-remove="isAdmin && !m.isCurrentUser"
+              @transfer-admin="makeAdmin(m.name)"
+              @remove="handleRemoveParticipant(m.name)"
+            />
+          </div>
+          <p v-else class="empty">Waiting for participants…</p>
+        </section>
+
+        <aside class="rail">
+          <VoteDistribution v-if="votesVisible" :members="members" />
+          <VotingProgress v-else :members="members" />
+        </aside>
+      </div>
+
+      <PMessage v-if="votesLocked && !isAdmin" severity="info" size="small" class="lock-banner">
+        <template #icon><i class="pi pi-lock" /></template>
+        The votes are locked.
+      </PMessage>
+
+      <div class="hand-wrap">
+        <HandStrip
+          :points="points"
+          :current="pointEstimate"
+          :disabled="votesLocked"
+          @vote="vote"
+          @clear="clearMyVote"
         />
       </div>
     </div>
 
-    <PointAccordion />
+    <button
+      v-if="isAdmin"
+      class="fab"
+      aria-label="Open admin controls"
+      @click="adminSheetOpen = true"
+    >
+      <i class="pi pi-crown" />
+    </button>
+
+    <AdminSheet
+      v-if="isAdmin"
+      v-model:visible="adminSheetOpen"
+      :members="members"
+      :votes-visible="votesVisible"
+      :votes-locked="votesLocked"
+      :has-votes="hasVotes"
+      :voted-count="votedCount"
+      :total-count="totalCount"
+      @reveal="toggleVoteVisibility"
+      @new-round="startNewRound"
+      @toggle-lock="toggleVoteLock"
+      @clear-all="clearAllVotes"
+      @transfer-admin="makeAdmin"
+      @remove-participant="handleRemoveParticipant"
+    />
 
     <VDialog :closable="false" :visible="isMissingUsername" modal header="Welcome">
       <p>Please enter a username to join the room.</p>
@@ -389,81 +203,361 @@ onBeforeRouteLeave(() => {
 main {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.room-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: clamp(0.75rem, 2.5vw, 1.75rem);
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+.reconnect-banner,
+.lock-banner {
+  width: 100%;
+}
+
+/* ===== Header ===== */
+.room-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  padding: clamp(1rem, 3vw, 3rem);
+  padding: 0.85rem clamp(1rem, 3vw, 1.75rem);
+  background: color-mix(in srgb, var(--p-content-background) 88%, black);
+  border-bottom: 1px solid var(--p-content-border-color);
 
-  h1 {
-    margin: 0;
-  }
-
-  .reconnect-banner {
-    width: 100%;
-  }
-
-  .actions {
-    display: grid;
-    gap: 1rem;
-    width: 100%;
-    padding: 1rem 0;
-    grid-template-columns: repeat(2, 1fr);
-
-    :deep(.p-button) {
-      width: 100%;
-    }
-
-    @media (min-width: 768px) {
-      justify-content: center;
-      grid-template-columns: repeat(auto-fit, minmax(150px, max-content));
-    }
-  }
-
-  .container {
-    width: 100%;
+  .brand {
     display: flex;
-    justify-content: space-around;
-    gap: 1rem;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
 
-    .p-datatable {
-      width: 80%;
+  .logo-tile {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.6rem;
+    background: linear-gradient(135deg, var(--p-primary-color), var(--p-amber-400));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0a0a0a;
+    flex-shrink: 0;
 
-      td {
-        .pi-star-fill {
-          color: #ffd700;
-        }
+    img {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
 
-        .pi-star {
-          cursor: pointer;
-          opacity: 0.3;
-          transition: opacity 0.3s ease;
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 
-          &:hover {
-            opacity: 1;
-          }
-        }
-
-        .pi-trash.remove-icon {
-          color: red;
-          cursor: pointer;
-          opacity: 0.6;
-          transition: opacity 0.2s ease;
-
-          &:hover {
-            opacity: 1;
-          }
-        }
-      }
+    .overline {
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      color: var(--p-text-muted-color);
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
     }
 
-    .options {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
+    .room-id {
+      font-family: ui-monospace, monospace;
+      font-weight: 700;
+      font-size: 1.05rem;
+      letter-spacing: 0.04em;
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+}
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.6rem;
+  background: transparent;
+  border: 1px solid var(--p-content-border-color);
+  color: var(--p-text-color);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+
+  &:hover {
+    border-color: var(--p-text-color);
+  }
+
+  &.leave:hover {
+    color: var(--p-red-400);
+    border-color: var(--p-red-400);
+  }
+
+  .hide-mobile {
+    display: none;
+  }
+
+  @media (min-width: 480px) {
+    .hide-mobile {
+      display: inline;
     }
   }
 }
 
-.p-dialog-content {
+/* ===== Control bar (desktop / tablet) ===== */
+.control-bar {
+  display: none;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem;
+  flex-wrap: wrap;
+
+  @media (min-width: 768px) {
+    display: flex;
+  }
+
+  .admin-chip {
+    align-self: stretch;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: color-mix(in srgb, var(--p-amber-400) 15%, transparent);
+    color: var(--p-amber-400);
+    padding: 0 0.75rem;
+    border-radius: 0.6rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+  }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    border-radius: 0.7rem;
+    padding: 0.65rem 1rem;
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+
+    .muted {
+      opacity: 0.8;
+      font-weight: 500;
+    }
+
+    &.reveal {
+      color: #052e1a;
+      background: linear-gradient(135deg, var(--p-emerald-400), var(--p-green-400));
+      box-shadow: 0 6px 20px color-mix(in srgb, var(--p-emerald-400) 30%, transparent);
+    }
+
+    &.new-round {
+      color: #2b1a04;
+      background: linear-gradient(135deg, var(--p-amber-400), var(--p-amber-500));
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
+  .secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid var(--p-content-border-color);
+    background: transparent;
+    color: var(--p-text-color);
+    padding: 0.55rem 0.85rem;
+    border-radius: 0.6rem;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      border-color: var(--p-text-color);
+    }
+
+    &.on {
+      color: var(--p-amber-400);
+      border-color: color-mix(in srgb, var(--p-amber-400) 60%, transparent);
+    }
+
+    &.danger:hover:not(:disabled) {
+      color: var(--p-red-400);
+      border-color: var(--p-red-400);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
+  .status {
+    margin-left: auto;
+    color: var(--p-text-muted-color);
+    font-size: 0.8rem;
+  }
+}
+
+/* ===== Layout (board + rail) ===== */
+.layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+  }
+}
+
+.board {
+  position: relative;
+  background:
+    radial-gradient(
+      ellipse at 50% 50%,
+      color-mix(in srgb, var(--p-blue-500) 12%, transparent) 0%,
+      transparent 65%
+    ),
+    color-mix(in srgb, var(--p-content-background) 88%, black);
+  padding: 1.25rem 1rem;
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  .board-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .vote-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--p-content-background) 70%, black);
+    border: 1px solid var(--p-content-border-color);
+    font-size: 0.8rem;
+    color: var(--p-text-color);
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--p-emerald-400);
+      box-shadow: 0 0 8px var(--p-emerald-400);
+    }
+
+    &.revealed .dot {
+      background: var(--p-amber-400);
+      box-shadow: 0 0 8px var(--p-amber-400);
+    }
+  }
+
+  .grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem;
+
+    @media (min-width: 500px) {
+      gap: 0.85rem;
+    }
+
+    > * {
+      flex: 0 0 calc((100% - 0.4rem * 2) / 3);
+      min-width: 0;
+      box-sizing: border-box;
+
+      @media (min-width: 500px) {
+        flex-basis: 8.5rem;
+      }
+
+      @media (min-width: 768px) {
+        flex-basis: 10rem;
+      }
+    }
+  }
+
+  .empty {
+    color: var(--p-text-muted-color);
+    text-align: center;
+    padding: 2rem 0;
+  }
+}
+
+.rail {
+  display: none;
+
+  @media (min-width: 1024px) {
+    display: block;
+  }
+}
+
+/* ===== Hand strip ===== */
+.hand-wrap {
+  position: sticky;
+  bottom: 0.5rem;
+  z-index: 5;
+}
+
+/* ===== FAB (mobile admin) ===== */
+.fab {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 13rem);
+  right: 1.25rem;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, var(--p-amber-400), var(--p-amber-500));
+  color: #2b1a04;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--p-amber-400) 50%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+/* ===== Welcome dialog ===== */
+:deep(.p-dialog-content) {
   p {
     margin-top: 0;
   }
@@ -474,4 +568,5 @@ main {
     gap: 1rem;
   }
 }
+
 </style>
