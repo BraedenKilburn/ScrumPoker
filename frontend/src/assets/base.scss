@@ -24,6 +24,28 @@ body {
   min-height: 100vh;
 }
 
+.p-toast-top-right {
+  max-width: calc(100vw - 2rem);
+}
+
+@media (max-width: 480px) {
+  .p-toast-top-right {
+    left: 1rem !important;
+    right: 1rem !important;
+    width: auto !important;
+  }
+
+  .p-toast-message {
+    width: 100%;
+  }
+}
+
+.surface-panel {
+  background: color-mix(in srgb, var(--p-content-background) 88%, black);
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 1rem;
+}
+
 a {
   color: inherit;
   text-decoration: none;
