@@ -35,7 +35,6 @@ const manageableMembers = computed(() => props.members.filter((member) => !membe
   <Drawer
     :visible="visible"
     position="bottom"
-    :modal="true"
     :pt="{ root: { class: 'admin-drawer' } }"
     @update:visible="(v: boolean) => emit('update:visible', v)"
   >
@@ -121,30 +120,24 @@ const manageableMembers = computed(() => props.members.filter((member) => !membe
 </template>
 
 <style lang="scss">
-.admin-drawer {
-  border-top-left-radius: 1.25rem !important;
-  border-top-right-radius: 1.25rem !important;
-  height: auto !important;
+.p-component.p-drawer.admin-drawer {
+  border: none;
+  border-top-left-radius: 1.25rem;
+  border-top-right-radius: 1.25rem;
+  height: auto;
   max-height: 90vh;
 }
 </style>
 
 <style scoped lang="scss">
-.sheet-header {
+.sheet-header .label {
   display: flex;
-  align-items: center;
-  width: 100%;
-
-  .label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    color: var(--p-amber-400);
-
-    .pi {
-      margin-right: 0.4rem;
-    }
-  }
+  gap: 0.5rem;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--p-amber-400);
 }
 
 .sheet-body {
