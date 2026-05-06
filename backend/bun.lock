@@ -5,12 +5,12 @@
     "": {
       "name": "scrum-poker-websocket",
       "devDependencies": {
-        "@types/bun": "latest",
-        "oxfmt": "latest",
-        "oxlint": "latest",
+        "@types/bun": "^1.3.13",
+        "oxfmt": "^0.48.0",
+        "oxlint": "^1.63.0",
       },
       "peerDependencies": {
-        "typescript": "latest",
+        "typescript": "^6.0.3",
       },
     },
   },
