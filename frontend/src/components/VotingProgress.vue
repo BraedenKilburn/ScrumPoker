@@ -1,15 +1,24 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { getAvatarColor, getInitials, paletteVar } from "@/modules/avatarColor";
 import type { RoomMember } from "@/modules/roomMembers";
 
-defineProps<{ members: RoomMember[] }>();
+const props = defineProps<{ members: RoomMember[] }>();
+
+const sortedMembers = computed(() =>
+  [...props.members].sort((a, b) => {
+    if (a.point != null && b.point == null) return -1;
+    if (a.point == null && b.point != null) return 1;
+    return a.name.localeCompare(b.name);
+  }),
+);
 </script>
 
 <template>
   <aside class="voting-progress surface-panel">
     <h3 class="title">Voting in progress</h3>
     <TransitionGroup tag="ul" name="vp-list">
-      <li v-for="m in members" :key="m.name" :class="{ ready: m.point != null }">
+      <li v-for="m in sortedMembers" :key="m.name" :class="{ ready: m.point != null }">
         <span class="dot" :class="{ ready: m.point != null }" />
         <span class="avatar" :style="{ background: paletteVar[getAvatarColor(m.name)] }">
           {{ getInitials(m.name) }}
