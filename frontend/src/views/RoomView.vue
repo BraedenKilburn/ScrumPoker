@@ -486,9 +486,13 @@ main {
   }
 
   .grid {
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    align-content: center;
+    align-items: center;
     gap: 0.4rem;
 
     @media (min-width: 500px) {

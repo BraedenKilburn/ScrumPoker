@@ -39,11 +39,10 @@ const median = computed(() => {
 
 const n = computed(() => numericVotes.value.length);
 
-function bandFor(value: string): "green" | "amber" | "red" | "violet" {
-  if (value === "?" || value === "1" || value === "2") return "green";
-  if (value === "3" || value === "5") return "amber";
-  if (value === "8" || value === "13") return "red";
-  return "violet";
+const chartColors = ["green", "amber", "red", "violet", "blue", "pink"] as const;
+
+function chartColorFor(index: number): (typeof chartColors)[number] {
+  return chartColors[index % chartColors.length];
 }
 </script>
 
@@ -59,13 +58,15 @@ function bandFor(value: string): "green" | "amber" | "red" | "violet" {
     </header>
 
     <div v-if="buckets.length" class="chart">
-      <div v-for="b in buckets" :key="b.value" class="col">
+      <div v-for="(b, index) in buckets" :key="b.value" class="col">
         <span class="count">{{ b.count }}</span>
-        <div
-          class="bar"
-          :class="`band-${bandFor(b.value)}`"
-          :style="{ height: `${(b.count / maxCount) * 100}%` }"
-        />
+        <div class="bar-track">
+          <div
+            class="bar"
+            :class="`bar-${chartColorFor(index)}`"
+            :style="{ height: `${(b.count / maxCount) * 100}%` }"
+          />
+        </div>
         <span class="label">{{ b.value }}</span>
       </div>
     </div>
@@ -122,15 +123,24 @@ function bandFor(value: string): "green" | "amber" | "red" | "violet" {
   .col {
     flex: 1 1 0;
     min-width: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    align-items: stretch;
     gap: 0.25rem;
     height: 100%;
 
     .count {
+      justify-self: center;
       font-size: 0.75rem;
       color: var(--p-text-muted-color);
+    }
+
+    .bar-track {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      align-items: flex-end;
     }
 
     .bar {
@@ -140,21 +150,28 @@ function bandFor(value: string): "green" | "amber" | "red" | "violet" {
       background: var(--p-emerald-400);
       transition: height 0.3s ease;
 
-      &.band-green {
+      &.bar-green {
         background: var(--p-emerald-400);
       }
-      &.band-amber {
+      &.bar-amber {
         background: var(--p-amber-400);
       }
-      &.band-red {
+      &.bar-red {
         background: var(--p-red-400);
       }
-      &.band-violet {
+      &.bar-violet {
         background: var(--p-violet-400);
+      }
+      &.bar-blue {
+        background: var(--p-blue-400);
+      }
+      &.bar-pink {
+        background: var(--p-pink-400);
       }
     }
 
     .label {
+      justify-self: center;
       font-size: 0.75rem;
       font-weight: 700;
       color: var(--p-text-color);
