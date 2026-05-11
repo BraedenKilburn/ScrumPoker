@@ -10,6 +10,12 @@ function hash(input: string): number {
   return Math.abs(h);
 }
 
+function getGraphemes(input: string): string[] {
+  return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(input)].map(
+    ({ segment }) => segment,
+  );
+}
+
 export function getAvatarColor(username: string): AvatarPalette {
   if (!username) return "emerald";
   return palette[hash(username) % palette.length];
@@ -21,10 +27,13 @@ export function getInitials(username: string): string {
     .trim()
     .split(/[\s_-]+/)
     .filter(Boolean);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+  const wordInitials = parts.map((part) => part.match(/[\p{L}\p{N}]/u)?.[0]).filter(Boolean);
+  if (wordInitials.length >= 2) {
+    return wordInitials.slice(0, 2).join("").toUpperCase();
   }
-  return username.slice(0, 2).toUpperCase();
+  const letters = username.match(/[\p{L}\p{N}]/gu);
+  if (letters?.length) return letters.slice(0, 2).join("").toUpperCase();
+  return getGraphemes(username.trim())[0] ?? "??";
 }
 
 export const paletteVar: Record<AvatarPalette, string> = {
