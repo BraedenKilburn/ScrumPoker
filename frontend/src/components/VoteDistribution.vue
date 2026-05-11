@@ -61,11 +61,13 @@ function bandFor(value: string): "green" | "amber" | "red" | "violet" {
     <div v-if="buckets.length" class="chart">
       <div v-for="b in buckets" :key="b.value" class="col">
         <span class="count">{{ b.count }}</span>
-        <div
-          class="bar"
-          :class="`band-${bandFor(b.value)}`"
-          :style="{ height: `${(b.count / maxCount) * 100}%` }"
-        />
+        <div class="bar-track">
+          <div
+            class="bar"
+            :class="`band-${bandFor(b.value)}`"
+            :style="{ height: `${(b.count / maxCount) * 100}%` }"
+          />
+        </div>
         <span class="label">{{ b.value }}</span>
       </div>
     </div>
@@ -122,15 +124,24 @@ function bandFor(value: string): "green" | "amber" | "red" | "violet" {
   .col {
     flex: 1 1 0;
     min-width: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    align-items: stretch;
     gap: 0.25rem;
     height: 100%;
 
     .count {
+      justify-self: center;
       font-size: 0.75rem;
       color: var(--p-text-muted-color);
+    }
+
+    .bar-track {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      align-items: flex-end;
     }
 
     .bar {
@@ -155,6 +166,7 @@ function bandFor(value: string): "green" | "amber" | "red" | "violet" {
     }
 
     .label {
+      justify-self: center;
       font-size: 0.75rem;
       font-weight: 700;
       color: var(--p-text-color);
