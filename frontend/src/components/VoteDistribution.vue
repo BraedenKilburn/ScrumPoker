@@ -39,11 +39,10 @@ const median = computed(() => {
 
 const n = computed(() => numericVotes.value.length);
 
-function bandFor(value: string): "green" | "amber" | "red" | "violet" {
-  if (value === "?" || value === "1" || value === "2") return "green";
-  if (value === "3" || value === "5") return "amber";
-  if (value === "8" || value === "13") return "red";
-  return "violet";
+const chartColors = ["green", "amber", "red", "violet", "blue", "pink"] as const;
+
+function chartColorFor(index: number): (typeof chartColors)[number] {
+  return chartColors[index % chartColors.length];
 }
 </script>
 
@@ -59,12 +58,12 @@ function bandFor(value: string): "green" | "amber" | "red" | "violet" {
     </header>
 
     <div v-if="buckets.length" class="chart">
-      <div v-for="b in buckets" :key="b.value" class="col">
+      <div v-for="(b, index) in buckets" :key="b.value" class="col">
         <span class="count">{{ b.count }}</span>
         <div class="bar-track">
           <div
             class="bar"
-            :class="`band-${bandFor(b.value)}`"
+            :class="`bar-${chartColorFor(index)}`"
             :style="{ height: `${(b.count / maxCount) * 100}%` }"
           />
         </div>
@@ -151,17 +150,23 @@ function bandFor(value: string): "green" | "amber" | "red" | "violet" {
       background: var(--p-emerald-400);
       transition: height 0.3s ease;
 
-      &.band-green {
+      &.bar-green {
         background: var(--p-emerald-400);
       }
-      &.band-amber {
+      &.bar-amber {
         background: var(--p-amber-400);
       }
-      &.band-red {
+      &.bar-red {
         background: var(--p-red-400);
       }
-      &.band-violet {
+      &.bar-violet {
         background: var(--p-violet-400);
+      }
+      &.bar-blue {
+        background: var(--p-blue-400);
+      }
+      &.bar-pink {
+        background: var(--p-pink-400);
       }
     }
 
