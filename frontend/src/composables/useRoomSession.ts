@@ -80,6 +80,8 @@ export function useRoomSession(id: string) {
         participants.value = new Map(Object.entries(msg.data.participants));
         store.setAdmin(msg.data.admin);
         votesLocked.value = msg.data.locked;
+        votesVisible.value = msg.data.revealed;
+        if (!msg.data.revealed) store.setUserPointEstimate();
         break;
       case "userJoined":
         store.addParticipant({ username: msg.data.username });
