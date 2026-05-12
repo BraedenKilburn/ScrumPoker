@@ -23,6 +23,28 @@ describe("MessageHandler", () => {
     expect(JSON.parse(result)).toEqual({ type: "votesCleared" });
   });
 
+  test("createMessage should include revealed state in join room success messages", () => {
+    const result = MessageHandler.createMessage({
+      type: "joinRoomSuccess",
+      data: {
+        participants: { admin: "5", user1: "3", user2: null },
+        admin: "admin",
+        locked: false,
+        revealed: true,
+      },
+    });
+
+    expect(JSON.parse(result)).toEqual({
+      type: "joinRoomSuccess",
+      data: {
+        participants: { admin: "5", user1: "3", user2: null },
+        admin: "admin",
+        locked: false,
+        revealed: true,
+      },
+    });
+  });
+
   test("createUserVotedMessage should create valid vote message", () => {
     const getUsersVote = mock(() => "5");
     const roomManager: any = { getUsersVote };

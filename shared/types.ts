@@ -61,7 +61,12 @@ export type ClientMessage =
 
 export type JoinRoomSuccessMessage = {
   type: 'joinRoomSuccess'
-  data: { participants: Record<string, string | null>; admin: string; locked: boolean }
+  data: {
+    participants: Record<string, string | null>
+    admin: string
+    locked: boolean
+    revealed: boolean
+  }
 }
 
 export type UserJoinedMessage = {

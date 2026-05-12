@@ -14,6 +14,18 @@ const ErrorCodes = {
   UsernameTaken: 4001,
 } as const;
 
+function createJoinRoomSuccessMessage(roomId: string) {
+  const participants = Object.fromEntries(roomManager.getRoomVotes(roomId));
+  const admin = roomManager.getAdmin(roomId)!;
+  const locked = roomManager.getRoomLockState(roomId);
+  const revealed = roomManager.getRoomVisibility(roomId);
+
+  return MessageHandler.createMessage({
+    type: "joinRoomSuccess",
+    data: { participants, admin, locked, revealed },
+  });
+}
+
 const server = Bun.serve<WebSocketData, undefined>({
   fetch(req, server) {
     const roomId = new URL(req.url).searchParams.get("roomId");
@@ -42,15 +54,7 @@ const server = Bun.serve<WebSocketData, undefined>({
         logger.websocket(`User reconnected`, { roomId, username });
 
         // Send current room state to reconnected user
-        const participants = Object.fromEntries(roomManager.getRoomVotes(roomId));
-        const admin = roomManager.getAdmin(roomId)!;
-        const locked = roomManager.getRoomLockState(roomId);
-        ws.send(
-          MessageHandler.createMessage({
-            type: "joinRoomSuccess",
-            data: { participants, admin, locked },
-          }),
-        );
+        ws.send(createJoinRoomSuccessMessage(roomId));
 
         // Notify others that user reconnected
         ws.publish(
@@ -79,14 +83,7 @@ const server = Bun.serve<WebSocketData, undefined>({
       const joinMessage = MessageHandler.createMessage({ type: "userJoined", data: { username } });
       ws.publish(roomId, joinMessage);
 
-      const participants = Object.fromEntries(roomManager.getRoomVotes(roomId));
-      const admin = roomManager.getAdmin(roomId)!;
-      const locked = roomManager.getRoomLockState(roomId);
-      const welcomeMessage = MessageHandler.createMessage({
-        type: "joinRoomSuccess",
-        data: { participants, admin, locked },
-      });
-      ws.send(welcomeMessage);
+      ws.send(createJoinRoomSuccessMessage(roomId));
     },
     message(ws, message) {
       const { roomId, username } = ws.data;
