@@ -114,7 +114,7 @@ onBeforeRouteLeave(() => {
             New Round
           </button>
           <button
-            class="secondary"
+            class="secondary lock-toggle"
             :class="{ on: votesLocked }"
             :disabled="!hasVotes"
             @click="toggleVoteLock"
@@ -306,6 +306,20 @@ main {
     border-color: var(--p-text-color);
   }
 
+  &.invite {
+    &:hover .pi-share-alt {
+      animation: share-spark 650ms;
+    }
+
+    .pi-check {
+      animation: check-pop 350ms ease-out;
+    }
+  }
+
+  &.leave:hover .pi {
+    animation: leave-scoot 0.5s ease-in-out;
+  }
+
   &.leave:hover {
     color: var(--p-red-400);
     border-color: var(--p-red-400);
@@ -347,6 +361,7 @@ main {
   .control-actions {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.5rem;
     width: 100%;
   }
@@ -383,11 +398,19 @@ main {
       color: #052e1a;
       background: linear-gradient(135deg, var(--p-emerald-400), var(--p-green-400));
       box-shadow: 0 6px 20px color-mix(in srgb, var(--p-emerald-400) 30%, transparent);
+
+      &:hover:not(:disabled) .pi {
+        animation: eye-blink 300ms ease-in-out;
+      }
     }
 
     &.new-round {
       color: #2b1a04;
       background: linear-gradient(135deg, var(--p-amber-400), var(--p-amber-500));
+
+      &:hover:not(:disabled) .pi {
+        animation: refresh-spin-pop 500ms linear;
+      }
     }
 
     &:disabled {
@@ -426,8 +449,22 @@ main {
       border-color: var(--p-red-400);
     }
 
+    &.danger {
+      &:hover:not(:disabled) .pi {
+        animation: trash-wiggle 550ms;
+      }
+    }
+
     &.manage {
-      margin-left: auto;
+      &:hover:not(:disabled) .pi {
+        animation: users-hop 550ms;
+      }
+    }
+
+    &.lock-toggle {
+      &:hover:not(:disabled) .pi {
+        animation: lock-click-shut 550ms;
+      }
     }
 
     &:disabled {
@@ -493,6 +530,118 @@ main {
     .label-short {
       display: none;
     }
+  }
+}
+
+@keyframes eye-blink {
+  50% {
+    transform: scaleY(0.12);
+  }
+}
+
+@keyframes lock-click-shut {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+
+  28% {
+    transform: translateY(-2px) rotate(-10deg) scale(1.08);
+  }
+
+  58% {
+    transform: translateY(1px) rotate(6deg) scaleY(0.88);
+  }
+
+  78% {
+    transform: translateY(0) rotate(0deg) scaleY(1.08);
+  }
+
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes refresh-spin-pop {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes trash-wiggle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  25% {
+    transform: translateY(-1px) rotate(-9deg);
+  }
+
+  50% {
+    transform: translateY(1px) rotate(8deg) scaleY(0.94);
+  }
+
+  75% {
+    transform: translateY(0) rotate(-5deg);
+  }
+}
+
+@keyframes users-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  35% {
+    transform: translateY(-3px) scale(1.08);
+  }
+
+  65% {
+    transform: translateY(1px) scale(0.96);
+  }
+}
+
+@keyframes share-spark {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+
+  35% {
+    transform: translate(2px, -2px) rotate(-12deg) scale(1.12);
+  }
+
+  70% {
+    transform: translate(-1px, 1px) rotate(8deg) scale(0.96);
+  }
+}
+
+@keyframes check-pop {
+  0% {
+    transform: scale(0.65) rotate(-12deg);
+  }
+
+  70% {
+    transform: scale(1.18) rotate(4deg);
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes leave-scoot {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  45% {
+    transform: translateX(3px) scale(1.08);
+  }
+
+  70% {
+    transform: translateX(-1px) scale(0.98);
   }
 }
 
