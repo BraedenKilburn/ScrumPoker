@@ -5,7 +5,7 @@ import spadeUrl from "@/assets/spade.svg";
 import ParticipantCard from "@/components/ParticipantCard.vue";
 import VotingProgress from "@/components/VotingProgress.vue";
 import VoteDistribution from "@/components/VoteDistribution.vue";
-import AdminSheet from "@/components/AdminSheet.vue";
+import ParticipantManageSheet from "@/components/ParticipantManageSheet.vue";
 import HandStrip from "@/components/HandStrip.vue";
 import { useRoomSession } from "@/composables/useRoomSession";
 
@@ -82,37 +82,52 @@ onBeforeRouteLeave(() => {
       </PMessage>
 
       <section v-if="isAdmin" class="control-bar surface-panel">
-        <span class="admin-chip"><i class="pi pi-crown" /> ADMIN</span>
-        <button
-          v-if="!votesVisible"
-          class="cta reveal"
-          :disabled="!hasVotes"
-          @click="toggleVoteVisibility"
-        >
-          <i class="pi pi-eye" />
-          Reveal Votes
-          <span class="muted">{{ votedCount }}/{{ totalCount }}</span>
-        </button>
-        <button v-else class="cta new-round" @click="startNewRound">
-          <i class="pi pi-refresh" />
-          New Round
-        </button>
-        <button
-          class="secondary"
-          :class="{ on: votesLocked }"
-          :disabled="!hasVotes"
-          @click="toggleVoteLock"
-        >
-          <i :class="votesLocked ? 'pi pi-lock' : 'pi pi-unlock'" />
-          {{ votesLocked ? "Locked" : "Lock" }}
-        </button>
-        <button class="secondary danger" :disabled="!hasVotes" @click="clearAllVotes">
-          <i class="pi pi-trash" />
-          Clear all
-        </button>
-        <span class="status">
-          {{ votesVisible ? "votes revealed" : `${votedCount} of ${totalCount} voted` }}
-        </span>
+        <div class="control-meta">
+          <span class="admin-chip"><i class="pi pi-crown" /> ADMIN</span>
+          <span class="status">
+            <span class="label-short">
+              {{ votesVisible ? "Votes revealed" : `${votedCount}/${totalCount} voted` }}
+            </span>
+            <span class="label-full">
+              {{ votesVisible ? "votes revealed" : `${votedCount} of ${totalCount} voted` }}
+            </span>
+          </span>
+          <button class="secondary manage" @click="adminSheetOpen = true">
+            <i class="pi pi-users" />
+            Manage
+          </button>
+        </div>
+        <div class="control-actions">
+          <button
+            v-if="!votesVisible"
+            class="cta reveal"
+            :disabled="!hasVotes"
+            @click="toggleVoteVisibility"
+          >
+            <i class="pi pi-eye" />
+            <span class="label-full">Reveal Votes</span>
+            <span class="label-short">Reveal</span>
+            <span class="muted">{{ votedCount }}/{{ totalCount }}</span>
+          </button>
+          <button v-else class="cta new-round" @click="startNewRound">
+            <i class="pi pi-refresh" />
+            New Round
+          </button>
+          <button
+            class="secondary"
+            :class="{ on: votesLocked }"
+            :disabled="!hasVotes"
+            @click="toggleVoteLock"
+          >
+            <i :class="votesLocked ? 'pi pi-lock' : 'pi pi-unlock'" />
+            {{ votesLocked ? "Locked" : "Lock" }}
+          </button>
+          <button class="secondary danger" :disabled="!hasVotes" @click="clearAllVotes">
+            <i class="pi pi-trash" />
+            <span class="label-full">Clear all</span>
+            <span class="label-short">Clear</span>
+          </button>
+        </div>
       </section>
 
       <div class="layout">
@@ -163,28 +178,10 @@ onBeforeRouteLeave(() => {
       </div>
     </div>
 
-    <button
-      v-if="isAdmin"
-      class="fab"
-      aria-label="Open admin controls"
-      @click="adminSheetOpen = true"
-    >
-      <i class="pi pi-crown" />
-    </button>
-
-    <AdminSheet
+    <ParticipantManageSheet
       v-if="isAdmin"
       v-model:visible="adminSheetOpen"
       :members="members"
-      :votes-visible="votesVisible"
-      :votes-locked="votesLocked"
-      :has-votes="hasVotes"
-      :voted-count="votedCount"
-      :total-count="totalCount"
-      @reveal="toggleVoteVisibility"
-      @new-round="startNewRound"
-      @toggle-lock="toggleVoteLock"
-      @clear-all="clearAllVotes"
       @transfer-admin="makeAdmin"
       @remove-participant="handleRemoveParticipant"
     />
@@ -325,25 +322,20 @@ main {
   }
 }
 
-/* ===== Control bar (desktop / tablet) ===== */
+/* ===== Control bar ===== */
 .control-bar {
-  display: none;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
   gap: 0.6rem;
   padding: 0.6rem;
-  flex-wrap: wrap;
-
-  @media (min-width: 768px) {
-    display: flex;
-  }
 
   .admin-chip {
-    align-self: stretch;
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
     background: color-mix(in srgb, var(--p-amber-400) 15%, transparent);
     color: var(--p-amber-400);
+    min-height: 2rem;
     padding: 0 0.75rem;
     border-radius: 0.6rem;
     font-size: 0.65rem;
@@ -351,13 +343,32 @@ main {
     font-weight: 700;
   }
 
+  .control-meta,
+  .control-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .control-meta {
+    min-width: 0;
+  }
+
+  .control-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
   .cta {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
+    min-height: 2.75rem;
     border: none;
     border-radius: 0.7rem;
-    padding: 0.65rem 1rem;
+    padding: 0.65rem 0.85rem;
     font: inherit;
     font-weight: 700;
     font-size: 0.9rem;
@@ -389,7 +400,9 @@ main {
   .secondary {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.4rem;
+    min-height: 2.75rem;
     border: 1px solid var(--p-content-border-color);
     background: transparent;
     color: var(--p-text-color);
@@ -413,6 +426,10 @@ main {
       border-color: var(--p-red-400);
     }
 
+    &.manage {
+      margin-left: auto;
+    }
+
     &:disabled {
       opacity: 0.4;
       cursor: not-allowed;
@@ -420,9 +437,62 @@ main {
   }
 
   .status {
-    margin-left: auto;
     color: var(--p-text-muted-color);
     font-size: 0.8rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .label-full {
+    display: none;
+  }
+
+  .label-short {
+    display: inline;
+  }
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+
+    .control-meta,
+    .control-actions {
+      display: contents;
+    }
+
+    .admin-chip {
+      align-self: stretch;
+      min-height: auto;
+    }
+
+    .cta {
+      min-height: auto;
+      padding: 0.65rem 1rem;
+    }
+
+    .secondary {
+      min-height: auto;
+    }
+
+    .status {
+      order: 20;
+      margin-left: auto;
+    }
+
+    .secondary.manage {
+      display: none;
+    }
+
+    .label-full {
+      display: inline;
+    }
+
+    .label-short {
+      display: none;
+    }
   }
 }
 
@@ -536,30 +606,6 @@ main {
   z-index: 5;
 }
 
-/* ===== FAB (mobile admin) ===== */
-.fab {
-  position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 13rem);
-  right: 1.25rem;
-  width: 3.25rem;
-  height: 3.25rem;
-  border-radius: 50%;
-  border: none;
-  background: linear-gradient(135deg, var(--p-amber-400), var(--p-amber-500));
-  color: #2b1a04;
-  font-size: 1.1rem;
-  cursor: pointer;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--p-amber-400) 50%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 20;
-
-  @media (min-width: 768px) {
-    display: none;
-  }
-}
-
 /* ===== Welcome dialog ===== */
 :deep(.p-dialog-content) {
   p {
@@ -572,5 +618,4 @@ main {
     gap: 1rem;
   }
 }
-
 </style>
