@@ -40,9 +40,16 @@ export function useRoomSession(id: string) {
   const copiedRoomLink = ref(false);
   const adminSheetOpen = ref(false);
 
+  const socketUrl = import.meta.env.VITE_SOCKET_URL;
+  if (!socketUrl) {
+    throw new Error(
+      "VITE_SOCKET_URL is not defined. Create frontend/.env from .env.sample and set the backend WebSocket URL.",
+    );
+  }
+
   const roomId = computed(() => id?.toLowerCase() ?? "");
   const wsUrl = computed(() => {
-    const url = new URL(import.meta.env.VITE_SOCKET_URL);
+    const url = new URL(socketUrl);
     url.searchParams.append("roomId", roomId.value);
     url.searchParams.append("username", username.value);
     return url;

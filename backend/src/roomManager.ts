@@ -1,4 +1,4 @@
-import type { Vote } from "@shared/types";
+import { isPointValue, type Vote } from "@shared/types";
 
 export type Room = {
   users: Set<string>;
@@ -90,6 +90,7 @@ export class InMemoryRoomManager implements RoomManager {
     if (!room) throw new Error("Room does not exist");
     if (!room.users.has(username)) throw new Error("User not in room");
     if (room.locked) throw new Error("Votes are locked");
+    if (vote != null && !isPointValue(vote)) throw new Error("Invalid vote value");
     room.votes.set(username, vote ? vote : null);
   }
 

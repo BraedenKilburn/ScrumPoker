@@ -14,6 +14,24 @@ export default defineConfig({
     },
   },
   plugins: [vue(), vueDevTools()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/primevue") || id.includes("node_modules/@primeuix")) {
+            return "primevue";
+          }
+          if (
+            id.includes("node_modules/vue") ||
+            id.includes("node_modules/@vue") ||
+            id.includes("node_modules/pinia")
+          ) {
+            return "vue";
+          }
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),

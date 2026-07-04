@@ -118,6 +118,8 @@ export const useRootStore = defineStore("root", () => {
     isAdmin.value = false;
     adminUsername.value = "";
     votesLocked.value = false;
+    votesVisible.value = false;
+    pointEstimate.value = undefined;
   }
 
   return {

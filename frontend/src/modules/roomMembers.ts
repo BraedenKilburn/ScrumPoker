@@ -1,12 +1,11 @@
+export { pointValues, type PointValue } from "@shared/types";
+
 export type RoomMember = {
   name: string;
   point?: string;
   isAdmin: boolean;
   isCurrentUser: boolean;
 };
-
-export const pointValues = ["?", "1", "2", "3", "5", "8", "13", "21", "40"] as const;
-export type PointValue = (typeof pointValues)[number];
 
 export function createRoomMembers(
   participants: Map<string, string | undefined>,

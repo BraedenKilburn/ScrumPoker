@@ -5,6 +5,20 @@
  */
 export type Vote = string | null
 
+/**
+ * The set of valid point values a user can vote. Shared between the
+ * frontend (to render the hand) and the backend (to validate votes).
+ */
+export const pointValues = ["?", "1", "2", "3", "5", "8", "13", "21", "40"] as const
+export type PointValue = (typeof pointValues)[number]
+
+/**
+ * Type guard: whether an arbitrary string is a valid point value.
+ */
+export function isPointValue(value: string): value is PointValue {
+  return (pointValues as readonly string[]).includes(value)
+}
+
 export type WebSocketData = {
   roomId: string
   username: string
