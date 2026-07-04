@@ -221,6 +221,101 @@ describe("InMemoryRoomManager", () => {
     });
   });
 
+  describe("decks", () => {
+    test("new room defaults to fibonacci", () => {
+      roomManager.joinRoom("room1", "admin");
+      expect(roomManager.getRoomDeck("room1")).toBe("fibonacci");
+    });
+
+    test("creator's deck argument is honored", () => {
+      roomManager.joinRoom("room1", "admin", "tshirt");
+      expect(roomManager.getRoomDeck("room1")).toBe("tshirt");
+    });
+
+    test("joiner's deck argument is ignored on an existing room", () => {
+      roomManager.joinRoom("room1", "admin", "tshirt");
+      roomManager.joinRoom("room1", "user1", "linear");
+      expect(roomManager.getRoomDeck("room1")).toBe("tshirt");
+    });
+
+    test("roomExists reflects room lifecycle", () => {
+      expect(roomManager.roomExists("room1")).toBe(false);
+      roomManager.joinRoom("room1", "admin");
+      expect(roomManager.roomExists("room1")).toBe(true);
+      roomManager.leaveRoom("room1", "admin");
+      expect(roomManager.roomExists("room1")).toBe(false);
+    });
+
+    test("getRoomDeck throws for non-existent room", () => {
+      expect(() => roomManager.getRoomDeck("nonexistent")).toThrow("Room does not exist");
+    });
+
+    test("submitVote validates against the room's deck", () => {
+      roomManager.joinRoom("tshirt-room", "admin", "tshirt");
+      roomManager.joinRoom("fib-room", "admin");
+
+      roomManager.submitVote("tshirt-room", "admin", "XS");
+      expect(() => roomManager.submitVote("fib-room", "admin", "XS")).toThrow(
+        "Invalid vote value",
+      );
+      expect(() => roomManager.submitVote("tshirt-room", "admin", "5")).toThrow(
+        "Invalid vote value",
+      );
+    });
+
+    test("'?' is accepted in every deck", () => {
+      roomManager.joinRoom("tshirt-room", "admin", "tshirt");
+      roomManager.joinRoom("fib-room", "admin");
+
+      roomManager.submitVote("tshirt-room", "admin", "?");
+      roomManager.submitVote("fib-room", "admin", "?");
+    });
+
+    describe("setDeck", () => {
+      beforeEach(() => {
+        roomManager.joinRoom("room1", "admin");
+        roomManager.joinRoom("room1", "user1");
+      });
+
+      test("non-admin cannot change the deck", () => {
+        expect(() => roomManager.setDeck("room1", "user1", "tshirt")).toThrow(
+          "Only the admin can change the deck",
+        );
+      });
+
+      test("throws for non-existent room", () => {
+        expect(() => roomManager.setDeck("nonexistent", "admin", "tshirt")).toThrow(
+          "Room does not exist",
+        );
+      });
+
+      test("changing deck nulls all votes and resets revealed/locked", () => {
+        roomManager.submitVote("room1", "user1", "5");
+        roomManager.setVoteVisibility("room1", "admin", true);
+        roomManager.setVoteLock("room1", "admin", true);
+
+        const changed = roomManager.setDeck("room1", "admin", "tshirt");
+
+        expect(changed).toBe(true);
+        expect(roomManager.getRoomDeck("room1")).toBe("tshirt");
+        expect(roomManager.getUsersVote("room1", "user1")).toBeNull();
+        expect(roomManager.getRoomVisibility("room1")).toBe(false);
+        expect(roomManager.getRoomLockState("room1")).toBe(false);
+      });
+
+      test("same-deck call is a no-op and leaves votes untouched", () => {
+        roomManager.submitVote("room1", "user1", "5");
+        roomManager.setVoteVisibility("room1", "admin", true);
+
+        const changed = roomManager.setDeck("room1", "admin", "fibonacci");
+
+        expect(changed).toBe(false);
+        expect(roomManager.getUsersVote("room1", "user1")).toBe("5");
+        expect(roomManager.getRoomVisibility("room1")).toBe(true);
+      });
+    });
+  });
+
   describe("isUserInRoom", () => {
     test("should return true for a user in the room", () => {
       roomManager.joinRoom("room1", "admin");

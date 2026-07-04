@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PointCard from "@/components/PointCard.vue";
+import { deckTone } from "@/modules/deckTone";
 
 const props = defineProps<{
   points: readonly string[];
@@ -39,6 +40,7 @@ function pick(p: string) {
       >
         <PointCard
           :value="p"
+          :band="deckTone(p, points)"
           size="md"
           :selected="current === p"
           :disabled="disabled"

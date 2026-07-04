@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import type { CardTone } from "@/modules/deckTone";
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     value?: string;
     faceDown?: boolean;
@@ -9,6 +9,7 @@ const props = withDefaults(
     selected?: boolean;
     disabled?: boolean;
     interactive?: boolean;
+    band?: CardTone;
   }>(),
   {
     size: "md",
@@ -16,16 +17,9 @@ const props = withDefaults(
     selected: false,
     disabled: false,
     interactive: false,
+    band: "green",
   },
 );
-
-const colorBand = computed<"green" | "amber" | "red" | "violet">(() => {
-  const v = props.value;
-  if (v === "?" || v === "1" || v === "2") return "green";
-  if (v === "3" || v === "5") return "amber";
-  if (v === "8" || v === "13") return "red";
-  return "violet";
-});
 </script>
 
 <template>
@@ -33,7 +27,7 @@ const colorBand = computed<"green" | "amber" | "red" | "violet">(() => {
     class="point-card"
     :class="[
       `size-${size}`,
-      `band-${colorBand}`,
+      `band-${band}`,
       {
         'face-down': faceDown,
         selected,

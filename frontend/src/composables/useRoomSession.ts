@@ -1,8 +1,8 @@
 import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useToast } from "primevue/usetoast";
-import type { ServerMessage } from "@shared/types";
+import { decks, isDeckId, type DeckId, type ServerMessage } from "@shared/types";
 import { usernameKey } from "@/modules/constants";
 import {
   clearVotes,
@@ -18,12 +18,14 @@ import {
   unlockVotes,
   type ConnectionStatus,
 } from "@/modules/socket";
-import { createRoomMembers, pointValues } from "@/modules/roomMembers";
+import { createRoomMembers } from "@/modules/roomMembers";
+import { rememberRoomDeck } from "@/composables/useRecentRooms";
 import { useRootStore } from "@/stores/root";
 
 export function useRoomSession(id: string) {
   const toast = useToast();
   const router = useRouter();
+  const route = useRoute();
   const store = useRootStore();
   const {
     username,
@@ -33,6 +35,7 @@ export function useRoomSession(id: string) {
     adminUsername,
     votesLocked,
     pointEstimate,
+    deck,
   } = storeToRefs(store);
 
   const connectionStatus = ref<ConnectionStatus>("disconnected");
@@ -48,15 +51,30 @@ export function useRoomSession(id: string) {
   }
 
   const roomId = computed(() => id?.toLowerCase() ?? "");
+  // Deck chosen at creation arrives as a `?deck=` route query; harmless
+  // for joiners since the backend ignores it when the room exists.
+  const pendingDeck = computed<DeckId | undefined>(() => {
+    const queryDeck = route.query.deck;
+    return typeof queryDeck === "string" && isDeckId(queryDeck) ? queryDeck : undefined;
+  });
   const wsUrl = computed(() => {
     const url = new URL(socketUrl);
     url.searchParams.append("roomId", roomId.value);
     url.searchParams.append("username", username.value);
+    if (pendingDeck.value) url.searchParams.append("deck", pendingDeck.value);
     return url;
   });
   const isMissingUsername = computed(() => !username.value);
+  const points = computed(() => decks[deck.value].cards);
+  const deckLabel = computed(() => decks[deck.value].label);
   const members = computed(() =>
-    createRoomMembers(participants.value, adminUsername.value, username.value, votesVisible.value),
+    createRoomMembers(
+      participants.value,
+      adminUsername.value,
+      username.value,
+      votesVisible.value,
+      points.value,
+    ),
   );
   const votedCount = computed(() => members.value.filter((m) => m.point != null).length);
   const totalCount = computed(() => members.value.length);
@@ -81,6 +99,14 @@ export function useRoomSession(id: string) {
     toast.add({ severity: "error", summary, detail, life: 3000 });
   }
 
+  // Keep the URL's `?deck=` truthful so an admin refresh after a
+  // mid-session deck change recreates the room on the current deck and
+  // copied invite links carry the right hint.
+  function syncDeckQuery(deckId: DeckId) {
+    if (route.query.deck === deckId) return;
+    router.replace({ query: { ...route.query, deck: deckId } });
+  }
+
   function handleWebSocketMessage(msg: ServerMessage) {
     switch (msg.type) {
       case "joinRoomSuccess":
@@ -88,7 +114,17 @@ export function useRoomSession(id: string) {
         store.setAdmin(msg.data.admin);
         votesLocked.value = msg.data.locked;
         votesVisible.value = msg.data.revealed;
+        store.setDeck(msg.data.deck);
+        rememberRoomDeck(roomId.value, msg.data.deck);
+        syncDeckQuery(msg.data.deck);
         if (!msg.data.revealed) store.setUserPointEstimate();
+        break;
+      case "deckChanged":
+        store.setDeck(msg.data.deck);
+        rememberRoomDeck(roomId.value, msg.data.deck);
+        syncDeckQuery(msg.data.deck);
+        store.clearVotes();
+        addNotification(`Deck changed to ${decks[msg.data.deck].label} — votes were reset`);
         break;
       case "userJoined":
         store.addParticipant({ username: msg.data.username });
@@ -221,12 +257,14 @@ export function useRoomSession(id: string) {
     adminSheetOpen,
     connectionStatus,
     copiedRoomLink,
+    deck,
+    deckLabel,
     hasVotes,
     isAdmin,
     isMissingUsername,
     members,
     pointEstimate,
-    points: pointValues,
+    points,
     roomId,
     totalCount,
     usernameModel,

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { deckScale, deckTone, type CardTone } from "@/modules/deckTone";
 import type { RoomMember } from "@/modules/roomMembers";
-import { pointValues } from "@/modules/roomMembers";
 
-const props = defineProps<{ members: RoomMember[] }>();
+const props = defineProps<{ members: RoomMember[]; cards: readonly string[] }>();
 
 const numericVotes = computed(() =>
   props.members
@@ -19,7 +19,7 @@ const buckets = computed(() => {
     if (m.point == null) continue;
     counts.set(m.point, (counts.get(m.point) ?? 0) + 1);
   }
-  return pointValues.filter((v) => counts.has(v)).map((v) => ({ value: v, count: counts.get(v)! }));
+  return props.cards.filter((v) => counts.has(v)).map((v) => ({ value: v, count: counts.get(v)! }));
 });
 
 const maxCount = computed(() => Math.max(1, ...buckets.value.map((b) => b.count)));
@@ -39,10 +39,31 @@ const median = computed(() => {
 
 const n = computed(() => numericVotes.value.length);
 
-const chartColors = ["green", "amber", "red", "violet", "blue", "pink"] as const;
+const toneVar: Record<CardTone, string> = {
+  green: "var(--p-emerald-400)",
+  amber: "var(--p-amber-400)",
+  red: "var(--p-red-400)",
+  violet: "var(--p-violet-400)",
+};
 
-function chartColorFor(index: number): (typeof chartColors)[number] {
-  return chartColors[index % chartColors.length];
+// Bars use the card's tone so the chart matches the hand. Cards that
+// share a tone (e.g. 5 and 8 are both amber) fade in within their
+// group — lighter = smaller, solid = the group's biggest — so adjacent
+// same-tone columns still read apart at a glance.
+const MIN_GROUP_ALPHA = 55;
+
+function labelColor(value: string): string {
+  return toneVar[deckTone(value, props.cards)];
+}
+
+function barColor(value: string): string {
+  const tone = deckTone(value, props.cards);
+  const group = deckScale(props.cards).filter((card) => deckTone(card, props.cards) === tone);
+  const index = group.indexOf(value);
+  if (index < 0 || group.length === 1) return toneVar[tone];
+
+  const alpha = MIN_GROUP_ALPHA + ((100 - MIN_GROUP_ALPHA) * index) / (group.length - 1);
+  return `color-mix(in srgb, ${toneVar[tone]} ${Math.round(alpha)}%, transparent)`;
 }
 </script>
 
@@ -58,16 +79,18 @@ function chartColorFor(index: number): (typeof chartColors)[number] {
     </header>
 
     <div v-if="buckets.length" class="chart">
-      <div v-for="(b, index) in buckets" :key="b.value" class="col">
+      <div v-for="b in buckets" :key="b.value" class="col">
         <span class="count">{{ b.count }}</span>
         <div class="bar-track">
           <div
             class="bar"
-            :class="`bar-${chartColorFor(index)}`"
-            :style="{ height: `${(b.count / maxCount) * 100}%` }"
+            :style="{
+              height: `${(b.count / maxCount) * 100}%`,
+              background: barColor(b.value),
+            }"
           />
         </div>
-        <span class="label">{{ b.value }}</span>
+        <span class="label" :style="{ color: labelColor(b.value) }">{{ b.value }}</span>
       </div>
     </div>
     <p v-else class="empty">No votes yet</p>
@@ -147,34 +170,13 @@ function chartColorFor(index: number): (typeof chartColors)[number] {
       width: 100%;
       min-height: 6px;
       border-radius: 0.4rem;
-      background: var(--p-emerald-400);
       transition: height 0.3s ease;
-
-      &.bar-green {
-        background: var(--p-emerald-400);
-      }
-      &.bar-amber {
-        background: var(--p-amber-400);
-      }
-      &.bar-red {
-        background: var(--p-red-400);
-      }
-      &.bar-violet {
-        background: var(--p-violet-400);
-      }
-      &.bar-blue {
-        background: var(--p-blue-400);
-      }
-      &.bar-pink {
-        background: var(--p-pink-400);
-      }
     }
 
     .label {
       justify-self: center;
       font-size: 0.75rem;
       font-weight: 700;
-      color: var(--p-text-color);
       font-family: ui-monospace, monospace;
     }
   }

@@ -6,22 +6,68 @@
 export type Vote = string | null
 
 /**
- * The set of valid point values a user can vote. Shared between the
+ * The estimation deck presets a room can use. Shared between the
  * frontend (to render the hand) and the backend (to validate votes).
+ * "?" is the off-scale "unknown" token present in every deck.
  */
-export const pointValues = ["?", "1", "2", "3", "5", "8", "13", "21", "40"] as const
-export type PointValue = (typeof pointValues)[number]
+export const deckIds = ['fibonacci', 'tshirt', 'powers2', 'linear'] as const
+export type DeckId = (typeof deckIds)[number]
+
+export type Deck = {
+  id: DeckId
+  label: string
+  hint: string
+  cards: readonly string[]
+}
+
+export const decks: Record<DeckId, Deck> = {
+  fibonacci: {
+    id: 'fibonacci',
+    label: 'Fibonacci',
+    hint: '1 · 2 · 3 · 5 · 8 · 13 …',
+    cards: ['?', '1', '2', '3', '5', '8', '13', '21', '40'],
+  },
+  tshirt: {
+    id: 'tshirt',
+    label: 'T-shirt',
+    hint: 'XS · S · M · L · XL',
+    cards: ['?', 'XS', 'S', 'M', 'L', 'XL'],
+  },
+  powers2: {
+    id: 'powers2',
+    label: 'Powers of 2',
+    hint: '1 · 2 · 4 · 8 · 16 …',
+    cards: ['?', '1', '2', '4', '8', '16', '32', '64'],
+  },
+  linear: {
+    id: 'linear',
+    label: 'Linear',
+    hint: '1 through 10',
+    cards: ['?', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+  },
+}
+
+export const defaultDeckId: DeckId = 'fibonacci'
 
 /**
- * Type guard: whether an arbitrary string is a valid point value.
+ * Type guard: whether an arbitrary string is a valid deck id.
  */
-export function isPointValue(value: string): value is PointValue {
-  return (pointValues as readonly string[]).includes(value)
+export function isDeckId(value: string): value is DeckId {
+  return (deckIds as readonly string[]).includes(value)
+}
+
+/**
+ * Whether a vote value is a valid card in the given deck.
+ */
+export function isVoteForDeck(deckId: DeckId, value: string): boolean {
+  return decks[deckId].cards.includes(value)
 }
 
 export type WebSocketData = {
   roomId: string
   username: string
+  /** Deck chosen at creation — only meaningful for the room creator's connection. */
+  deck?: DeckId
 }
 
 // ── Client → Server messages ──
@@ -61,6 +107,11 @@ export type RemoveParticipantMessage = {
   data: { participant: string }
 }
 
+export type ChangeDeckMessage = {
+  type: 'changeDeck'
+  data: { deck: string }
+}
+
 export type ClientMessage =
   | SubmitVoteMessage
   | RevealVotesMessage
@@ -70,6 +121,7 @@ export type ClientMessage =
   | UnlockVotesMessage
   | TransferAdminMessage
   | RemoveParticipantMessage
+  | ChangeDeckMessage
 
 // ── Server → Client messages ──
 
@@ -80,6 +132,7 @@ export type JoinRoomSuccessMessage = {
     admin: string
     locked: boolean
     revealed: boolean
+    deck: DeckId
   }
 }
 
@@ -152,6 +205,16 @@ export type UserReconnectedMessage = {
   data: { username: string }
 }
 
+/**
+ * Broadcast when the admin changes the room's deck. Implies the current
+ * round's votes were cleared — clients treat it as "deck changed + round
+ * reset" so no paired votesCleared broadcast is needed.
+ */
+export type DeckChangedMessage = {
+  type: 'deckChanged'
+  data: { deck: DeckId }
+}
+
 export type ServerMessage =
   | JoinRoomSuccessMessage
   | UserJoinedMessage
@@ -168,3 +231,4 @@ export type ServerMessage =
   | ErrorMessage
   | UserDisconnectedMessage
   | UserReconnectedMessage
+  | DeckChangedMessage

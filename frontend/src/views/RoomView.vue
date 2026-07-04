@@ -1,19 +1,26 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import PMessage from "primevue/message";
 import { onBeforeRouteLeave } from "vue-router";
+import type { DeckId } from "@shared/types";
 import spadeUrl from "@/assets/spade.svg";
 import ParticipantCard from "@/components/ParticipantCard.vue";
 import VotingProgress from "@/components/VotingProgress.vue";
 import VoteDistribution from "@/components/VoteDistribution.vue";
 import ParticipantManageSheet from "@/components/ParticipantManageSheet.vue";
 import HandStrip from "@/components/HandStrip.vue";
+import DeckChooserView from "@/views/DeckChooserView.vue";
 import { useRoomSession } from "@/composables/useRoomSession";
+import { deckTone } from "@/modules/deckTone";
+import { changeDeck } from "@/modules/socket";
 
 const props = defineProps<{ id: string }>();
 const {
   adminSheetOpen,
   connectionStatus,
   copiedRoomLink,
+  deck,
+  deckLabel,
   hasVotes,
   isAdmin,
   isMissingUsername,
@@ -40,6 +47,16 @@ const {
   vote,
 } = useRoomSession(props.id);
 
+// The change-deck chooser renders as an overlay (not a route) so the
+// socket stays alive — leaving the Room route disconnects and an admin
+// disconnect destroys the room.
+const deckChooserOpen = ref(false);
+
+function handleDeckConfirm(newDeck: DeckId) {
+  if (newDeck !== deck.value) changeDeck(newDeck);
+  deckChooserOpen.value = false;
+}
+
 onBeforeRouteLeave(() => {
   teardownRoomSession();
 });
@@ -54,10 +71,22 @@ onBeforeRouteLeave(() => {
         </div>
         <div class="brand-text">
           <span class="overline">ROOM</span>
-          <span class="room-id">{{ roomId.toUpperCase() }}</span>
+          <span class="room-id">
+            {{ roomId.toUpperCase() }}
+            <span class="deck-chip">{{ deckLabel }} deck</span>
+          </span>
         </div>
       </div>
       <div class="header-actions">
+        <button
+          v-if="isAdmin"
+          class="ghost-btn change-deck"
+          aria-label="Change deck"
+          @click="deckChooserOpen = true"
+        >
+          <i class="pi pi-pencil" />
+          <span class="hide-mobile">Change deck</span>
+        </button>
         <button
           class="ghost-btn invite"
           :aria-label="copiedRoomLink ? 'Copied' : 'Invite'"
@@ -144,6 +173,7 @@ onBeforeRouteLeave(() => {
               :key="m.name"
               :name="m.name"
               :point="m.point"
+              :band="deckTone(m.point, points)"
               :is-admin="m.isAdmin"
               :is-current-user="m.isCurrentUser"
               :revealed="votesVisible"
@@ -157,7 +187,7 @@ onBeforeRouteLeave(() => {
         </section>
 
         <aside class="rail">
-          <VoteDistribution v-if="votesVisible" :members="members" />
+          <VoteDistribution v-if="votesVisible" :members="members" :cards="points" />
           <VotingProgress v-else :members="members" />
         </aside>
       </div>
@@ -176,6 +206,16 @@ onBeforeRouteLeave(() => {
           @clear="clearMyVote"
         />
       </div>
+    </div>
+
+    <div v-if="deckChooserOpen" class="deck-overlay">
+      <DeckChooserView
+        :id="roomId"
+        mode="change"
+        :current-deck="deck"
+        @close="deckChooserOpen = false"
+        @confirm="handleDeckConfirm"
+      />
     </div>
 
     <ParticipantManageSheet
@@ -273,10 +313,28 @@ main {
     }
 
     .room-id {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
       font-family: ui-monospace, monospace;
       font-weight: 700;
       font-size: 1.05rem;
       letter-spacing: 0.04em;
+    }
+
+    .deck-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.15rem 0.6rem;
+      border: 1px solid var(--p-content-border-color);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--p-content-background) 70%, black);
+      color: var(--p-text-muted-color);
+      font-family: inherit;
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
     }
   }
 
@@ -314,6 +372,10 @@ main {
     .pi-check {
       animation: check-pop 350ms ease-out;
     }
+  }
+
+  &.change-deck:hover .pi {
+    animation: pencil-scribble 550ms ease-in-out;
   }
 
   &.leave:hover .pi {
@@ -630,6 +692,29 @@ main {
   }
 }
 
+@keyframes pencil-scribble {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  20% {
+    transform: translate(-1.5px, 1px) rotate(-16deg);
+  }
+
+  40% {
+    transform: translate(1.5px, -0.5px) rotate(-10deg);
+  }
+
+  60% {
+    transform: translate(-1px, 1px) rotate(-15deg);
+  }
+
+  80% {
+    transform: translate(1px, 0) rotate(-5deg);
+  }
+}
+
 @keyframes leave-scoot {
   0%,
   100% {
@@ -753,6 +838,15 @@ main {
   position: sticky;
   bottom: 0.5rem;
   z-index: 5;
+}
+
+/* ===== Change-deck overlay ===== */
+.deck-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow-y: auto;
+  background: var(--p-content-background);
 }
 
 /* ===== Welcome dialog ===== */

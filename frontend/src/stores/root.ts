@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import { defineStore } from "pinia";
+import { defaultDeckId, type DeckId } from "@shared/types";
 import { usernameKey } from "@/modules/constants";
 
 /**
@@ -88,6 +89,19 @@ export const useRootStore = defineStore("root", () => {
   }
 
   /**
+   * The estimation deck the room uses.
+   */
+  const deck = ref<DeckId>(defaultDeckId);
+
+  /**
+   * Set the room's deck.
+   * @param deckId The deck to set.
+   */
+  function setDeck(deckId: DeckId) {
+    deck.value = deckId;
+  }
+
+  /**
    * The visibility of the votes.
    */
   const votesVisible = ref(false);
@@ -120,6 +134,7 @@ export const useRootStore = defineStore("root", () => {
     votesLocked.value = false;
     votesVisible.value = false;
     pointEstimate.value = undefined;
+    deck.value = defaultDeckId;
   }
 
   return {
@@ -137,6 +152,9 @@ export const useRootStore = defineStore("root", () => {
     pointEstimate,
     setUserPointEstimate,
     setParticipantPointEstimate,
+
+    deck,
+    setDeck,
 
     votesVisible,
     clearVotes,

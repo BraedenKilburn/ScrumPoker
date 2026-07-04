@@ -1,4 +1,4 @@
-import type { ServerMessage, ClientMessage } from "@shared/types";
+import type { ServerMessage, ClientMessage, DeckId } from "@shared/types";
 
 export type ConnectionStatus = "connected" | "disconnected" | "reconnecting" | "failed";
 
@@ -139,4 +139,8 @@ export function unlockVotes() {
 
 export function removeParticipant(participant: string) {
   send({ type: "removeParticipant", data: { participant } });
+}
+
+export function changeDeck(deck: DeckId) {
+  send({ type: "changeDeck", data: { deck } });
 }

@@ -18,7 +18,9 @@ body {
 
 #app {
   position: relative;
-  overflow-x: hidden;
+  /* clip (not hidden) — hidden turns #app into a scroll container,
+     which breaks position: sticky in every view */
+  overflow-x: clip;
   min-height: 100vh;
 }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { getAvatarColor, getInitials, paletteVar } from "@/modules/avatarColor";
+import type { CardTone } from "@/modules/deckTone";
 import PointCard from "@/components/PointCard.vue";
 
 const props = defineProps<{
@@ -11,6 +12,7 @@ const props = defineProps<{
   revealed?: boolean;
   canManageAdmin?: boolean;
   canRemove?: boolean;
+  band?: CardTone;
 }>();
 
 defineEmits<{
@@ -58,7 +60,13 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
 
     <div class="vote-slot">
       <Transition name="vote-fade" mode="out-in">
-        <PointCard v-if="revealed && hasVoted" :key="`face-${point}`" :value="point" size="sm" />
+        <PointCard
+          v-if="revealed && hasVoted"
+          :key="`face-${point}`"
+          :value="point"
+          :band="band"
+          size="sm"
+        />
         <PointCard v-else-if="hasVoted" key="back" face-down size="sm" />
         <span v-else key="thinking" class="thinking">thinking…</span>
       </Transition>

@@ -1,4 +1,4 @@
-import type { WebSocketData } from "@shared/types";
+import { isDeckId, type WebSocketData } from "@shared/types";
 import { InMemoryRoomManager } from "./roomManager";
 import { MessageHandler } from "./messageHandler";
 import { ConnectionManager } from "./connectionManager";
@@ -19,21 +19,39 @@ function createJoinRoomSuccessMessage(roomId: string) {
   const admin = roomManager.getAdmin(roomId)!;
   const locked = roomManager.getRoomLockState(roomId);
   const revealed = roomManager.getRoomVisibility(roomId);
+  const deck = roomManager.getRoomDeck(roomId);
 
   return MessageHandler.createMessage({
     type: "joinRoomSuccess",
-    data: { participants, admin, locked, revealed },
+    data: { participants, admin, locked, revealed, deck },
   });
 }
 
 const server = Bun.serve<WebSocketData, undefined>({
   fetch(req, server) {
-    const roomId = new URL(req.url).searchParams.get("roomId");
-    const username = new URL(req.url).searchParams.get("username");
+    const url = new URL(req.url);
+
+    // Room-existence probe for the home page. Matched by pathname suffix
+    // because in prod only `location /ws` is proxied to the backend, so
+    // the request arrives as `/ws/rooms/:id`.
+    const roomsMatch = url.pathname.match(/\/rooms\/([^/]+)$/);
+    if (req.method === "GET" && roomsMatch) {
+      const id = decodeURIComponent(roomsMatch[1]).toLowerCase();
+      const exists = roomManager.roomExists(id);
+      return Response.json(
+        { exists, deck: exists ? roomManager.getRoomDeck(id) : null },
+        { headers: { "Access-Control-Allow-Origin": "*" } },
+      );
+    }
+
+    const roomId = url.searchParams.get("roomId");
+    const username = url.searchParams.get("username");
+    const deckParam = url.searchParams.get("deck");
+    const deck = deckParam && isDeckId(deckParam) ? deckParam : undefined;
 
     if (!username) return new Response("Username is required", { status: 400 });
     if (!roomId) return new Response("Room ID is required", { status: 400 });
-    if (server.upgrade(req, { data: { username, roomId } })) return;
+    if (server.upgrade(req, { data: { username, roomId, deck } })) return;
 
     logger.error(`Upgrade failed`, { roomId, username });
     return new Response("Upgrade failed", { status: 500 });
@@ -69,7 +87,7 @@ const server = Bun.serve<WebSocketData, undefined>({
 
       // Normal join flow
       try {
-        roomManager.joinRoom(roomId, username);
+        roomManager.joinRoom(roomId, username, ws.data.deck);
       } catch (error: any) {
         ws.close(ErrorCodes.UsernameTaken, error.message);
         return;
@@ -146,6 +164,24 @@ const server = Bun.serve<WebSocketData, undefined>({
               }),
             );
             break;
+
+          case "changeDeck": {
+            if (!isDeckId(msg.data.deck)) throw new Error("Invalid deck");
+
+            // server.publish (not ws.publish) so the admin who changed it
+            // also receives the broadcast — one code path for everyone.
+            const changed = roomManager.setDeck(roomId, username, msg.data.deck);
+            if (changed) {
+              server.publish(
+                roomId,
+                MessageHandler.createMessage({
+                  type: "deckChanged",
+                  data: { deck: msg.data.deck },
+                }),
+              );
+            }
+            break;
+          }
 
           case "removeParticipant": {
             const participantToRemove = msg.data.participant;

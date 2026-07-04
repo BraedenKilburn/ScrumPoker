@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { decks, type DeckId } from "@shared/types";
+import PointCard from "@/components/PointCard.vue";
 import type { RecentRoom } from "@/composables/useRecentRooms";
 import { useRecentRooms } from "@/composables/useRecentRooms";
+import { checkRoom } from "@/modules/api";
 import { usernameKey } from "@/modules/constants";
+import { deckTone } from "@/modules/deckTone";
 import { useRootStore } from "@/stores/root";
 
 const CARD_VALUES = ["8", "5", "3", "13", "21"] as const;
+const fibonacciCards = decks.fibonacci.cards;
 
 const username = ref(localStorage.getItem(usernameKey) ?? "");
 const roomId = ref("");
@@ -19,32 +24,80 @@ function generateRoomId() {
   return crypto.randomUUID().replaceAll("-", "").slice(0, 8);
 }
 
-function join(recentRoomId?: string) {
-  if (!username.value) return;
+// Debounced existence check so the button says "Join" vs. "Create"
+// truthfully as the user types. Cosmetic only — the on-submit check is
+// authoritative.
+const resolvedAction = ref<"join" | "create" | null>(null);
+const submitting = ref(false);
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+let checkToken = 0;
 
-  const requestedRoomId = recentRoomId ?? roomId.value.trim();
-  const nextRoomId = (requestedRoomId || generateRoomId()).toLowerCase();
+watch(roomId, (value) => {
+  resolvedAction.value = null;
+  clearTimeout(debounceTimer);
+  const id = value.trim().toLowerCase();
+  if (!id) return;
 
-  store.setUsername(username.value);
+  debounceTimer = setTimeout(async () => {
+    const token = ++checkToken;
+    const result = await checkRoom(id);
+    if (token !== checkToken || roomId.value.trim().toLowerCase() !== id) return;
+    if (result) resolvedAction.value = result.exists ? "join" : "create";
+  }, 400);
+});
+
+function joinRoom(id: string, deck?: DeckId) {
   store.addParticipant({
     username: username.value,
     point_estimate: undefined,
   });
 
   saveRecentRoom({
-    id: nextRoomId,
+    id,
     username: username.value,
     joinedAt: Date.now(),
+    ...(deck ? { deck } : {}),
   });
 
-  router.push({ name: "Room", params: { id: nextRoomId } });
+  router.push({ name: "Room", params: { id }, query: deck ? { deck } : undefined });
+}
+
+async function submit() {
+  if (!username.value || submitting.value) return;
+  store.setUsername(username.value);
+
+  const typedRoomId = roomId.value.trim().toLowerCase();
+
+  // Empty Room ID → create with a generated one; a fresh random ID is
+  // new, so no existence check needed. The recent-rooms entry is saved
+  // on the chooser CTA so an abandoned chooser leaves no phantom entry.
+  if (!typedRoomId) {
+    router.push({ name: "DeckChooser", params: { id: generateRoomId() } });
+    return;
+  }
+
+  submitting.value = true;
+  const result = await checkRoom(typedRoomId);
+  submitting.value = false;
+
+  if (result && !result.exists) {
+    router.push({ name: "DeckChooser", params: { id: typedRoomId } });
+    return;
+  }
+
+  // Room exists — or the check failed, which must never block someone
+  // from entering a room: join directly.
+  joinRoom(typedRoomId);
 }
 
 function useRecentRoom(recentRoom: RecentRoom) {
   if (!username.value) username.value = recentRoom.username;
   if (!username.value) return;
 
-  join(recentRoom.id);
+  store.setUsername(username.value);
+  // One click, no existence check: a live room ignores the deck param,
+  // a dead one is recreated on the deck the user last saw there.
+  joinRoom(recentRoom.id.toLowerCase(), recentRoom.deck);
 }
 
 const HOUR = 3_600_000;
@@ -60,8 +113,15 @@ function formatJoinedAt(joinedAt: number) {
   return relativeTimeFormat.format(-Math.floor(elapsed / (30 * DAY)), "month");
 }
 
-const submitLabel = computed(() => (roomId.value ? "Join room" : "Create new room"));
-const disabled = computed(() => !username.value);
+const submitLabel = computed(() => {
+  const id = roomId.value.trim();
+  if (!id) return "Create new room";
+  if (resolvedAction.value === "join") return `Join ${id.toUpperCase()}`;
+  if (resolvedAction.value === "create") return `Create ${id.toUpperCase()}`;
+  return "Continue";
+});
+const showDeckHint = computed(() => !roomId.value.trim() || resolvedAction.value === "create");
+const disabled = computed(() => !username.value || submitting.value);
 </script>
 
 <template>
@@ -74,13 +134,14 @@ const disabled = computed(() => !username.value);
         </span>
 
         <div class="mobile-card-fan" aria-hidden="true">
-          <span
+          <PointCard
             v-for="(value, index) in CARD_VALUES"
             :key="`${value}-mobile`"
+            :value="value"
+            :band="deckTone(value, fibonacciCards)"
+            size="md"
             :class="`card card-${index}`"
-          >
-            {{ value }}
-          </span>
+          />
         </div>
 
         <h1 id="home-title">
@@ -90,17 +151,18 @@ const disabled = computed(() => !username.value);
         <p>Pick a name. Share a room ID. Vote on stories together. That's the whole product.</p>
 
         <div class="desktop-card-fan" aria-hidden="true">
-          <span
+          <PointCard
             v-for="(value, index) in CARD_VALUES"
             :key="`${value}-desktop`"
+            :value="value"
+            :band="deckTone(value, fibonacciCards)"
+            size="lg"
             :class="`card card-${index}`"
-          >
-            {{ value }}
-          </span>
+          />
         </div>
       </div>
 
-      <form class="room-panel" @submit.prevent="join()">
+      <form class="room-panel" @submit.prevent="submit()">
         <div class="panel-heading">
           <p>Get started</p>
           <h2>Join or create a room</h2>
@@ -128,10 +190,15 @@ const disabled = computed(() => !username.value);
           type="submit"
           class="join-button"
           :label="submitLabel"
-          icon="pi pi-chevron-right"
+          :icon="submitting ? 'pi pi-spinner pi-spin' : 'pi pi-chevron-right'"
           icon-pos="right"
           :disabled="disabled"
         />
+
+        <div v-if="showDeckHint" class="deck-hint">
+          <i class="pi pi-clone" aria-hidden="true" />
+          Next: choose your deck
+        </div>
 
         <div v-if="recentRooms.length" class="recent-rooms" aria-labelledby="recent-rooms-title">
           <div class="recent-divider">
@@ -246,22 +313,29 @@ const disabled = computed(() => !username.value);
   margin-top: 3.5rem;
 }
 
+/* PointCard sizes are fixed, so scale the whole fan up on wider
+   screens to keep it proportionate to the hero text. */
+.desktop-card-fan {
+  transform-origin: top center;
+
+  @media (min-width: 1200px) {
+    transform: scale(1.2);
+  }
+
+  @media (min-width: 1440px) {
+    transform: scale(1.4);
+    margin-top: 4.25rem;
+  }
+}
+
 .mobile-card-fan {
   display: none;
 }
 
+/* Fan positioning only — the cards themselves are PointCards, so they
+   share the exact look of the room view and deck chooser. */
 .card {
   position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 5.5rem;
-  height: 7.8rem;
-  border-radius: 0.85rem;
-  color: color-mix(in srgb, var(--p-surface-950) 88%, transparent);
-  font-size: 2.35rem;
-  font-weight: 800;
-  box-shadow: 0 1rem 2.5rem color-mix(in srgb, var(--p-surface-950) 20%, transparent);
   transform-origin: 50% 90%;
   left: var(--card-x);
   top: var(--card-y);
@@ -272,31 +346,26 @@ const disabled = computed(() => !username.value);
   &.card-0 {
     --card-x: 0;
     --card-y: 1.4rem;
-    background: var(--p-red-400);
     --card-rotation: -14deg;
   }
   &.card-1 {
     --card-x: 3rem;
     --card-y: 0.9rem;
-    background: var(--p-amber-400);
     --card-rotation: -7deg;
   }
   &.card-2 {
     --card-x: 6rem;
     --card-y: 0.7rem;
-    background: var(--p-emerald-500);
     --card-rotation: 1deg;
   }
   &.card-3 {
     --card-x: 9rem;
     --card-y: 0.9rem;
-    background: var(--p-violet-400);
     --card-rotation: 7deg;
   }
   &.card-4 {
     --card-x: 12rem;
     --card-y: 1.25rem;
-    background: var(--p-red-400);
     --card-rotation: 14deg;
   }
 
@@ -355,6 +424,21 @@ const disabled = computed(() => !username.value);
   background: linear-gradient(110deg, var(--p-primary-color), var(--p-green-400));
   color: var(--p-primary-contrast-color);
   font-weight: 800;
+}
+
+.deck-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: -0.55rem;
+  color: var(--p-text-muted-color);
+  font-size: 0.8rem;
+
+  .pi {
+    color: var(--p-primary-color);
+    font-size: 0.8rem;
+  }
 }
 
 /* --- Recent rooms --- */
@@ -544,11 +628,6 @@ const disabled = computed(() => !username.value);
   }
 
   .card {
-    width: 4.4rem;
-    height: 6.25rem;
-    border-radius: 0.75rem;
-    font-size: 1.85rem;
-
     &.card-0 {
       --card-x: 1rem;
     }

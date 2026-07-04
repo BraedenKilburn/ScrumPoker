@@ -1,4 +1,4 @@
-import { isPointValue, type Vote } from "@shared/types";
+import { defaultDeckId, isVoteForDeck, type DeckId, type Vote } from "@shared/types";
 
 export type Room = {
   users: Set<string>;
@@ -6,10 +6,11 @@ export type Room = {
   revealed: boolean;
   locked: boolean;
   admin: string;
+  deck: DeckId;
 };
 
 export interface RoomManager {
-  joinRoom(roomId: string, username: string): Room;
+  joinRoom(roomId: string, username: string, deck?: DeckId): Room;
   transferAdmin(roomId: string, currentAdmin: string, newAdmin: string): void;
   isAdmin(roomId: string, username: string): boolean;
   getAdmin(roomId: string): string | null;
@@ -25,12 +26,18 @@ export interface RoomManager {
   getRoomLockState(roomId: string): boolean;
   removeParticipant(roomId: string, adminUsername: string, participantToRemove: string): void;
   isUserInRoom(roomId: string, username: string): boolean;
+  roomExists(roomId: string): boolean;
+  getRoomDeck(roomId: string): DeckId;
+  setDeck(roomId: string, username: string, deck: DeckId): boolean;
 }
 
 export class InMemoryRoomManager implements RoomManager {
   private rooms = new Map<string, Room>();
 
-  joinRoom(roomId: string, username: string) {
+  // The deck argument is only honored when the room doesn't exist yet
+  // (rooms are created implicitly by the first join); joiners inherit
+  // the room's deck.
+  joinRoom(roomId: string, username: string, deck?: DeckId) {
     if (!this.rooms.has(roomId)) {
       const room: Room = {
         users: new Set(),
@@ -38,6 +45,7 @@ export class InMemoryRoomManager implements RoomManager {
         revealed: false,
         locked: false,
         admin: username,
+        deck: deck ?? defaultDeckId,
       };
       this.rooms.set(roomId, room);
     }
@@ -90,7 +98,7 @@ export class InMemoryRoomManager implements RoomManager {
     if (!room) throw new Error("Room does not exist");
     if (!room.users.has(username)) throw new Error("User not in room");
     if (room.locked) throw new Error("Votes are locked");
-    if (vote != null && !isPointValue(vote)) throw new Error("Invalid vote value");
+    if (vote != null && !isVoteForDeck(room.deck, vote)) throw new Error("Invalid vote value");
     room.votes.set(username, vote ? vote : null);
   }
 
@@ -166,5 +174,30 @@ export class InMemoryRoomManager implements RoomManager {
   isUserInRoom(roomId: string, username: string): boolean {
     const room = this.rooms.get(roomId);
     return room ? room.users.has(username) : false;
+  }
+
+  roomExists(roomId: string): boolean {
+    return this.rooms.has(roomId);
+  }
+
+  getRoomDeck(roomId: string): DeckId {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error("Room does not exist");
+    return room.deck;
+  }
+
+  // Returns whether the deck actually changed — a same-deck call is a
+  // no-op so an accidental confirm can't wipe votes.
+  setDeck(roomId: string, username: string, deck: DeckId): boolean {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error("Room does not exist");
+    if (room.admin !== username) throw new Error("Only the admin can change the deck");
+    if (room.deck === deck) return false;
+
+    room.deck = deck;
+    room.votes.forEach((_, username) => room.votes.set(username, null));
+    room.revealed = false;
+    room.locked = false;
+    return true;
   }
 }
