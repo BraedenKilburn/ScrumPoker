@@ -1,3 +1,5 @@
+import { isSpecialToken } from "@shared/types";
+
 export type RoomMember = {
   name: string;
   point?: string;
@@ -32,8 +34,10 @@ function compareRoomMembers(
     if (a.point == null && b.point != null) return 1;
     if (b.point == null && a.point != null) return -1;
     if (a.point != null && b.point != null) {
-      if (a.point === "?" && b.point !== "?") return 1;
-      if (b.point === "?" && a.point !== "?") return -1;
+      const aSpecial = isSpecialToken(a.point);
+      const bSpecial = isSpecialToken(b.point);
+      if (aSpecial && !bSpecial) return 1;
+      if (bSpecial && !aSpecial) return -1;
       // Sort revealed votes by rank within the deck so non-numeric
       // scales (T-shirt) order correctly; unknown values sink last.
       const rankA = pointRank(a.point, cards);

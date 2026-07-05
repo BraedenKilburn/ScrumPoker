@@ -50,6 +50,20 @@ export const decks: Record<DeckId, Deck> = {
 export const defaultDeckId: DeckId = 'fibonacci'
 
 /**
+ * Tokens that sit off the estimation scale (unknowns / abstentions) in
+ * any deck that includes them — excluded from ranking, sorting, and
+ * stats. Single source for every consumer of "is this card special?".
+ */
+export const specialTokens: readonly string[] = ['?', '∞', '☕', '½']
+
+/**
+ * Whether a card sits off the estimation scale.
+ */
+export function isSpecialToken(value: string): boolean {
+  return specialTokens.includes(value)
+}
+
+/**
  * Type guard: whether an arbitrary string is a valid deck id.
  */
 export function isDeckId(value: string): value is DeckId {

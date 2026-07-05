@@ -47,7 +47,7 @@ withDefaults(
 <style scoped lang="scss">
 .point-card {
   --card-fg: #0a0a0a;
-  --card-bg: var(--p-emerald-400);
+  --card-bg: var(--tone-green);
   position: relative;
   display: flex;
   align-items: center;
@@ -68,16 +68,16 @@ withDefaults(
   flex-shrink: 0;
 
   &.band-green {
-    --card-bg: var(--p-emerald-400);
+    --card-bg: var(--tone-green);
   }
   &.band-amber {
-    --card-bg: var(--p-amber-400);
+    --card-bg: var(--tone-amber);
   }
   &.band-red {
-    --card-bg: var(--p-red-400);
+    --card-bg: var(--tone-red);
   }
   &.band-violet {
-    --card-bg: var(--p-violet-400);
+    --card-bg: var(--tone-violet);
   }
 
   &.size-sm {

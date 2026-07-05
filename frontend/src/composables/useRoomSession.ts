@@ -16,6 +16,7 @@ import {
   submitVote,
   transferAdmin,
   unlockVotes,
+  updateReconnectUrl,
   type ConnectionStatus,
 } from "@/modules/socket";
 import { createRoomMembers } from "@/modules/roomMembers";
@@ -107,6 +108,31 @@ export function useRoomSession(id: string) {
     router.replace({ query: { ...route.query, deck: deckId } });
   }
 
+  // Everything that must track the room's authoritative deck: the store,
+  // the recent-rooms hint, the URL query, and the auto-reconnect URL —
+  // the last one so an admin reconnect after the room is destroyed
+  // recreates it on the current deck, not the connect-time one.
+  function applyDeck(deckId: DeckId) {
+    store.setDeck(deckId);
+    rememberRoomDeck(roomId.value, deckId);
+    syncDeckQuery(deckId);
+    const url = new URL(wsUrl.value);
+    url.searchParams.set("deck", deckId);
+    updateReconnectUrl(url);
+  }
+
+  // While votes are hidden the server masks vote values, so our own vote
+  // has to be re-applied locally — but only if the server still counts
+  // us as voted: it may have been reset (deck change, new round) while
+  // we were disconnected, and a stale local vote must not resurface.
+  function restoreOwnVote() {
+    if (participants.value.get(username.value) != null) {
+      if (pointEstimate.value != null) store.setUserPointEstimate();
+    } else {
+      store.pointEstimate = undefined;
+    }
+  }
+
   function handleWebSocketMessage(msg: ServerMessage) {
     switch (msg.type) {
       case "joinRoomSuccess":
@@ -114,15 +140,11 @@ export function useRoomSession(id: string) {
         store.setAdmin(msg.data.admin);
         votesLocked.value = msg.data.locked;
         votesVisible.value = msg.data.revealed;
-        store.setDeck(msg.data.deck);
-        rememberRoomDeck(roomId.value, msg.data.deck);
-        syncDeckQuery(msg.data.deck);
-        if (!msg.data.revealed) store.setUserPointEstimate();
+        applyDeck(msg.data.deck);
+        if (!msg.data.revealed) restoreOwnVote();
         break;
       case "deckChanged":
-        store.setDeck(msg.data.deck);
-        rememberRoomDeck(roomId.value, msg.data.deck);
-        syncDeckQuery(msg.data.deck);
+        applyDeck(msg.data.deck);
         store.clearVotes();
         addNotification(`Deck changed to ${decks[msg.data.deck].label} — votes were reset`);
         break;
@@ -144,7 +166,7 @@ export function useRoomSession(id: string) {
       case "voteStatus":
         participants.value = new Map(Object.entries(msg.data.votes));
         votesVisible.value = msg.data.revealed;
-        if (!msg.data.revealed) store.setUserPointEstimate();
+        if (!msg.data.revealed) restoreOwnVote();
         break;
       case "votesCleared":
         store.clearVotes();

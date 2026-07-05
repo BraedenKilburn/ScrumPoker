@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { deckScale, deckTone, type CardTone } from "@/modules/deckTone";
+import { deckScale, deckTone, toneColor, type CardTone } from "@/modules/deckTone";
 import type { RoomMember } from "@/modules/roomMembers";
 
 const props = defineProps<{ members: RoomMember[]; cards: readonly string[] }>();
@@ -8,7 +8,7 @@ const props = defineProps<{ members: RoomMember[]; cards: readonly string[] }>()
 const numericVotes = computed(() =>
   props.members
     .map((m) => m.point)
-    .filter((p): p is string => p != null && p !== "?")
+    .filter((p): p is string => p != null)
     .map((p) => Number(p))
     .filter((n) => Number.isFinite(n)),
 );
@@ -37,34 +37,38 @@ const median = computed(() => {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 });
 
-const n = computed(() => numericVotes.value.length);
-
-const toneVar: Record<CardTone, string> = {
-  green: "var(--p-emerald-400)",
-  amber: "var(--p-amber-400)",
-  red: "var(--p-red-400)",
-  violet: "var(--p-violet-400)",
-};
+// All votes count toward n; avg/med stay "—" for non-numeric decks.
+const n = computed(() => props.members.filter((m) => m.point != null).length);
 
 // Bars use the card's tone so the chart matches the hand. Cards that
 // share a tone (e.g. 5 and 8 are both amber) fade in within their
 // group — lighter = smaller, solid = the group's biggest — so adjacent
-// same-tone columns still read apart at a glance.
+// same-tone columns still read apart at a glance. Derived solely from
+// the deck, so it's computed once per deck change rather than per bar.
 const MIN_GROUP_ALPHA = 55;
 
-function labelColor(value: string): string {
-  return toneVar[deckTone(value, props.cards)];
-}
+const cardColors = computed(() => {
+  const groups = new Map<CardTone, string[]>();
+  for (const card of deckScale(props.cards)) {
+    const tone = deckTone(card, props.cards);
+    groups.set(tone, [...(groups.get(tone) ?? []), card]);
+  }
 
-function barColor(value: string): string {
-  const tone = deckTone(value, props.cards);
-  const group = deckScale(props.cards).filter((card) => deckTone(card, props.cards) === tone);
-  const index = group.indexOf(value);
-  if (index < 0 || group.length === 1) return toneVar[tone];
-
-  const alpha = MIN_GROUP_ALPHA + ((100 - MIN_GROUP_ALPHA) * index) / (group.length - 1);
-  return `color-mix(in srgb, ${toneVar[tone]} ${Math.round(alpha)}%, transparent)`;
-}
+  const colors = new Map<string, { bar: string; label: string }>();
+  for (const card of props.cards) {
+    const tone = deckTone(card, props.cards);
+    const solid = toneColor(tone);
+    const group = groups.get(tone) ?? [];
+    const index = group.indexOf(card);
+    const alpha =
+      index < 0 || group.length === 1
+        ? 100
+        : Math.round(MIN_GROUP_ALPHA + ((100 - MIN_GROUP_ALPHA) * index) / (group.length - 1));
+    const bar = alpha === 100 ? solid : `color-mix(in srgb, ${solid} ${alpha}%, transparent)`;
+    colors.set(card, { bar, label: solid });
+  }
+  return colors;
+});
 </script>
 
 <template>
@@ -86,11 +90,11 @@ function barColor(value: string): string {
             class="bar"
             :style="{
               height: `${(b.count / maxCount) * 100}%`,
-              background: barColor(b.value),
+              background: cardColors.get(b.value)?.bar,
             }"
           />
         </div>
-        <span class="label" :style="{ color: labelColor(b.value) }">{{ b.value }}</span>
+        <span class="label" :style="{ color: cardColors.get(b.value)?.label }">{{ b.value }}</span>
       </div>
     </div>
     <p v-else class="empty">No votes yet</p>

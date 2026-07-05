@@ -1,15 +1,20 @@
+import { isSpecialToken } from "@shared/types";
+
 export type CardTone = "green" | "amber" | "red" | "violet";
 
 /**
- * Tokens that always sit off-scale (unknowns / abstentions) → violet.
+ * CSS color for a tone — the global `--tone-*` custom properties in
+ * assets/base.scss, the single source shared with PointCard's bands.
  */
-const specialTokens = ["?", "∞", "☕", "½"];
+export function toneColor(tone: CardTone): string {
+  return `var(--tone-${tone})`;
+}
 
 /**
  * The deck's ranked scale — its cards minus the special off-scale tokens.
  */
 export function deckScale(cards: readonly string[]): string[] {
-  return cards.filter((card) => !specialTokens.includes(card));
+  return cards.filter((card) => !isSpecialToken(card));
 }
 
 /**
@@ -18,7 +23,7 @@ export function deckScale(cards: readonly string[]): string[] {
  * the deck render violet.
  */
 export function deckTone(value: string | undefined, cards: readonly string[]): CardTone {
-  if (value == null || specialTokens.includes(value)) return "violet";
+  if (value == null || isSpecialToken(value)) return "violet";
 
   const scale = deckScale(cards);
   const index = scale.indexOf(value);

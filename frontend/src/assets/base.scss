@@ -2,6 +2,14 @@
   --nav-height: 8vh;
   --footer-height: 8vh;
 
+  /* Card-tone palette (see modules/deckTone.ts) — the one place the
+     tones get a color; PointCard bands and the distribution chart both
+     resolve through these. */
+  --tone-green: var(--p-emerald-400);
+  --tone-amber: var(--p-amber-400);
+  --tone-red: var(--p-red-400);
+  --tone-violet: var(--p-violet-400);
+
   font-family: "Open Sans", sans-serif;
   font-optical-sizing: auto;
   font-weight: 400;

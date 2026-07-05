@@ -64,6 +64,13 @@ function goBack() {
 
 function confirm() {
   if (isCreate.value) {
+    // Seed ourselves so the room doesn't first paint empty while the
+    // socket handshake is in flight — same as HomeView's join path.
+    store.addParticipant({
+      username: store.username,
+      point_estimate: undefined,
+    });
+
     saveRecentRoom({
       id: roomId.value,
       username: store.username,

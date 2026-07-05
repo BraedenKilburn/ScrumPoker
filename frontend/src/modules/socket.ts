@@ -93,6 +93,15 @@ export function connectWebSocket(
   return createSocket(apiUrl, onMessage);
 }
 
+/**
+ * Refresh the URL replayed by auto-reconnect. Room state lives only in
+ * server memory, so a reconnect can recreate a destroyed room — the URL
+ * it replays must carry the room's current settings, not connect-time ones.
+ */
+export function updateReconnectUrl(apiUrl: URL) {
+  currentUrl = apiUrl;
+}
+
 export function disconnect() {
   intentionalClose = true;
   clearReconnectTimer();

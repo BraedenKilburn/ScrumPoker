@@ -36,8 +36,13 @@ const server = Bun.serve<WebSocketData, undefined>({
     // the request arrives as `/ws/rooms/:id`.
     const roomsMatch = url.pathname.match(/\/rooms\/([^/]+)$/);
     if (req.method === "GET" && roomsMatch) {
-      const id = decodeURIComponent(roomsMatch[1]).toLowerCase();
-      const exists = roomManager.roomExists(id);
+      // decodeURIComponent throws on malformed %-encoding — such an id
+      // can't name a room, so answer the probe instead of 500ing.
+      let id = "";
+      try {
+        id = decodeURIComponent(roomsMatch[1]).toLowerCase();
+      } catch {}
+      const exists = id !== "" && roomManager.roomExists(id);
       return Response.json(
         { exists, deck: exists ? roomManager.getRoomDeck(id) : null },
         { headers: { "Access-Control-Allow-Origin": "*" } },
