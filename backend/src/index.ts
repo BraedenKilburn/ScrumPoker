@@ -1,13 +1,15 @@
-import { isDeckId, type WebSocketData } from "@shared/types";
+import { isDeckId, isReactionEmoji, type WebSocketData } from "@shared/types";
 import { InMemoryRoomManager } from "./roomManager";
 import { MessageHandler } from "./messageHandler";
 import { ConnectionManager } from "./connectionManager";
 import { DisconnectManager } from "./disconnectManager";
 import { logger } from "./logger";
+import { ReactionRateLimiter } from "./reactionRateLimiter";
 
 const connectionManager = new ConnectionManager();
 const roomManager = new InMemoryRoomManager();
 const disconnectManager = new DisconnectManager();
+const reactionRateLimiter = new ReactionRateLimiter();
 
 const ErrorCodes = {
   Unknown: 4000,
@@ -120,6 +122,34 @@ const server = Bun.serve<WebSocketData, undefined>({
               MessageHandler.createUserVotedMessage(roomId, username, roomManager),
             );
             break;
+
+          case "sendReaction": {
+            const emoji = msg.data?.emoji;
+            if (!isReactionEmoji(emoji)) throw new Error("Invalid reaction");
+
+            const rateLimit = reactionRateLimiter.consume(ws);
+            if (!rateLimit.allowed) {
+              ws.send(
+                MessageHandler.createMessage({
+                  type: "reactionRateLimited",
+                  data: { retryAfterMs: rateLimit.retryAfterMs },
+                }),
+              );
+              break;
+            }
+
+            // Reactions are live-only: broadcast directly without adding
+            // anything to the room snapshot. `server.publish` includes the
+            // sender so every client follows the same receive path.
+            server.publish(
+              roomId,
+              MessageHandler.createMessage({
+                type: "reaction",
+                data: { username, emoji },
+              }),
+            );
+            break;
+          }
 
           case "revealVotes":
             roomManager.setVoteVisibility(roomId, username, true);
