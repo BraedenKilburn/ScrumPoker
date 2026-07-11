@@ -142,8 +142,6 @@ Most of these are additive to the `ClientMessage`/`ServerMessage` unions in
 ### Tier 3 — Consider, but watch the "no fluff" line
 
 - **Light-mode toggle** — The app currently forces dark mode (`modules/darkMode.ts`).
-- **Emoji reactions** — Lightweight remote-team feel; risks becoming the fluff we
-  market against. No chat.
 - **Opt-in sound/notification** on reveal or "your turn".
 
 ### Explicitly out of scope
