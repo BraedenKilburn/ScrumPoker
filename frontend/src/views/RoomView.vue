@@ -34,6 +34,7 @@ const {
   reactionFeed,
   reactionsRateLimited,
   roomId,
+  soundCuesEnabled,
   totalCount,
   usernameModel,
   votedCount,
@@ -49,6 +50,7 @@ const {
   sendReaction,
   startNewRound,
   teardownRoomSession,
+  toggleSoundCues,
   toggleVoteLock,
   toggleVoteVisibility,
   vote,
@@ -79,7 +81,7 @@ onBeforeRouteLeave(() => {
         <div class="brand-text">
           <span class="overline">ROOM</span>
           <span class="room-id">
-            {{ roomId.toUpperCase() }}
+            <span class="id-text">{{ roomId.toUpperCase() }}</span>
             <span class="deck-chip">{{ deckLabel }} deck</span>
           </span>
         </div>
@@ -93,6 +95,15 @@ onBeforeRouteLeave(() => {
         >
           <i class="pi pi-pencil" />
           <span class="hide-mobile">Change deck</span>
+        </button>
+        <button
+          class="ghost-btn sound"
+          :aria-label="soundCuesEnabled ? 'Turn sound cues off' : 'Turn sound cues on'"
+          :aria-pressed="soundCuesEnabled"
+          @click="toggleSoundCues"
+        >
+          <i :class="soundCuesEnabled ? 'pi pi-volume-up' : 'pi pi-volume-off'" />
+          <span class="hide-mobile">{{ soundCuesEnabled ? "Sound on" : "Sound off" }}</span>
         </button>
         <button
           class="ghost-btn invite"
@@ -292,8 +303,8 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  padding: 0.85rem clamp(1rem, 3vw, 1.75rem);
+  gap: clamp(0.5rem, 2vw, 1rem);
+  padding: 0.85rem clamp(0.75rem, 3vw, 1.75rem);
   background: color-mix(in srgb, var(--p-content-background) 88%, black);
   border-bottom: 1px solid var(--p-content-border-color);
 
@@ -338,12 +349,23 @@ main {
 
     .room-id {
       display: inline-flex;
+      // Drop the deck chip to its own line instead of colliding with
+      // the header actions when the viewport is narrow.
+      flex-wrap: wrap;
+      min-width: 0;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.15rem 0.5rem;
       font-family: ui-monospace, monospace;
       font-weight: 700;
       font-size: 1.05rem;
       letter-spacing: 0.04em;
+
+      .id-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
     }
 
     .deck-chip {
@@ -359,12 +381,16 @@ main {
       font-weight: 500;
       letter-spacing: 0.02em;
       white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 
   .header-actions {
     display: flex;
     gap: 0.5rem;
+    flex-shrink: 0;
   }
 }
 
@@ -372,7 +398,9 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.5rem 0.85rem;
+  // Icon-only below 768px (labels are .hide-mobile) — slim the padding
+  // so four buttons leave the brand text some room.
+  padding: 0.5rem 0.6rem;
   border-radius: 0.6rem;
   background: transparent;
   border: 1px solid var(--p-content-border-color);
@@ -402,6 +430,18 @@ main {
     animation: pencil-scribble 550ms ease-in-out;
   }
 
+  &.sound {
+    // Hover only wobbles the off-state icon (like .invite) so the
+    // pop below isn't overridden while the cursor is still on the button.
+    &:hover .pi-volume-off {
+      animation: sound-ring 650ms ease-in-out;
+    }
+
+    .pi-volume-up {
+      animation: check-pop 350ms ease-out;
+    }
+  }
+
   &.leave:hover .pi {
     animation: leave-scoot 0.5s ease-in-out;
   }
@@ -415,7 +455,9 @@ main {
     display: none;
   }
 
-  @media (min-width: 480px) {
+  @media (min-width: 768px) {
+    padding: 0.5rem 0.85rem;
+
     .hide-mobile {
       display: inline;
     }
@@ -713,6 +755,29 @@ main {
 
   100% {
     transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes sound-ring {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  20% {
+    transform: rotate(-14deg) scale(1.12);
+  }
+
+  45% {
+    transform: rotate(10deg) scale(1.06);
+  }
+
+  70% {
+    transform: rotate(-6deg) scale(1);
+  }
+
+  85% {
+    transform: rotate(3deg) scale(1);
   }
 }
 
