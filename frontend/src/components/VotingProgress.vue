@@ -16,7 +16,7 @@ const sortedMembers = computed(() =>
 
 <template>
   <aside class="voting-progress surface-panel">
-    <h3 class="title">Voting in progress</h3>
+    <h3 class="title panel-title">Voting in progress</h3>
     <TransitionGroup tag="ul" name="vp-list">
       <li v-for="m in sortedMembers" :key="m.name" :class="{ ready: m.point != null }">
         <span class="dot" :class="{ ready: m.point != null }" />
@@ -45,12 +45,7 @@ const sortedMembers = computed(() =>
   padding: 1.25rem;
 
   .title {
-    margin: 0 0 0.75rem;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--p-text-muted-color);
+    margin-bottom: 0.75rem;
   }
 
   ul {

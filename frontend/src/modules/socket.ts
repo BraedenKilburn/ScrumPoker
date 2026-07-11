@@ -1,4 +1,4 @@
-import type { ServerMessage, ClientMessage, DeckId } from "@shared/types";
+import type { ServerMessage, ClientMessage, DeckId, ReactionEmoji } from "@shared/types";
 
 export type ConnectionStatus = "connected" | "disconnected" | "reconnecting" | "failed";
 
@@ -152,4 +152,8 @@ export function removeParticipant(participant: string) {
 
 export function changeDeck(deck: DeckId) {
   send({ type: "changeDeck", data: { deck } });
+}
+
+export function sendReaction(emoji: ReactionEmoji) {
+  send({ type: "sendReaction", data: { emoji } });
 }
