@@ -122,13 +122,10 @@ Most of these are additive to the `ClientMessage`/`ServerMessage` unions in
 
 ### Tier 1 — Strengthens the core loop
 
-- **Story context + story queue** ⭐ _highest value_ — Let the admin set the item being
+- **Story context + story queue** — Let the admin set the item being
   voted on (title, optional description, paste-in URL) shown above the board, and
   advance through a small queue. Turns the app from a voting widget into a standalone
   tool. Lives in the in-memory room; no persistence, no integrations.
-- **Selectable decks** — `pointValues` is currently hardcoded. Support Fibonacci,
-  T-shirt (XS–XL), powers of 2, linear, or a custom deck chosen at room creation.
-  Store the deck on the `Room` and validate votes against it.
 - **Consensus + outlier signaling** — Reuse the avg/median/n already computed in
   `VoteDistribution`: celebrate when all numeric votes match; highlight the highest
   and lowest voters when they don't, to focus discussion.
@@ -139,8 +136,6 @@ Most of these are additive to the `ClientMessage`/`ServerMessage` unions in
 
 - **Spectator / observer mode** — Stakeholders who watch but don't vote, excluded
   from the `X/Y voted` count (a `role` field on the participant).
-- **Re-vote on the same story** — Clear votes while keeping the current story, distinct
-  from "New Round" which resets everything.
 - **End-of-session summary** — Client-side copy/CSV of each story and its agreed
   estimate (only meaningful alongside story context; keep it client-side, no storage).
 
