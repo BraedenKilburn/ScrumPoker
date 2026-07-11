@@ -9,6 +9,8 @@ import VotingProgress from "@/components/VotingProgress.vue";
 import VoteDistribution from "@/components/VoteDistribution.vue";
 import ParticipantManageSheet from "@/components/ParticipantManageSheet.vue";
 import HandStrip from "@/components/HandStrip.vue";
+import ReactionBar from "@/components/ReactionBar.vue";
+import ReactionFeed from "@/components/ReactionFeed.vue";
 import DeckChooserView from "@/views/DeckChooserView.vue";
 import { useRoomSession } from "@/composables/useRoomSession";
 import { deckTone } from "@/modules/deckTone";
@@ -17,6 +19,7 @@ import { changeDeck } from "@/modules/socket";
 const props = defineProps<{ id: string }>();
 const {
   adminSheetOpen,
+  canReact,
   connectionStatus,
   copiedRoomLink,
   deck,
@@ -27,6 +30,9 @@ const {
   members,
   pointEstimate,
   points,
+  reactionBursts,
+  reactionFeed,
+  reactionsRateLimited,
   roomId,
   totalCount,
   usernameModel,
@@ -40,6 +46,7 @@ const {
   join,
   leaveRoom,
   makeAdmin,
+  sendReaction,
   startNewRound,
   teardownRoomSession,
   toggleVoteLock,
@@ -184,11 +191,28 @@ onBeforeRouteLeave(() => {
             />
           </div>
           <p v-else class="empty">Waiting for participants…</p>
+
+          <div class="reaction-burst-layer" aria-hidden="true">
+            <span
+              v-for="reaction in reactionBursts"
+              :key="reaction.id"
+              class="reaction-burst"
+              :style="{ left: `${reaction.x}%` }"
+            >
+              {{ reaction.emoji }}
+            </span>
+          </div>
         </section>
 
         <aside class="rail">
           <VoteDistribution v-if="votesVisible" :members="members" :cards="points" />
           <VotingProgress v-else :members="members" />
+          <ReactionBar
+            :disabled="!canReact"
+            :rate-limited="reactionsRateLimited"
+            @react="sendReaction"
+          />
+          <ReactionFeed v-if="reactionFeed.length" :items="reactionFeed" />
         </aside>
       </div>
 
@@ -762,6 +786,8 @@ main {
     display: flex;
     justify-content: center;
     align-items: center;
+    position: relative;
+    z-index: 3;
   }
 
   .vote-pill {
@@ -790,6 +816,8 @@ main {
   }
 
   .grid {
+    position: relative;
+    z-index: 1;
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
@@ -818,6 +846,25 @@ main {
     }
   }
 
+  .reaction-burst-layer {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .reaction-burst {
+    position: absolute;
+    bottom: 16%;
+    filter: drop-shadow(0 0.35rem 0.65rem rgb(0 0 0 / 45%));
+    font-size: clamp(1.75rem, 3.5vw, 2.4rem);
+    line-height: 1;
+    will-change: transform, opacity;
+    animation: reaction-float 1.8s ease-out forwards;
+  }
+
   .empty {
     color: var(--p-text-muted-color);
     text-align: center;
@@ -829,7 +876,39 @@ main {
   display: none;
 
   @media (min-width: 1024px) {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    align-self: start;
+  }
+}
+
+@keyframes reaction-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 1.25rem) scale(0.65) rotate(-8deg);
+  }
+
+  16% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.08) rotate(3deg);
+  }
+
+  72% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -11rem) scale(1.25) rotate(9deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board .reaction-burst {
+    opacity: 1;
+    transform: translateX(-50%);
+    animation: none;
   }
 }
 

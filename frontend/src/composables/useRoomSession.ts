@@ -21,6 +21,7 @@ import {
 } from "@/modules/socket";
 import { createRoomMembers } from "@/modules/roomMembers";
 import { rememberRoomDeck } from "@/composables/useRecentRooms";
+import { useReactions } from "@/composables/useReactions";
 import { useRootStore } from "@/stores/root";
 
 export function useRoomSession(id: string) {
@@ -43,6 +44,7 @@ export function useRoomSession(id: string) {
   const usernameModel = ref(localStorage.getItem(usernameKey) ?? "");
   const copiedRoomLink = ref(false);
   const adminSheetOpen = ref(false);
+  const reactions = useReactions({ username, connectionStatus });
 
   const socketUrl = import.meta.env.VITE_SOCKET_URL;
   if (!socketUrl) {
@@ -136,6 +138,7 @@ export function useRoomSession(id: string) {
   function handleWebSocketMessage(msg: ServerMessage) {
     switch (msg.type) {
       case "joinRoomSuccess":
+        reactions.clearRateLimit();
         participants.value = new Map(Object.entries(msg.data.participants));
         store.setAdmin(msg.data.admin);
         votesLocked.value = msg.data.locked;
@@ -147,6 +150,12 @@ export function useRoomSession(id: string) {
         applyDeck(msg.data.deck);
         store.clearVotes();
         addNotification(`Deck changed to ${decks[msg.data.deck].label} — votes were reset`);
+        break;
+      case "reaction":
+        reactions.show(msg.data.emoji, msg.data.username);
+        break;
+      case "reactionRateLimited":
+        reactions.applyRateLimit(msg.data.retryAfterMs);
         break;
       case "userJoined":
         store.addParticipant({ username: msg.data.username });
@@ -271,12 +280,14 @@ export function useRoomSession(id: string) {
   }
 
   function teardownRoomSession() {
+    reactions.dispose();
     disconnect();
     store.$reset();
   }
 
   return {
     adminSheetOpen,
+    canReact: reactions.canReact,
     connectionStatus,
     copiedRoomLink,
     deck,
@@ -287,6 +298,9 @@ export function useRoomSession(id: string) {
     members,
     pointEstimate,
     points,
+    reactionBursts: reactions.reactionBursts,
+    reactionFeed: reactions.reactionFeed,
+    reactionsRateLimited: reactions.reactionsRateLimited,
     roomId,
     totalCount,
     usernameModel,
@@ -300,6 +314,7 @@ export function useRoomSession(id: string) {
     join,
     leaveRoom,
     makeAdmin,
+    sendReaction: reactions.sendReaction,
     startNewRound,
     teardownRoomSession,
     toggleVoteLock,

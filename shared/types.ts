@@ -77,6 +77,21 @@ export function isVoteForDeck(deckId: DeckId, value: string): boolean {
   return decks[deckId].cards.includes(value)
 }
 
+/**
+ * The deliberately small reaction set available in a room. Keeping this
+ * shared lets the frontend render the picker while the backend validates
+ * every incoming reaction against the same allowlist.
+ */
+export const reactionEmojis = ['👍', '🎉', '🤔', '👀', '⏳', '☕'] as const
+export type ReactionEmoji = (typeof reactionEmojis)[number]
+
+export function isReactionEmoji(value: unknown): value is ReactionEmoji {
+  return (
+    typeof value === 'string' &&
+    (reactionEmojis as readonly string[]).includes(value)
+  )
+}
+
 export type WebSocketData = {
   roomId: string
   username: string
@@ -126,6 +141,11 @@ export type ChangeDeckMessage = {
   data: { deck: string }
 }
 
+export type SendReactionMessage = {
+  type: 'sendReaction'
+  data: { emoji: ReactionEmoji }
+}
+
 export type ClientMessage =
   | SubmitVoteMessage
   | RevealVotesMessage
@@ -136,6 +156,7 @@ export type ClientMessage =
   | TransferAdminMessage
   | RemoveParticipantMessage
   | ChangeDeckMessage
+  | SendReactionMessage
 
 // ── Server → Client messages ──
 
@@ -229,6 +250,22 @@ export type DeckChangedMessage = {
   data: { deck: DeckId }
 }
 
+/**
+ * A reaction is broadcast live and is never included in room snapshots.
+ * The backend supplies `username` from the authenticated socket rather
+ * than accepting it from the client.
+ */
+export type ReactionMessage = {
+  type: 'reaction'
+  data: { username: string; emoji: ReactionEmoji }
+}
+
+/** Sent only to the participant whose reaction exceeded the live rate limit. */
+export type ReactionRateLimitedMessage = {
+  type: 'reactionRateLimited'
+  data: { retryAfterMs: number }
+}
+
 export type ServerMessage =
   | JoinRoomSuccessMessage
   | UserJoinedMessage
@@ -246,3 +283,5 @@ export type ServerMessage =
   | UserDisconnectedMessage
   | UserReconnectedMessage
   | DeckChangedMessage
+  | ReactionMessage
+  | ReactionRateLimitedMessage

@@ -11,6 +11,12 @@
 - Frontend: `bun run dev`, `bun run build`, `bun run type-check`, `bun run lint` (oxlint), `bun run fmt` (oxfmt)
 - Backend: `bun --watch src/index.ts` for local dev, `bun test` for coverage-enabled tests
 
+## Frontend Patterns
+
+- `frontend/src/composables/useRoomSession.ts` is the room orchestrator: it owns the WebSocket connection, the single message `switch`, and session-wide state. Do not add a second message handler.
+- Feature-specific UI state goes in its own composable under `frontend/src/composables/`, instantiated by the session (template: `useReactions.ts`). Feature composables receive session state as refs (e.g. `username`, `connectionStatus`), may import senders from `@/modules/socket` directly, and expose plain methods for the session's message switch to call — never forward raw server messages into them; the switch stays the one place that maps messages to behavior.
+- A feature composable that owns timers or other cleanup exposes a `dispose()` for `teardownRoomSession` to call. The session re-exports the feature's view-facing surface from its own return object so views keep a single `useRoomSession(...)` entry point.
+
 ## Repo Gotchas
 
 - Frontend env files come from `frontend/.env.sample`; create `frontend/.env.development` and `frontend/.env.production` from it.

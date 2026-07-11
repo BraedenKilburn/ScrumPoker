@@ -74,7 +74,7 @@ const cardColors = computed(() => {
 <template>
   <aside class="distribution surface-panel">
     <header>
-      <h3 class="title">Distribution</h3>
+      <h3 class="panel-title">Distribution</h3>
       <div class="stats">
         <span><em>avg</em> {{ avg ?? "—" }}</span>
         <span><em>med</em> {{ median ?? "—" }}</span>
@@ -114,15 +114,6 @@ const cardColors = computed(() => {
     align-items: baseline;
     gap: 0.5rem;
     flex-wrap: wrap;
-  }
-
-  .title {
-    margin: 0;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--p-text-muted-color);
   }
 
   .stats {
