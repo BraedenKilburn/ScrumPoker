@@ -22,6 +22,7 @@ import {
 import { createRoomMembers } from "@/modules/roomMembers";
 import { rememberRoomDeck } from "@/composables/useRecentRooms";
 import { useReactions } from "@/composables/useReactions";
+import { useSoundCues } from "@/composables/useSoundCues";
 import { useRootStore } from "@/stores/root";
 
 export function useRoomSession(id: string) {
@@ -39,6 +40,10 @@ export function useRoomSession(id: string) {
     pointEstimate,
     deck,
   } = storeToRefs(store);
+
+  // Cues fire only on incoming server messages, so self-initiated new
+  // rounds stay silent (the server doesn't echo votesCleared to the actor).
+  const { soundCuesEnabled, toggleSoundCues, playRevealCue, playNewRoundCue } = useSoundCues();
 
   const connectionStatus = ref<ConnectionStatus>("disconnected");
   const usernameModel = ref(localStorage.getItem(usernameKey) ?? "");
@@ -149,6 +154,7 @@ export function useRoomSession(id: string) {
       case "deckChanged":
         applyDeck(msg.data.deck);
         store.clearVotes();
+        playNewRoundCue();
         addNotification(`Deck changed to ${decks[msg.data.deck].label} — votes were reset`);
         break;
       case "reaction":
@@ -173,6 +179,7 @@ export function useRoomSession(id: string) {
         store.setParticipantPointEstimate(msg.data.username, msg.data.vote);
         break;
       case "voteStatus":
+        if (msg.data.revealed && !votesVisible.value) playRevealCue();
         participants.value = new Map(Object.entries(msg.data.votes));
         votesVisible.value = msg.data.revealed;
         if (!msg.data.revealed) restoreOwnVote();
@@ -180,6 +187,7 @@ export function useRoomSession(id: string) {
       case "votesCleared":
         store.clearVotes();
         votesVisible.value = false;
+        playNewRoundCue();
         break;
       case "voteLockStatus":
         votesLocked.value = msg.data.locked;
@@ -302,6 +310,7 @@ export function useRoomSession(id: string) {
     reactionFeed: reactions.reactionFeed,
     reactionsRateLimited: reactions.reactionsRateLimited,
     roomId,
+    soundCuesEnabled,
     totalCount,
     usernameModel,
     votedCount,
@@ -317,6 +326,7 @@ export function useRoomSession(id: string) {
     sendReaction: reactions.sendReaction,
     startNewRound,
     teardownRoomSession,
+    toggleSoundCues,
     toggleVoteLock,
     toggleVoteVisibility,
     vote,
