@@ -16,6 +16,7 @@ HEALTH_URL="http://127.0.0.1:3000/rooms/__deploy_healthcheck__"
 SUCCESS=0
 BACKEND_SWAPPED=0
 FRONTEND_SWAPPED=0
+SUDO_KEEPALIVE_PID=""
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
 
@@ -44,6 +45,8 @@ rollback() {
 # tidy up rollback artifacts on success. Runs exactly once, on shell exit.
 cleanup() {
   trap - EXIT
+  # Stop the sudo keep-alive so it doesn't outlive the script.
+  [ -n "$SUDO_KEEPALIVE_PID" ] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
   if [ "$SUCCESS" -eq 1 ]; then
     sudo rm -rf "$OLD_DIR"
     docker image rm "${BACKEND_IMAGE}:rollback" >/dev/null 2>&1 || true
@@ -56,6 +59,13 @@ trap cleanup EXIT
 
 cd "$PROJECT_DIR"
 log "Starting deployment of commit $(git rev-parse --short HEAD) on $(git rev-parse --abbrev-ref HEAD)"
+
+# Authenticate sudo once, up front, then refresh the credential in the
+# background so no password prompt interrupts the (slow) build later.
+# The keep-alive exits on its own if the script dies; cleanup() also kills it.
+sudo -v
+( while true; do sudo -n true; sleep 50; kill -0 "$$" 2>/dev/null || exit; done ) &
+SUDO_KEEPALIVE_PID=$!
 
 # 1. Build the frontend FIRST. A build failure aborts here, before the backend
 #    is touched or anything is swapped — no half-deployed state.
