@@ -77,6 +77,11 @@ cd "$PROJECT_DIR/frontend"
 bun install --frozen-lockfile
 bun run --bun build
 
+# Pre-compress the built assets at max level so nginx serves them via
+# brotli_static / gzip_static — best ratio, no per-request CPU.
+log "Pre-compressing static assets (brotli -11 / gzip -9)..."
+bun "$PROJECT_DIR/scripts/precompress.mjs" "$PROJECT_DIR/frontend/dist"
+
 log "Staging frontend..."
 sudo rm -rf "$STAGING_DIR"
 sudo cp -r "$PROJECT_DIR/frontend/dist" "$STAGING_DIR"
