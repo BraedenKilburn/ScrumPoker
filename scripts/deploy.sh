@@ -51,6 +51,9 @@ cleanup() {
     sudo rm -rf "$OLD_DIR"
     docker image rm "${BACKEND_IMAGE}:rollback" >/dev/null 2>&1 || true
     docker image prune -f >/dev/null 2>&1 || true
+    # Cap the build cache so it can't grow unbounded across deploys, while
+    # keeping enough to still speed up the next build's install/layer reuse.
+    docker builder prune -f --max-used-space 500MB >/dev/null 2>&1 || true
   else
     rollback
   fi
