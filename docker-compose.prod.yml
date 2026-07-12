@@ -1,16 +1,4 @@
 services:
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-      target: build
-    env_file:
-      - ./frontend/.env.production
-    depends_on:
-      - backend
-    volumes:
-      - frontend_build:/app
-
   backend:
     build:
       context: .
@@ -28,6 +16,3 @@ services:
         compress: "true"
         tag: "scrum-poker-backend"
     restart: unless-stopped
-
-volumes:
-  frontend_build:
