@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { decks, defaultDeckId, type DeckId } from "@shared/types";
 import DeckOptionCard from "@/components/DeckOptionCard.vue";
 import { useRecentRooms } from "@/composables/useRecentRooms";
@@ -25,10 +25,14 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 const store = useRootStore();
 const { save: saveRecentRoom } = useRecentRooms();
 
 const isCreate = computed(() => props.mode === "create");
+// Role picked on the home form rides along as `?role=spectator` so the
+// create flow (home → chooser → room) doesn't lose it.
+const asSpectator = computed(() => isCreate.value && route.query.role === "spectator");
 const roomId = computed(() => props.id.toLowerCase());
 const selected = ref<DeckId>(props.currentDeck ?? defaultDeckId);
 const deckList = Object.values(decks);
@@ -53,7 +57,11 @@ onMounted(async () => {
   // check (null) stays here — don't discard the pick over a network blip.
   const result = await checkRoom(roomId.value);
   if (result?.exists) {
-    router.replace({ name: "Room", params: { id: roomId.value } });
+    router.replace({
+      name: "Room",
+      params: { id: roomId.value },
+      query: asSpectator.value ? { role: "spectator" } : undefined,
+    });
   }
 });
 
@@ -66,18 +74,24 @@ function confirm() {
   if (isCreate.value) {
     // Seed ourselves so the room doesn't first paint empty while the
     // socket handshake is in flight — same as HomeView's join path.
-    store.addParticipant({
-      username: store.username,
-      point_estimate: undefined,
-    });
+    if (asSpectator.value) store.addSpectator(store.username);
+    else store.addParticipant({ username: store.username, point_estimate: undefined });
 
     saveRecentRoom({
       id: roomId.value,
       username: store.username,
       joinedAt: Date.now(),
       deck: selected.value,
+      ...(asSpectator.value ? { role: "spectator" as const } : {}),
     });
-    router.push({ name: "Room", params: { id: roomId.value }, query: { deck: selected.value } });
+    router.push({
+      name: "Room",
+      params: { id: roomId.value },
+      query: {
+        deck: selected.value,
+        ...(asSpectator.value ? { role: "spectator" } : {}),
+      },
+    });
     return;
   }
   emit("confirm", selected.value);

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import Drawer from "primevue/drawer";
-import type { RoomMember } from "@/modules/roomMembers";
+import type { RoomMember, SpectatorMember } from "@/modules/roomMembers";
 import { getAvatarColor, getInitials, paletteVar } from "@/modules/avatarColor";
 
 const props = defineProps<{
   visible: boolean;
   members: RoomMember[];
+  spectators?: SpectatorMember[];
 }>();
 
 const emit = defineEmits<{
@@ -15,7 +16,16 @@ const emit = defineEmits<{
   removeParticipant: [name: string];
 }>();
 
-const manageableMembers = computed(() => props.members.filter((member) => !member.isCurrentUser));
+// One flat manageable list — spectators are marked with an eye but get the
+// same actions; role never gates room management.
+const manageableMembers = computed(() => [
+  ...props.members
+    .filter((member) => !member.isCurrentUser)
+    .map((member) => ({ ...member, isSpectator: false })),
+  ...(props.spectators ?? [])
+    .filter((spectator) => !spectator.isCurrentUser)
+    .map((spectator) => ({ ...spectator, isSpectator: true })),
+]);
 </script>
 
 <template>
@@ -38,7 +48,10 @@ const manageableMembers = computed(() => props.members.filter((member) => !membe
             <span class="avatar" :style="{ background: paletteVar[getAvatarColor(m.name)] }">
               {{ getInitials(m.name) }}
             </span>
-            <span class="name">{{ m.name }}</span>
+            <span class="name">
+              {{ m.name }}
+              <i v-if="m.isSpectator" class="pi pi-eye role-eye" title="Spectating" />
+            </span>
             <button
               class="icon-btn"
               :disabled="m.isAdmin"
@@ -126,6 +139,12 @@ const manageableMembers = computed(() => props.members.filter((member) => !membe
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+
+    .role-eye {
+      margin-left: 0.35rem;
+      font-size: 0.7rem;
+      color: var(--p-text-muted-color);
+    }
   }
 
   .icon-btn {

@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import { defaultDeckId, type DeckId } from "@shared/types";
 import { usernameKey } from "@/modules/constants";
@@ -42,9 +42,21 @@ export const useRootStore = defineStore("root", () => {
   }
 
   /**
-   * All participants in the room.
+   * All voting participants in the room. Spectators live in `spectators`
+   * instead — they have no vote slot, so keeping them out of this map
+   * makes every vote-derived computed voters-only by construction.
    */
   const participants = ref<Map<string, string | undefined>>(new Map());
+
+  /**
+   * Usernames watching the room without voting.
+   */
+  const spectators = ref<Set<string>>(new Set());
+
+  /**
+   * Whether the current user is spectating.
+   */
+  const isSpectator = computed(() => spectators.value.has(username.value));
 
   /**
    * Adds a participant to the room.
@@ -55,11 +67,28 @@ export const useRootStore = defineStore("root", () => {
   }
 
   /**
-   * Removes a participant from the room and returns the removed participant.
+   * Adds a spectator to the room.
+   * @param username The spectator's username.
+   */
+  function addSpectator(username: string) {
+    spectators.value.add(username);
+  }
+
+  /**
+   * Replace the spectator list (room snapshot).
+   * @param usernames The spectators' usernames.
+   */
+  function setSpectators(usernames: string[]) {
+    spectators.value = new Set(usernames);
+  }
+
+  /**
+   * Removes a participant (voter or spectator) from the room.
    * @param username The username of the participant to remove.
    */
   function removeParticipant(username: string) {
     participants.value.delete(username);
+    spectators.value.delete(username);
   }
 
   /**
@@ -128,6 +157,7 @@ export const useRootStore = defineStore("root", () => {
    */
   function $reset() {
     participants.value = new Map();
+    spectators.value = new Set();
     username.value = "";
     isAdmin.value = false;
     adminUsername.value = "";
@@ -148,6 +178,11 @@ export const useRootStore = defineStore("root", () => {
     participants,
     addParticipant,
     removeParticipant,
+
+    spectators,
+    isSpectator,
+    addSpectator,
+    setSpectators,
 
     pointEstimate,
     setUserPointEstimate,

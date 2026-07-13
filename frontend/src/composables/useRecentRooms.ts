@@ -1,5 +1,5 @@
 import { computed, ref, watch } from "vue";
-import { isDeckId, type DeckId } from "@shared/types";
+import { isDeckId, isParticipantRole, type DeckId, type ParticipantRole } from "@shared/types";
 
 export type RecentRoom = {
   id: string;
@@ -11,6 +11,8 @@ export type RecentRoom = {
    * of truth for live rooms.
    */
   deck?: DeckId;
+  /** The role last used in this room, so one-click rejoin keeps it. */
+  role?: ParticipantRole;
 };
 
 const RECENT_ROOMS_STORAGE_KEY = "scrum-poker-recent-rooms";
@@ -21,10 +23,11 @@ function getStoredRooms() {
     const rooms = JSON.parse(
       localStorage.getItem(RECENT_ROOMS_STORAGE_KEY) ?? "[]",
     ) as RecentRoom[];
-    // Old entries have no deck; tolerate corrupt values by treating them as absent.
-    return rooms.map(({ deck, ...room }) => ({
+    // Old entries have no deck/role; tolerate corrupt values by treating them as absent.
+    return rooms.map(({ deck, role, ...room }) => ({
       ...room,
       ...(typeof deck === "string" && isDeckId(deck) ? { deck } : {}),
+      ...(typeof role === "string" && isParticipantRole(role) ? { role } : {}),
     }));
   } catch {
     return [];

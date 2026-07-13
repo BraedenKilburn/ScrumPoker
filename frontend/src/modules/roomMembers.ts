@@ -7,6 +7,26 @@ export type RoomMember = {
   isCurrentUser: boolean;
 };
 
+export type SpectatorMember = {
+  name: string;
+  isAdmin: boolean;
+  isCurrentUser: boolean;
+};
+
+export function createSpectatorMembers(
+  spectators: Set<string>,
+  adminUsername: string,
+  currentUsername: string,
+): SpectatorMember[] {
+  return Array.from(spectators)
+    .map((name) => ({
+      name,
+      isAdmin: name === adminUsername,
+      isCurrentUser: name === currentUsername,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function createRoomMembers(
   participants: Map<string, string | undefined>,
   adminUsername: string,

@@ -19,7 +19,7 @@ import {
   updateReconnectUrl,
   type ConnectionStatus,
 } from "@/modules/socket";
-import { createRoomMembers } from "@/modules/roomMembers";
+import { createRoomMembers, createSpectatorMembers } from "@/modules/roomMembers";
 import { rememberRoomDeck } from "@/composables/useRecentRooms";
 import { useReactions } from "@/composables/useReactions";
 import { useSoundCues } from "@/composables/useSoundCues";
@@ -34,6 +34,8 @@ export function useRoomSession(id: string) {
     username,
     votesVisible,
     participants,
+    spectators,
+    isSpectator,
     isAdmin,
     adminUsername,
     votesLocked,
@@ -65,11 +67,16 @@ export function useRoomSession(id: string) {
     const queryDeck = route.query.deck;
     return typeof queryDeck === "string" && isDeckId(queryDeck) ? queryDeck : undefined;
   });
+  // Role chosen before entering the room (`?role=spectator`); the welcome
+  // dialog can flip it for direct-link joiners before connecting. After
+  // joinRoomSuccess the server's spectator list is authoritative.
+  const joinAsSpectator = ref(route.query.role === "spectator");
   const wsUrl = computed(() => {
     const url = new URL(socketUrl);
     url.searchParams.append("roomId", roomId.value);
     url.searchParams.append("username", username.value);
     if (pendingDeck.value) url.searchParams.append("deck", pendingDeck.value);
+    if (joinAsSpectator.value) url.searchParams.append("role", "spectator");
     return url;
   });
   const isMissingUsername = computed(() => !username.value);
@@ -84,6 +91,11 @@ export function useRoomSession(id: string) {
       points.value,
     ),
   );
+  const spectatorMembers = computed(() =>
+    createSpectatorMembers(spectators.value, adminUsername.value, username.value),
+  );
+  // Voted counts derive from `members` (voters only) — spectators are
+  // structurally excluded from the X/Y tally.
   const votedCount = computed(() => members.value.filter((m) => m.point != null).length);
   const totalCount = computed(() => members.value.length);
   const hasVotes = computed(() => votedCount.value > 0);
@@ -145,6 +157,7 @@ export function useRoomSession(id: string) {
       case "joinRoomSuccess":
         reactions.clearRateLimit();
         participants.value = new Map(Object.entries(msg.data.participants));
+        store.setSpectators(msg.data.spectators);
         store.setAdmin(msg.data.admin);
         votesLocked.value = msg.data.locked;
         votesVisible.value = msg.data.revealed;
@@ -164,8 +177,13 @@ export function useRoomSession(id: string) {
         reactions.applyRateLimit(msg.data.retryAfterMs);
         break;
       case "userJoined":
-        store.addParticipant({ username: msg.data.username });
-        addNotification(`${msg.data.username} joined the room`);
+        if (msg.data.role === "spectator") {
+          store.addSpectator(msg.data.username);
+          addNotification(`${msg.data.username} is watching the room`);
+        } else {
+          store.addParticipant({ username: msg.data.username });
+          addNotification(`${msg.data.username} joined the room`);
+        }
         break;
       case "userLeft":
         store.removeParticipant(msg.data.username);
@@ -231,6 +249,10 @@ export function useRoomSession(id: string) {
   function join() {
     if (!roomId.value || !usernameModel.value) return;
     store.setUsername(usernameModel.value);
+    // Keep `?role=` truthful so a refresh rejoins with the same role.
+    if (joinAsSpectator.value && route.query.role !== "spectator") {
+      router.replace({ query: { ...route.query, role: "spectator" } });
+    }
     connectWebSocket(wsUrl.value, handleWebSocketMessage);
   }
 
@@ -245,7 +267,7 @@ export function useRoomSession(id: string) {
   }
 
   function vote(point?: string) {
-    if (votesLocked.value) return;
+    if (votesLocked.value || isSpectator.value) return;
     const next = point === pointEstimate.value ? undefined : point;
     store.pointEstimate = next;
     store.setUserPointEstimate(next);
@@ -303,6 +325,8 @@ export function useRoomSession(id: string) {
     hasVotes,
     isAdmin,
     isMissingUsername,
+    isSpectator,
+    joinAsSpectator,
     members,
     pointEstimate,
     points,
@@ -311,6 +335,7 @@ export function useRoomSession(id: string) {
     reactionsRateLimited: reactions.reactionsRateLimited,
     roomId,
     soundCuesEnabled,
+    spectatorMembers,
     totalCount,
     usernameModel,
     votedCount,

@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import PMessage from "primevue/message";
 import { onBeforeRouteLeave } from "vue-router";
-import type { DeckId } from "@shared/types";
+import type { DeckId, ParticipantRole } from "@shared/types";
 import spadeUrl from "@/assets/spade.svg";
 import ParticipantCard from "@/components/ParticipantCard.vue";
+import RoleToggle from "@/components/RoleToggle.vue";
 import VotingProgress from "@/components/VotingProgress.vue";
 import VoteDistribution from "@/components/VoteDistribution.vue";
 import ParticipantManageSheet from "@/components/ParticipantManageSheet.vue";
+import SpectatorChip from "@/components/SpectatorChip.vue";
 import HandStrip from "@/components/HandStrip.vue";
 import ReactionBar from "@/components/ReactionBar.vue";
 import ReactionFeed from "@/components/ReactionFeed.vue";
@@ -27,6 +29,8 @@ const {
   hasVotes,
   isAdmin,
   isMissingUsername,
+  isSpectator,
+  joinAsSpectator,
   members,
   pointEstimate,
   points,
@@ -35,6 +39,7 @@ const {
   reactionsRateLimited,
   roomId,
   soundCuesEnabled,
+  spectatorMembers,
   totalCount,
   usernameModel,
   votedCount,
@@ -60,6 +65,13 @@ const {
 // socket stays alive — leaving the Room route disconnects and an admin
 // disconnect destroys the room.
 const deckChooserOpen = ref(false);
+
+// The join dialog's RoleToggle speaks roles; the session tracks the
+// boolean it feeds into the connect URL.
+const joinRole = computed<ParticipantRole>({
+  get: () => (joinAsSpectator.value ? "spectator" : "voter"),
+  set: (role) => (joinAsSpectator.value = role === "spectator"),
+});
 
 function handleDeckConfirm(newDeck: DeckId) {
   if (newDeck !== deck.value) changeDeck(newDeck);
@@ -180,9 +192,17 @@ onBeforeRouteLeave(() => {
       <div class="layout">
         <section class="board surface-panel">
           <div class="board-header">
+            <span v-if="isSpectator" class="spectating-chip">
+              <i class="pi pi-eye" aria-hidden="true" />
+              SPECTATING
+            </span>
             <span class="vote-pill" :class="{ revealed: votesVisible }">
               <span class="dot" />
               {{ votesVisible ? "Votes revealed" : `${votedCount}/${totalCount} voted` }}
+            </span>
+            <span v-if="spectatorMembers.length" class="watching-pill">
+              <i class="pi pi-eye" aria-hidden="true" />
+              {{ spectatorMembers.length }} watching
             </span>
           </div>
           <div v-if="members.length" class="grid">
@@ -203,6 +223,15 @@ onBeforeRouteLeave(() => {
           </div>
           <p v-else class="empty">Waiting for participants…</p>
 
+          <div v-if="spectatorMembers.length" class="spectator-row">
+            <SpectatorChip
+              v-for="s in spectatorMembers"
+              :key="s.name"
+              :name="s.name"
+              :is-current-user="s.isCurrentUser"
+            />
+          </div>
+
           <div class="reaction-burst-layer" aria-hidden="true">
             <span
               v-for="reaction in reactionBursts"
@@ -217,7 +246,12 @@ onBeforeRouteLeave(() => {
 
         <aside class="rail">
           <VoteDistribution v-if="votesVisible" :members="members" :cards="points" />
-          <VotingProgress v-else :members="members" />
+          <div v-else-if="isSpectator" class="spectator-notice surface-panel">
+            <i class="pi pi-eye" aria-hidden="true" />
+            <p>You're spectating this round — no card to play, just watching the team vote.</p>
+            <span class="progress">{{ votedCount }}/{{ totalCount }} voted</span>
+          </div>
+          <VotingProgress v-else :members="members" :spectators="spectatorMembers" />
           <ReactionBar
             :disabled="!canReact"
             :rate-limited="reactionsRateLimited"
@@ -227,12 +261,18 @@ onBeforeRouteLeave(() => {
         </aside>
       </div>
 
-      <PMessage v-if="votesLocked && !isAdmin" severity="info" size="small" class="lock-banner">
+      <PMessage
+        v-if="votesLocked && !isAdmin && !isSpectator"
+        severity="info"
+        size="small"
+        class="lock-banner"
+      >
         <template #icon><i class="pi pi-lock" /></template>
         The votes are locked.
       </PMessage>
 
-      <div class="hand-wrap">
+      <!-- Spectators have no hand of cards at all — nothing to play. -->
+      <div v-if="!isSpectator" class="hand-wrap">
         <HandStrip
           :points="points"
           :current="pointEstimate"
@@ -257,19 +297,62 @@ onBeforeRouteLeave(() => {
       v-if="isAdmin"
       v-model:visible="adminSheetOpen"
       :members="members"
+      :spectators="spectatorMembers"
       @transfer-admin="makeAdmin"
       @remove-participant="handleRemoveParticipant"
     />
 
-    <VDialog :closable="false" :visible="isMissingUsername" modal header="Welcome">
-      <p>Please enter a username to join the room.</p>
-      <form @submit.prevent="join">
-        <InputText id="username" v-model="usernameModel" autocomplete="off" autofocus />
-        <VButton label="Submit" :disabled="!usernameModel" type="submit" />
+    <VDialog :closable="false" :visible="isMissingUsername" modal class="join-dialog">
+      <template #header>
+        <div class="join-header">
+          <div class="logo-tile" aria-hidden="true">
+            <img :src="spadeUrl" alt="" />
+          </div>
+          <span class="join-title">Welcome to {{ roomId.toUpperCase() }}</span>
+        </div>
+      </template>
+      <p class="join-copy">Enter a name, then choose how you'd like to join.</p>
+      <form class="join-form" @submit.prevent="join">
+        <div class="join-field">
+          <label class="join-label" for="username">Your name</label>
+          <InputText
+            id="username"
+            v-model="usernameModel"
+            autocomplete="off"
+            autofocus
+            placeholder="e.g. Braeden"
+          />
+        </div>
+        <div class="join-field">
+          <span class="join-label">Join as</span>
+          <RoleToggle v-model="joinRole" />
+          <p class="role-hint">
+            {{
+              joinRole === "spectator"
+                ? "You'll watch the room without a hand of cards — no vote, no pressure."
+                : "You'll get a hand of cards and count toward the room's vote."
+            }}
+          </p>
+        </div>
+        <VButton
+          class="join-cta"
+          :class="{ spectating: joinRole === 'spectator' }"
+          :label="joinRole === 'spectator' ? 'Join as spectator' : 'Join & vote'"
+          :disabled="!usernameModel"
+          type="submit"
+        />
       </form>
     </VDialog>
   </main>
 </template>
+
+<style lang="scss">
+/* Unscoped: the dialog teleports to <body>, outside this component's
+   scope attribute — same pattern as ParticipantManageSheet's drawer. */
+.p-dialog.join-dialog {
+  width: min(24rem, calc(100vw - 2rem));
+}
+</style>
 
 <style scoped lang="scss">
 main {
@@ -851,15 +934,54 @@ main {
     display: flex;
     justify-content: center;
     align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
     position: relative;
     z-index: 3;
   }
 
+  .spectating-chip,
+  .watching-pill,
   .vote-pill {
     display: inline-flex;
     align-items: center;
+    box-sizing: border-box;
+    min-height: 2rem;
+    padding-block: 0;
+  }
+
+  .spectating-chip {
+    gap: 0.4rem;
+    padding-inline: 0.7rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--p-violet-400) 18%, transparent);
+    color: var(--p-violet-400);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+
+    .pi {
+      font-size: 0.75rem;
+    }
+  }
+
+  .watching-pill {
+    gap: 0.4rem;
+    padding-inline: 0.7rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--p-content-background) 70%, black);
+    border: 1px solid var(--p-content-border-color);
+    font-size: 0.72rem;
+    color: var(--p-text-muted-color);
+
+    .pi {
+      font-size: 0.72rem;
+    }
+  }
+
+  .vote-pill {
     gap: 0.5rem;
-    padding: 0.4rem 0.85rem;
+    padding-inline: 0.85rem;
     border-radius: 999px;
     background: color-mix(in srgb, var(--p-content-background) 70%, black);
     border: 1px solid var(--p-content-border-color);
@@ -935,6 +1057,44 @@ main {
     text-align: center;
     padding: 2rem 0;
   }
+
+  // A clearly different tier than the voter cards: compact chips, no
+  // vote slot, no suspense.
+  .spectator-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+}
+
+.spectator-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 1.25rem;
+  text-align: center;
+
+  .pi-eye {
+    font-size: 1.1rem;
+    color: var(--p-text-muted-color);
+  }
+
+  p {
+    margin: 0;
+    color: var(--p-text-muted-color);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  .progress {
+    font-family: ui-monospace, monospace;
+    font-size: 0.8rem;
+    color: var(--p-text-color);
+  }
 }
 
 .rail {
@@ -993,16 +1153,100 @@ main {
   background: var(--p-content-background);
 }
 
-/* ===== Welcome dialog ===== */
-:deep(.p-dialog-content) {
-  p {
-    margin-top: 0;
+/* ===== Join dialog ===== */
+.join-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+
+  .logo-tile {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    background: linear-gradient(135deg, var(--p-primary-color), var(--p-amber-400));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    img {
+      width: 1rem;
+      height: 1rem;
+    }
   }
 
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+  .join-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+// The dialog teleports to <body>, so :deep() from this component can't
+// reach PrimeVue-rendered wrappers — but elements authored here keep
+// their scope attribute, so plain scoped selectors still apply to them.
+.join-copy {
+  margin: 0 0 1.15rem;
+  color: var(--p-text-muted-color);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.join-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.join-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+
+  :deep(.p-inputtext) {
+    width: 100%;
+  }
+}
+
+.join-label {
+  color: var(--p-text-muted-color);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.role-hint {
+  margin: 0;
+  color: var(--p-text-muted-color);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.join-cta {
+  width: 100%;
+  min-height: 3rem;
+  border: 0;
+  border-radius: 0.7rem;
+  background: linear-gradient(110deg, var(--p-primary-color), var(--p-green-400));
+  color: var(--p-primary-contrast-color);
+  font-weight: 700;
+  transition: background 0.2s ease;
+
+  &.spectating {
+    background: linear-gradient(
+      110deg,
+      var(--p-violet-400),
+      color-mix(in srgb, var(--p-violet-400) 70%, var(--p-amber-400))
+    );
+    color: var(--p-surface-950);
+  }
+
+  &:disabled {
+    opacity: 0.5;
   }
 }
 </style>

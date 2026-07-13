@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { getAvatarColor, getInitials, paletteVar } from "@/modules/avatarColor";
-import type { RoomMember } from "@/modules/roomMembers";
+import type { RoomMember, SpectatorMember } from "@/modules/roomMembers";
 
-const props = defineProps<{ members: RoomMember[] }>();
+const props = defineProps<{ members: RoomMember[]; spectators?: SpectatorMember[] }>();
 
 const sortedMembers = computed(() =>
   [...props.members].sort((a, b) => {
@@ -37,6 +37,22 @@ const sortedMembers = computed(() =>
         </span>
       </li>
     </TransitionGroup>
+
+    <template v-if="spectators?.length">
+      <div class="spectator-divider" role="presentation">
+        <span class="line" />
+        <span class="label"><i class="pi pi-eye" /> Spectating · {{ spectators.length }}</span>
+        <span class="line" />
+      </div>
+      <ul class="spectator-list">
+        <li v-for="s in spectators" :key="s.name">
+          <span class="avatar" :style="{ background: paletteVar[getAvatarColor(s.name)] }">
+            {{ getInitials(s.name) }}
+          </span>
+          <span class="spectator-name">{{ s.isCurrentUser ? "You" : s.name }}</span>
+        </li>
+      </ul>
+    </template>
   </aside>
 </template>
 
@@ -137,6 +153,46 @@ const sortedMembers = computed(() =>
 
   .name {
     color: var(--p-text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // Spectators sit below a divider with no status dot or ready state —
+  // they're present, not pending.
+  .spectator-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1rem 0 0.65rem;
+
+    .line {
+      flex: 1;
+      height: 1px;
+      background: var(--p-content-border-color);
+    }
+
+    .label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.65rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--p-text-muted-color);
+
+      .pi {
+        font-size: 0.7rem;
+      }
+    }
+  }
+
+  .spectator-list li {
+    grid-template-columns: auto 1fr;
+  }
+
+  .spectator-name {
+    color: var(--p-text-muted-color);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

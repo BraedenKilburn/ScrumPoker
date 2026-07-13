@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { decks, type DeckId } from "@shared/types";
+import { decks, type DeckId, type ParticipantRole } from "@shared/types";
 import PointCard from "@/components/PointCard.vue";
+import RoleToggle from "@/components/RoleToggle.vue";
 import type { RecentRoom } from "@/composables/useRecentRooms";
 import { useRecentRooms } from "@/composables/useRecentRooms";
 import { checkRoom } from "@/modules/api";
@@ -15,6 +16,7 @@ const fibonacciCards = decks.fibonacci.cards;
 
 const username = ref(localStorage.getItem(usernameKey) ?? "");
 const roomId = ref("");
+const joinRole = ref<ParticipantRole>("voter");
 
 const store = useRootStore();
 const router = useRouter();
@@ -46,33 +48,42 @@ watch(roomId, (value) => {
   }, 400);
 });
 
-function joinRoom(id: string, deck?: DeckId) {
-  store.addParticipant({
-    username: username.value,
-    point_estimate: undefined,
-  });
+function joinRoom(id: string, deck?: DeckId, role?: ParticipantRole) {
+  const spectating = role === "spectator";
+  if (spectating) store.addSpectator(username.value);
+  else store.addParticipant({ username: username.value, point_estimate: undefined });
 
   saveRecentRoom({
     id,
     username: username.value,
     joinedAt: Date.now(),
     ...(deck ? { deck } : {}),
+    ...(spectating ? { role: "spectator" as const } : {}),
   });
 
-  router.push({ name: "Room", params: { id }, query: deck ? { deck } : undefined });
+  router.push({
+    name: "Room",
+    params: { id },
+    query: {
+      ...(deck ? { deck } : {}),
+      ...(spectating ? { role: "spectator" } : {}),
+    },
+  });
 }
 
 async function submit() {
   if (!username.value || submitting.value) return;
   store.setUsername(username.value);
 
+  const role = joinRole.value;
+  const chooserQuery = role === "spectator" ? { role } : undefined;
   const typedRoomId = roomId.value.trim().toLowerCase();
 
   // Empty Room ID → create with a generated one; a fresh random ID is
   // new, so no existence check needed. The recent-rooms entry is saved
   // on the chooser CTA so an abandoned chooser leaves no phantom entry.
   if (!typedRoomId) {
-    router.push({ name: "DeckChooser", params: { id: generateRoomId() } });
+    router.push({ name: "DeckChooser", params: { id: generateRoomId() }, query: chooserQuery });
     return;
   }
 
@@ -81,13 +92,13 @@ async function submit() {
   submitting.value = false;
 
   if (result && !result.exists) {
-    router.push({ name: "DeckChooser", params: { id: typedRoomId } });
+    router.push({ name: "DeckChooser", params: { id: typedRoomId }, query: chooserQuery });
     return;
   }
 
   // Room exists — or the check failed, which must never block someone
   // from entering a room: join directly.
-  joinRoom(typedRoomId);
+  joinRoom(typedRoomId, undefined, role);
 }
 
 function useRecentRoom(recentRoom: RecentRoom) {
@@ -97,7 +108,7 @@ function useRecentRoom(recentRoom: RecentRoom) {
   store.setUsername(username.value);
   // One click, no existence check: a live room ignores the deck param,
   // a dead one is recreated on the deck the user last saw there.
-  joinRoom(recentRoom.id.toLowerCase(), recentRoom.deck);
+  joinRoom(recentRoom.id.toLowerCase(), recentRoom.deck, recentRoom.role);
 }
 
 const HOUR = 3_600_000;
@@ -115,10 +126,11 @@ function formatJoinedAt(joinedAt: number) {
 
 const submitLabel = computed(() => {
   const id = roomId.value.trim();
-  if (!id) return "Create new room";
-  if (resolvedAction.value === "join") return `Join ${id.toUpperCase()}`;
-  if (resolvedAction.value === "create") return `Create ${id.toUpperCase()}`;
-  return "Continue";
+  const suffix = joinRole.value === "spectator" ? " as spectator" : "";
+  if (!id) return `Create new room${suffix}`;
+  if (resolvedAction.value === "join") return `Join ${id.toUpperCase()}${suffix}`;
+  if (resolvedAction.value === "create") return `Create ${id.toUpperCase()}${suffix}`;
+  return `Continue${suffix}`;
 });
 const showDeckHint = computed(() => !roomId.value.trim() || resolvedAction.value === "create");
 const disabled = computed(() => !username.value || submitting.value);
@@ -148,7 +160,7 @@ const disabled = computed(() => !username.value || submitting.value);
           Plan poker,<br />
           <span>without the</span> <span class="italic">fluff.</span>
         </h1>
-        <p>Pick a name. Share a room ID. Vote on stories together. That's the whole product.</p>
+        <p>Pick a name. Share a room ID. Vote on stories together — or just sit in and watch.</p>
 
         <div class="desktop-card-fan" aria-hidden="true">
           <PointCard
@@ -184,11 +196,20 @@ const disabled = computed(() => !username.value || submitting.value);
             <InputText id="roomId" v-model.trim="roomId" autocomplete="off" size="large" />
             <label for="roomId">Room ID</label>
           </FloatLabel>
+
+          <div class="join-as">
+            <span class="join-as-label">Join as</span>
+            <RoleToggle v-model="joinRole" />
+            <p v-if="joinRole === 'spectator'" class="join-as-hint">
+              You'll watch the room without a hand of cards — no vote, no pressure.
+            </p>
+          </div>
         </div>
 
         <VButton
           type="submit"
           class="join-button"
+          :class="{ spectating: joinRole === 'spectator' }"
           :label="submitLabel"
           :icon="submitting ? 'pi pi-spinner pi-spin' : 'pi pi-chevron-right'"
           icon-pos="right"
@@ -416,6 +437,28 @@ const disabled = computed(() => !username.value || submitting.value);
   gap: 0.85rem;
 }
 
+.join-as {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+
+  .join-as-label {
+    color: var(--p-text-muted-color);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .join-as-hint {
+    margin: 0;
+    color: var(--p-text-muted-color);
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+}
+
 .join-button {
   width: 100%;
   min-height: 3.85rem;
@@ -424,6 +467,27 @@ const disabled = computed(() => !username.value || submitting.value);
   background: linear-gradient(110deg, var(--p-primary-color), var(--p-green-400));
   color: var(--p-primary-contrast-color);
   font-weight: 800;
+  transition: background 0.2s ease;
+
+  // Spectating tints the CTA violet so the chosen role is visible right
+  // where you commit to it.
+  &.spectating {
+    background: linear-gradient(
+      110deg,
+      var(--p-violet-400),
+      color-mix(in srgb, var(--p-violet-400) 70%, var(--p-amber-400))
+    );
+    color: var(--p-surface-950);
+
+    &:not(:disabled):hover {
+      border: 0;
+      background: linear-gradient(
+        110deg,
+        color-mix(in srgb, var(--p-violet-400) 88%, white),
+        color-mix(in srgb, var(--p-violet-400) 64%, var(--p-amber-300))
+      );
+    }
+  }
 }
 
 .deck-hint {
