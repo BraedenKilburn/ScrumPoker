@@ -1,4 +1,4 @@
-import { isDeckId, isReactionEmoji, type WebSocketData } from "@shared/types";
+import { isDeckId, isParticipantRole, isReactionEmoji, type WebSocketData } from "@shared/types";
 import { InMemoryRoomManager } from "./roomManager";
 import { MessageHandler } from "./messageHandler";
 import { ConnectionManager } from "./connectionManager";
@@ -18,6 +18,7 @@ const ErrorCodes = {
 
 function createJoinRoomSuccessMessage(roomId: string) {
   const participants = Object.fromEntries(roomManager.getRoomVotes(roomId));
+  const spectators = roomManager.getRoomSpectators(roomId);
   const admin = roomManager.getAdmin(roomId)!;
   const locked = roomManager.getRoomLockState(roomId);
   const revealed = roomManager.getRoomVisibility(roomId);
@@ -25,7 +26,7 @@ function createJoinRoomSuccessMessage(roomId: string) {
 
   return MessageHandler.createMessage({
     type: "joinRoomSuccess",
-    data: { participants, admin, locked, revealed, deck },
+    data: { participants, spectators, admin, locked, revealed, deck },
   });
 }
 
@@ -55,10 +56,12 @@ const server = Bun.serve<WebSocketData, undefined>({
     const username = url.searchParams.get("username");
     const deckParam = url.searchParams.get("deck");
     const deck = deckParam && isDeckId(deckParam) ? deckParam : undefined;
+    const roleParam = url.searchParams.get("role");
+    const role = roleParam && isParticipantRole(roleParam) ? roleParam : undefined;
 
     if (!username) return new Response("Username is required", { status: 400 });
     if (!roomId) return new Response("Room ID is required", { status: 400 });
-    if (server.upgrade(req, { data: { username, roomId, deck } })) return;
+    if (server.upgrade(req, { data: { username, roomId, deck, role } })) return;
 
     logger.error(`Upgrade failed`, { roomId, username });
     return new Response("Upgrade failed", { status: 500 });
@@ -94,7 +97,7 @@ const server = Bun.serve<WebSocketData, undefined>({
 
       // Normal join flow
       try {
-        roomManager.joinRoom(roomId, username, ws.data.deck);
+        roomManager.joinRoom(roomId, username, ws.data.deck, ws.data.role);
       } catch (error: any) {
         ws.close(ErrorCodes.UsernameTaken, error.message);
         return;
@@ -105,7 +108,12 @@ const server = Bun.serve<WebSocketData, undefined>({
 
       logger.websocket(`Connection opened`, { roomId, username });
 
-      const joinMessage = MessageHandler.createMessage({ type: "userJoined", data: { username } });
+      // Role comes from room state, not the query param, so the broadcast
+      // matches what joinRoom actually recorded.
+      const joinMessage = MessageHandler.createMessage({
+        type: "userJoined",
+        data: { username, role: roomManager.isSpectator(roomId, username) ? "spectator" : "voter" },
+      });
       ws.publish(roomId, joinMessage);
 
       ws.send(createJoinRoomSuccessMessage(roomId));

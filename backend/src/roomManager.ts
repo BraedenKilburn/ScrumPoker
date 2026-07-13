@@ -1,7 +1,17 @@
-import { defaultDeckId, isVoteForDeck, type DeckId, type Vote } from "@shared/types";
+import {
+  defaultDeckId,
+  isVoteForDeck,
+  type DeckId,
+  type ParticipantRole,
+  type Vote,
+} from "@shared/types";
 
 export type Room = {
   users: Set<string>;
+  // Subset of `users`. Spectators never get a `votes` entry, so every
+  // vote-derived surface (counts, snapshots, distribution) is voters-only
+  // without filtering.
+  spectators: Set<string>;
   votes: Map<string, Vote>;
   revealed: boolean;
   locked: boolean;
@@ -10,7 +20,7 @@ export type Room = {
 };
 
 export interface RoomManager {
-  joinRoom(roomId: string, username: string, deck?: DeckId): Room;
+  joinRoom(roomId: string, username: string, deck?: DeckId, role?: ParticipantRole): Room;
   transferAdmin(roomId: string, currentAdmin: string, newAdmin: string): void;
   isAdmin(roomId: string, username: string): boolean;
   getAdmin(roomId: string): string | null;
@@ -29,6 +39,8 @@ export interface RoomManager {
   roomExists(roomId: string): boolean;
   getRoomDeck(roomId: string): DeckId;
   setDeck(roomId: string, username: string, deck: DeckId): boolean;
+  getRoomSpectators(roomId: string): string[];
+  isSpectator(roomId: string, username: string): boolean;
 }
 
 export class InMemoryRoomManager implements RoomManager {
@@ -37,10 +49,11 @@ export class InMemoryRoomManager implements RoomManager {
   // The deck argument is only honored when the room doesn't exist yet
   // (rooms are created implicitly by the first join); joiners inherit
   // the room's deck.
-  joinRoom(roomId: string, username: string, deck?: DeckId) {
+  joinRoom(roomId: string, username: string, deck?: DeckId, role?: ParticipantRole) {
     if (!this.rooms.has(roomId)) {
       const room: Room = {
         users: new Set(),
+        spectators: new Set(),
         votes: new Map(),
         revealed: false,
         locked: false,
@@ -54,7 +67,8 @@ export class InMemoryRoomManager implements RoomManager {
     if (room.users.has(username)) throw new Error("Username is already taken");
 
     room.users.add(username);
-    room.votes.set(username, null);
+    if (role === "spectator") room.spectators.add(username);
+    else room.votes.set(username, null);
     return room;
   }
 
@@ -82,6 +96,7 @@ export class InMemoryRoomManager implements RoomManager {
     if (!room) return { shouldDestroyRoom: false };
 
     room.users.delete(username);
+    room.spectators.delete(username);
     room.votes.delete(username);
 
     const isAdmin = room.admin === username;
@@ -97,6 +112,7 @@ export class InMemoryRoomManager implements RoomManager {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error("Room does not exist");
     if (!room.users.has(username)) throw new Error("User not in room");
+    if (room.spectators.has(username)) throw new Error("Spectators cannot vote");
     if (room.locked) throw new Error("Votes are locked");
     if (vote != null && !isVoteForDeck(room.deck, vote)) throw new Error("Invalid vote value");
     room.votes.set(username, vote ? vote : null);
@@ -168,6 +184,7 @@ export class InMemoryRoomManager implements RoomManager {
     if (participantToRemove === adminUsername) throw new Error("Admin cannot remove themselves");
 
     room.users.delete(participantToRemove);
+    room.spectators.delete(participantToRemove);
     room.votes.delete(participantToRemove);
   }
 
@@ -184,6 +201,16 @@ export class InMemoryRoomManager implements RoomManager {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error("Room does not exist");
     return room.deck;
+  }
+
+  getRoomSpectators(roomId: string): string[] {
+    const room = this.rooms.get(roomId);
+    return room ? Array.from(room.spectators) : [];
+  }
+
+  isSpectator(roomId: string, username: string): boolean {
+    const room = this.rooms.get(roomId);
+    return room ? room.spectators.has(username) : false;
   }
 
   // Returns whether the deck actually changed — a same-deck call is a

@@ -255,9 +255,7 @@ describe("InMemoryRoomManager", () => {
       roomManager.joinRoom("fib-room", "admin");
 
       roomManager.submitVote("tshirt-room", "admin", "XS");
-      expect(() => roomManager.submitVote("fib-room", "admin", "XS")).toThrow(
-        "Invalid vote value",
-      );
+      expect(() => roomManager.submitVote("fib-room", "admin", "XS")).toThrow("Invalid vote value");
       expect(() => roomManager.submitVote("tshirt-room", "admin", "5")).toThrow(
         "Invalid vote value",
       );
@@ -313,6 +311,68 @@ describe("InMemoryRoomManager", () => {
         expect(roomManager.getUsersVote("room1", "user1")).toBe("5");
         expect(roomManager.getRoomVisibility("room1")).toBe(true);
       });
+    });
+  });
+
+  describe("spectators", () => {
+    beforeEach(() => {
+      roomManager.joinRoom("room1", "admin");
+      roomManager.joinRoom("room1", "voter1");
+      roomManager.joinRoom("room1", "watcher", undefined, "spectator");
+    });
+
+    test("spectator is in the room but has no vote entry", () => {
+      expect(roomManager.isUserInRoom("room1", "watcher")).toBe(true);
+      expect(roomManager.getRoomSpectators("room1")).toEqual(["watcher"]);
+      expect(roomManager.isSpectator("room1", "watcher")).toBe(true);
+      expect(roomManager.isSpectator("room1", "voter1")).toBe(false);
+      expect(roomManager.getRoomVotes("room1").has("watcher")).toBe(false);
+    });
+
+    test("spectator cannot vote", () => {
+      expect(() => roomManager.submitVote("room1", "watcher", "5")).toThrow(
+        "Spectators cannot vote",
+      );
+      expect(roomManager.getRoomVotes("room1").has("watcher")).toBe(false);
+    });
+
+    test("spectator username is still reserved", () => {
+      expect(() => roomManager.joinRoom("room1", "watcher")).toThrow("Username is already taken");
+    });
+
+    test("leaving removes the spectator entry", () => {
+      roomManager.leaveRoom("room1", "watcher");
+      expect(roomManager.getRoomSpectators("room1")).toEqual([]);
+      expect(roomManager.isUserInRoom("room1", "watcher")).toBe(false);
+    });
+
+    test("admin can remove a spectator", () => {
+      roomManager.removeParticipant("room1", "admin", "watcher");
+      expect(roomManager.getRoomSpectators("room1")).toEqual([]);
+      expect(roomManager.isUserInRoom("room1", "watcher")).toBe(false);
+    });
+
+    test("spectator can be made admin and run the round", () => {
+      roomManager.transferAdmin("room1", "admin", "watcher");
+      roomManager.submitVote("room1", "voter1", "5");
+      roomManager.setVoteVisibility("room1", "watcher", true);
+      expect(roomManager.getRoomVotes("room1").get("voter1")).toBe("5");
+      roomManager.clearVotes("room1", "watcher");
+      expect(roomManager.getRoomVotes("room1").get("voter1")).toBeNull();
+    });
+
+    test("clearVotes and setDeck leave spectators untouched", () => {
+      roomManager.submitVote("room1", "voter1", "5");
+      roomManager.clearVotes("room1", "admin");
+      expect(roomManager.getRoomSpectators("room1")).toEqual(["watcher"]);
+      roomManager.setDeck("room1", "admin", "tshirt");
+      expect(roomManager.getRoomSpectators("room1")).toEqual(["watcher"]);
+      expect(roomManager.getRoomVotes("room1").has("watcher")).toBe(false);
+    });
+
+    test("getRoomSpectators returns empty for non-existent room", () => {
+      expect(roomManager.getRoomSpectators("nonexistent")).toEqual([]);
+      expect(roomManager.isSpectator("nonexistent", "watcher")).toBe(false);
     });
   });
 

@@ -92,11 +92,25 @@ export function isReactionEmoji(value: unknown): value is ReactionEmoji {
   )
 }
 
+/**
+ * A participant's role in the room. Voters play cards and count toward
+ * the X/Y voted tally; spectators are present but structurally out of
+ * the vote — no card slot, no vote entry, never counted.
+ */
+export const participantRoles = ['voter', 'spectator'] as const
+export type ParticipantRole = (typeof participantRoles)[number]
+
+export function isParticipantRole(value: string): value is ParticipantRole {
+  return (participantRoles as readonly string[]).includes(value)
+}
+
 export type WebSocketData = {
   roomId: string
   username: string
   /** Deck chosen at creation — only meaningful for the room creator's connection. */
   deck?: DeckId
+  /** Role chosen at join — defaults to voter when absent. */
+  role?: ParticipantRole
 }
 
 // ── Client → Server messages ──
@@ -163,7 +177,10 @@ export type ClientMessage =
 export type JoinRoomSuccessMessage = {
   type: 'joinRoomSuccess'
   data: {
+    /** Voters and their (masked) votes — spectators never appear here. */
     participants: Record<string, string | null>
+    /** Usernames watching the room without voting. */
+    spectators: string[]
     admin: string
     locked: boolean
     revealed: boolean
@@ -173,7 +190,7 @@ export type JoinRoomSuccessMessage = {
 
 export type UserJoinedMessage = {
   type: 'userJoined'
-  data: { username: string }
+  data: { username: string; role: ParticipantRole }
 }
 
 export type UserLeftMessage = {
