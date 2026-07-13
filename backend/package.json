@@ -3,6 +3,7 @@
   "type": "module",
   "module": "index.ts",
   "scripts": {
+    "seed": "bun scripts/seed-room.ts",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "lint": "oxlint",
