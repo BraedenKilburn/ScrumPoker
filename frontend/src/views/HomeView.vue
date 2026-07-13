@@ -261,8 +261,14 @@ const disabled = computed(() => !username.value || submitting.value);
 
 <style scoped lang="scss">
 .home-page {
+  // The shell subtracts the vertical padding from its min-height so a
+  // short page still fits the viewport exactly, while a tall one keeps
+  // this gap above the footer instead of bumping into it.
+  --home-pad-y: 2rem;
+
   min-height: calc(100vh - var(--nav-height) - var(--footer-height));
-  padding: 0 clamp(1rem, 3vw, 3rem);
+  padding: var(--home-pad-y) clamp(1rem, 3vw, 3rem);
+  box-sizing: border-box;
 }
 
 .home-shell {
@@ -271,7 +277,7 @@ const disabled = computed(() => !username.value || submitting.value);
   align-items: center;
   gap: clamp(3rem, 8vw, 8rem);
   max-width: 82rem;
-  min-height: inherit;
+  min-height: calc(100vh - var(--nav-height) - var(--footer-height) - 2 * var(--home-pad-y));
   margin: 0 auto;
 }
 
@@ -651,6 +657,10 @@ const disabled = computed(() => !username.value || submitting.value);
 
 @media (max-width: 767px) {
   .home-page {
+    // Keep the var in sync with this asymmetric padding (1.5 + 2 = 3.5rem)
+    // so the shell's min-height calc stays exact.
+    --home-pad-y: 1.75rem;
+
     padding: 1.5rem 1.25rem 2rem;
   }
 
