@@ -134,8 +134,6 @@ Most of these are additive to the `ClientMessage`/`ServerMessage` unions in
 
 ### Tier 2 — Clear value, more surface area
 
-- **Spectator / observer mode** — Stakeholders who watch but don't vote, excluded
-  from the `X/Y voted` count (a `role` field on the participant).
 - **End-of-session summary** — Client-side copy/CSV of each story and its agreed
   estimate (only meaningful alongside story context; keep it client-side, no storage).
 
