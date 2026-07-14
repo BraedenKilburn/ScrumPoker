@@ -249,9 +249,14 @@ export function useRoomSession(id: string) {
   function join() {
     if (!roomId.value || !usernameModel.value) return;
     store.setUsername(usernameModel.value);
-    // Keep `?role=` truthful so a refresh rejoins with the same role.
-    if (joinAsSpectator.value && route.query.role !== "spectator") {
-      router.replace({ query: { ...route.query, role: "spectator" } });
+    // Keep `?role=` truthful so a refresh rejoins with the same role — set it
+    // when spectating, drop it when voting (the dialog can toggle either way).
+    const desiredRole = joinAsSpectator.value ? "spectator" : undefined;
+    if (route.query.role !== desiredRole) {
+      const query = { ...route.query };
+      if (desiredRole) query.role = desiredRole;
+      else delete query.role;
+      router.replace({ query });
     }
     connectWebSocket(wsUrl.value, handleWebSocketMessage);
   }
@@ -300,7 +305,11 @@ export function useRoomSession(id: string) {
   }
 
   function copyRoomLink() {
-    navigator.clipboard.writeText(window.location.href);
+    // Strip our own `?role=spectator` so invitees pick their own role in the
+    // welcome dialog; keep `?deck=` since that's an intentional room hint.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("role");
+    navigator.clipboard.writeText(url.toString());
     copiedRoomLink.value = true;
     setTimeout(() => (copiedRoomLink.value = false), 2000);
   }
