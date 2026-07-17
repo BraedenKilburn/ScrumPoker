@@ -1,7 +1,11 @@
 import type { ServerWebSocket } from "bun";
 import type { WebSocketData } from "@shared/types";
-import { MessageHandler } from "./messageHandler";
 
+/**
+ * Pure socket registry: which member of which room holds which live
+ * connection. It knows nothing about message types — deciding who hears
+ * what is the RoomBroadcaster's job.
+ */
 export class ConnectionManager {
   private connections = new Map<string, Map<string, ServerWebSocket<WebSocketData>>>();
 
@@ -44,52 +48,18 @@ export class ConnectionManager {
   }
 
   /**
-   * Get all connections in a room
-   * @param roomId - The room ID
-   * @returns A map of username to WebSocket connection
+   * Close a user's connection and drop it from the registry
+   * @param roomId - The room ID the connection belongs to
+   * @param username - The username associated with the connection
+   * @param reason - The close reason sent with the normal-closure code
+   * @returns True if a connection existed and was closed, false otherwise
    */
-  getRoomConnections(roomId: string): Map<string, ServerWebSocket<WebSocketData>> | undefined {
-    return this.connections.get(roomId);
-  }
-
-  /**
-   * Remove a participant from a room and close their connection
-   * @param roomId - The room ID
-   * @param participantToRemove - The username of the participant to remove
-   * @param removedBy - The username of the user who initiated the removal
-   * @returns True if the participant was removed, false otherwise
-   */
-  removeParticipant(roomId: string, participantToRemove: string, removedBy: string): boolean {
-    const connection = this.getConnection(roomId, participantToRemove);
+  closeConnection(roomId: string, username: string, reason: string): boolean {
+    const connection = this.getConnection(roomId, username);
     if (!connection) return false;
 
-    // Send a message to the user that they've been removed
-    connection.send(
-      MessageHandler.createMessage({
-        type: "youWereRemoved",
-        data: { removedBy },
-      }),
-    );
-
-    // Close the connection
-    connection.close(1000, "Removed by admin");
-
-    // Remove from our registry
-    const removed = this.removeConnection(roomId, participantToRemove);
-
-    // Notify all remaining users in the room that a participant was removed
-    const remainingConnections = this.getRoomConnections(roomId);
-    if (!remainingConnections) return removed;
-    remainingConnections.forEach((ws) => {
-      ws.send(
-        MessageHandler.createMessage({
-          type: "participantRemoved",
-          data: { removedBy, participant: participantToRemove },
-        }),
-      );
-    });
-
-    return removed;
+    connection.close(1000, reason);
+    return this.removeConnection(roomId, username);
   }
 
   /**
