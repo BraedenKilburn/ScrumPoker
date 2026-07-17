@@ -1,0 +1,9 @@
+# Personal teaching workspace (/teach) — local-only, not project material.
+# Root-anchored so these never catch frontend/src/assets etc.
+/MISSION.md
+/RESOURCES.md
+/NOTES.md
+/lessons/
+/reference/
+/learning-records/
+/assets/
