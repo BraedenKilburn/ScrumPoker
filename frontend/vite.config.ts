@@ -1,6 +1,6 @@
 import { fileURLToPath, URL } from "node:url";
 
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import vue from "@vitejs/plugin-vue";
 import vueDevTools from "vite-plugin-vue-devtools";
 
@@ -43,5 +43,11 @@ export default defineConfig({
     watch: {
       usePolling: true,
     },
+  },
+  test: {
+    // roomConnection is framework-free (a fake socket is injected), so no
+    // DOM environment is needed. Tests co-locate under src/**/__tests__/.
+    environment: "node",
+    include: ["src/**/__tests__/**/*.test.ts"],
   },
 });

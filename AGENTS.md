@@ -13,8 +13,9 @@
 
 ## Frontend Patterns
 
-- `frontend/src/composables/useRoomSession.ts` is the room orchestrator: it owns the WebSocket connection, the single message `switch`, and session-wide state. Do not add a second message handler.
-- Feature-specific UI state goes in its own composable under `frontend/src/composables/`, instantiated by the session (template: `useReactions.ts`). Feature composables receive session state as refs (e.g. `username`, `connectionStatus`), may import senders from `@/modules/socket` directly, and expose plain methods for the session's message switch to call — never forward raw server messages into them; the switch stays the one place that maps messages to behavior.
+- `frontend/src/composables/useRoomSession.ts` is the room orchestrator: it owns the single `RoomConnection` (from `@/modules/roomConnection`), the single message `switch`, and session-wide state. Do not add a second message handler.
+- `frontend/src/modules/roomConnection.ts` owns the connection: `createRoomConnection({ url, onMessage, onStatus, socketFactory? })` returns a handle with named senders (`submitVote`, `sendReaction`, …) plus `disconnect`/`updateUrl`. The reconnect state machine lives in the closure and is unit-tested through the injected `socketFactory` seam (`__tests__/roomConnection.test.ts`). There is no module-level connection singleton — the session holds the one handle.
+- Feature-specific UI state goes in its own composable under `frontend/src/composables/`, instantiated by the session (template: `useReactions.ts`). Feature composables receive session state as refs (e.g. `username`, `connectionStatus`) and receive any senders they need as functions from the session (e.g. `sendReaction`) — they do not import the connection themselves. They expose plain methods for the session's message switch to call — never forward raw server messages into them; the switch stays the one place that maps messages to behavior.
 - A feature composable that owns timers or other cleanup exposes a `dispose()` for `teardownRoomSession` to call. The session re-exports the feature's view-facing surface from its own return object so views keep a single `useRoomSession(...)` entry point.
 
 ## Repo Gotchas
