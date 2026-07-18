@@ -16,12 +16,12 @@ import ReactionFeed from "@/components/ReactionFeed.vue";
 import DeckChooserView from "@/views/DeckChooserView.vue";
 import { useRoomSession } from "@/composables/useRoomSession";
 import { deckTone } from "@/modules/deckTone";
-import { changeDeck } from "@/modules/socket";
 
 const props = defineProps<{ id: string }>();
 const {
   adminSheetOpen,
   canReact,
+  changeDeck,
   connectionStatus,
   copiedRoomLink,
   deck,

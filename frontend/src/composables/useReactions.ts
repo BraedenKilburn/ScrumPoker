@@ -1,6 +1,6 @@
 import { computed, ref, type Ref } from "vue";
 import type { ReactionEmoji } from "@shared/types";
-import { sendReaction as sendReactionMessage, type ConnectionStatus } from "@/modules/socket";
+import type { ConnectionStatus } from "@/modules/roomConnection";
 
 export type RoomReaction = {
   id: number;
@@ -25,6 +25,7 @@ const MAX_VISIBLE_BURSTS = 12;
 export function useReactions(session: {
   username: Ref<string>;
   connectionStatus: Ref<ConnectionStatus>;
+  sendReaction: (emoji: ReactionEmoji) => void;
 }) {
   const reactionBursts = ref<RoomReaction[]>([]);
   const reactionFeed = ref<RoomReaction[]>([]);
@@ -86,7 +87,7 @@ export function useReactions(session: {
 
   function sendReaction(emoji: ReactionEmoji) {
     if (!canReact.value) return;
-    sendReactionMessage(emoji);
+    session.sendReaction(emoji);
   }
 
   function dispose() {

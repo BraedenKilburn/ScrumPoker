@@ -1,10 +1,12 @@
-import { isDeckId, isParticipantRole, isReactionEmoji, type WebSocketData } from "@shared/types";
+import { isDeckId, isParticipantRole, type WebSocketData } from "@shared/types";
 import { InMemoryRoomManager } from "./roomManager";
-import { MessageHandler } from "./messageHandler";
 import { ConnectionManager } from "./connectionManager";
 import { DisconnectManager } from "./disconnectManager";
 import { logger } from "./logger";
 import { ReactionRateLimiter } from "./reactionRateLimiter";
+import { BunRoomBroadcaster } from "./roomBroadcaster";
+import { createClientMessageHandler } from "./clientMessageHandler";
+import { joinRoomSuccessMessage } from "./roomSnapshots";
 
 const connectionManager = new ConnectionManager();
 const roomManager = new InMemoryRoomManager();
@@ -16,21 +18,7 @@ const ErrorCodes = {
   UsernameTaken: 4001,
 } as const;
 
-function createJoinRoomSuccessMessage(roomId: string) {
-  const participants = Object.fromEntries(roomManager.getRoomVotes(roomId));
-  const spectators = roomManager.getRoomSpectators(roomId);
-  const admin = roomManager.getAdmin(roomId)!;
-  const locked = roomManager.getRoomLockState(roomId);
-  const revealed = roomManager.getRoomVisibility(roomId);
-  const deck = roomManager.getRoomDeck(roomId);
-
-  return MessageHandler.createMessage({
-    type: "joinRoomSuccess",
-    data: { participants, spectators, admin, locked, revealed, deck },
-  });
-}
-
-const server = Bun.serve<WebSocketData, undefined>({
+const server = Bun.serve<WebSocketData>({
   fetch(req, server) {
     const url = new URL(req.url);
 
@@ -82,16 +70,10 @@ const server = Bun.serve<WebSocketData, undefined>({
         logger.websocket(`User reconnected`, { roomId, username });
 
         // Send current room state to reconnected user
-        ws.send(createJoinRoomSuccessMessage(roomId));
+        broadcaster.reply(ws, joinRoomSuccessMessage(roomId, roomManager, username));
 
         // Notify others that user reconnected
-        ws.publish(
-          roomId,
-          MessageHandler.createMessage({
-            type: "userReconnected",
-            data: { username },
-          }),
-        );
+        broadcaster.toRoomExcept(ws, { type: "userReconnected", data: { username } });
         return;
       }
 
@@ -110,153 +92,15 @@ const server = Bun.serve<WebSocketData, undefined>({
 
       // Role comes from room state, not the query param, so the broadcast
       // matches what joinRoom actually recorded.
-      const joinMessage = MessageHandler.createMessage({
+      broadcaster.toRoomExcept(ws, {
         type: "userJoined",
         data: { username, role: roomManager.isSpectator(roomId, username) ? "spectator" : "voter" },
       });
-      ws.publish(roomId, joinMessage);
 
-      ws.send(createJoinRoomSuccessMessage(roomId));
+      broadcaster.reply(ws, joinRoomSuccessMessage(roomId, roomManager, username));
     },
     message(ws, message) {
-      const { roomId, username } = ws.data;
-      try {
-        const msg = MessageHandler.parseMessage(message as string);
-        switch (msg.type) {
-          case "submitVote":
-            roomManager.submitVote(roomId, username, msg.data.vote ?? null);
-            ws.publish(
-              roomId,
-              MessageHandler.createUserVotedMessage(roomId, username, roomManager),
-            );
-            break;
-
-          case "sendReaction": {
-            const emoji = msg.data?.emoji;
-            if (!isReactionEmoji(emoji)) throw new Error("Invalid reaction");
-
-            const rateLimit = reactionRateLimiter.consume(ws);
-            if (!rateLimit.allowed) {
-              ws.send(
-                MessageHandler.createMessage({
-                  type: "reactionRateLimited",
-                  data: { retryAfterMs: rateLimit.retryAfterMs },
-                }),
-              );
-              break;
-            }
-
-            // Reactions are live-only: broadcast directly without adding
-            // anything to the room snapshot. `server.publish` includes the
-            // sender so every client follows the same receive path.
-            server.publish(
-              roomId,
-              MessageHandler.createMessage({
-                type: "reaction",
-                data: { username, emoji },
-              }),
-            );
-            break;
-          }
-
-          case "revealVotes":
-            roomManager.setVoteVisibility(roomId, username, true);
-            server.publish(roomId, MessageHandler.createVoteStatusMessage(roomId, roomManager));
-            break;
-
-          case "hideVotes":
-            roomManager.setVoteVisibility(roomId, username, false);
-            server.publish(roomId, MessageHandler.createVoteStatusMessage(roomId, roomManager));
-            break;
-
-          case "clearVotes":
-            roomManager.clearVotes(roomId, username);
-            roomManager.setVoteVisibility(roomId, username, false);
-            ws.publish(roomId, MessageHandler.createMessage({ type: "votesCleared" }));
-            break;
-
-          case "transferAdmin":
-            roomManager.transferAdmin(roomId, username, msg.data.newAdmin);
-            server.publish(
-              roomId,
-              MessageHandler.createMessage({
-                type: "adminTransferred",
-                data: { newAdmin: msg.data.newAdmin },
-              }),
-            );
-            break;
-
-          case "lockVotes":
-            roomManager.setVoteLock(roomId, username, true);
-            server.publish(
-              roomId,
-              MessageHandler.createMessage({
-                type: "voteLockStatus",
-                data: { locked: true },
-              }),
-            );
-            break;
-
-          case "unlockVotes":
-            roomManager.setVoteLock(roomId, username, false);
-            server.publish(
-              roomId,
-              MessageHandler.createMessage({
-                type: "voteLockStatus",
-                data: { locked: false },
-              }),
-            );
-            break;
-
-          case "changeDeck": {
-            if (!isDeckId(msg.data.deck)) throw new Error("Invalid deck");
-
-            // server.publish (not ws.publish) so the admin who changed it
-            // also receives the broadcast — one code path for everyone.
-            const changed = roomManager.setDeck(roomId, username, msg.data.deck);
-            if (changed) {
-              server.publish(
-                roomId,
-                MessageHandler.createMessage({
-                  type: "deckChanged",
-                  data: { deck: msg.data.deck },
-                }),
-              );
-            }
-            break;
-          }
-
-          case "removeParticipant": {
-            const participantToRemove = msg.data.participant;
-            if (!participantToRemove) break;
-
-            roomManager.removeParticipant(roomId, username, participantToRemove);
-            connectionManager.removeParticipant(roomId, participantToRemove, username);
-            break;
-          }
-
-          default:
-            ws.send(
-              MessageHandler.createMessage({
-                type: "error",
-                data: { message: "Unknown message type" },
-              }),
-            );
-        }
-      } catch (error) {
-        logger.warn(`Error parsing message`, {
-          roomId,
-          username,
-          message,
-          error: (error as Error).message,
-        });
-        ws.send(
-          MessageHandler.createMessage({
-            type: "error",
-            data: { message: (error as Error).message },
-          }),
-        );
-      }
+      clientMessages.handle(ws, message as string);
     },
     close(ws, code, reason) {
       const { roomId, username } = ws.data;
@@ -279,13 +123,10 @@ const server = Bun.serve<WebSocketData, undefined>({
         disconnectManager.clearRoom(roomId);
         const { shouldDestroyRoom } = roomManager.leaveRoom(roomId, username);
         if (shouldDestroyRoom) {
-          server.publish(
-            roomId,
-            MessageHandler.createMessage({
-              type: "roomClosed",
-              data: { reason: "Admin left the room" },
-            }),
-          );
+          broadcaster.toRoom(roomId, {
+            type: "roomClosed",
+            data: { reason: "Admin left the room" },
+          });
         }
         return;
       }
@@ -297,13 +138,7 @@ const server = Bun.serve<WebSocketData, undefined>({
       if (reason === "User left room") {
         const { shouldDestroyRoom } = roomManager.leaveRoom(roomId, username);
         if (!shouldDestroyRoom) {
-          server.publish(
-            roomId,
-            MessageHandler.createMessage({
-              type: "userLeft",
-              data: { username },
-            }),
-          );
+          broadcaster.toRoom(roomId, { type: "userLeft", data: { username } });
         }
         return;
       }
@@ -313,30 +148,29 @@ const server = Bun.serve<WebSocketData, undefined>({
         roomId,
         username,
       });
-      server.publish(
-        roomId,
-        MessageHandler.createMessage({
-          type: "userDisconnected",
-          data: { username },
-        }),
-      );
+      broadcaster.toRoom(roomId, { type: "userDisconnected", data: { username } });
 
       disconnectManager.markDisconnected(roomId, username, () => {
         // Grace period expired — remove the user
         logger.websocket(`Grace period expired`, { roomId, username });
         const { shouldDestroyRoom } = roomManager.leaveRoom(roomId, username);
         if (!shouldDestroyRoom) {
-          server.publish(
-            roomId,
-            MessageHandler.createMessage({
-              type: "userLeft",
-              data: { username },
-            }),
-          );
+          broadcaster.toRoom(roomId, { type: "userLeft", data: { username } });
         }
       });
     },
   },
+});
+
+// Constructed after Bun.serve because the broadcaster wraps the returned
+// server handle. Safe: the websocket callbacks above can't fire until this
+// synchronous startup block finishes.
+const broadcaster = new BunRoomBroadcaster(server, connectionManager);
+const clientMessages = createClientMessageHandler({
+  roomManager,
+  connectionManager,
+  broadcaster,
+  rateLimiter: reactionRateLimiter,
 });
 
 console.log(`Listening on ${server.hostname}:${server.port}`);

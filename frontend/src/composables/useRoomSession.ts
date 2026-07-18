@@ -5,20 +5,10 @@ import { useToast } from "primevue/usetoast";
 import { decks, isDeckId, type DeckId, type ServerMessage } from "@shared/types";
 import { usernameKey } from "@/modules/constants";
 import {
-  clearVotes,
-  connectWebSocket,
-  disconnect,
-  hideVotes,
-  lockVotes,
-  onConnectionStatusChange,
-  removeParticipant,
-  revealVotes,
-  submitVote,
-  transferAdmin,
-  unlockVotes,
-  updateReconnectUrl,
+  createRoomConnection,
   type ConnectionStatus,
-} from "@/modules/socket";
+  type RoomConnection,
+} from "@/modules/roomConnection";
 import { createRoomMembers, createSpectatorMembers } from "@/modules/roomMembers";
 import { rememberRoomDeck } from "@/composables/useRecentRooms";
 import { useReactions } from "@/composables/useReactions";
@@ -51,7 +41,16 @@ export function useRoomSession(id: string) {
   const usernameModel = ref(localStorage.getItem(usernameKey) ?? "");
   const copiedRoomLink = ref(false);
   const adminSheetOpen = ref(false);
-  const reactions = useReactions({ username, connectionStatus });
+
+  // The session owns the single room connection. Composables and views
+  // receive the senders they need through the session rather than
+  // importing them — the connection has no module-level home.
+  let connection: RoomConnection | null = null;
+  const reactions = useReactions({
+    username,
+    connectionStatus,
+    sendReaction: (emoji) => connection?.sendReaction(emoji),
+  });
 
   const socketUrl = import.meta.env.VITE_SOCKET_URL;
   if (!socketUrl) {
@@ -100,16 +99,22 @@ export function useRoomSession(id: string) {
   const totalCount = computed(() => members.value.length);
   const hasVotes = computed(() => votedCount.value > 0);
 
-  onConnectionStatusChange((status) => {
-    connectionStatus.value = status;
-  });
+  function connect() {
+    connection = createRoomConnection({
+      url: wsUrl.value,
+      onMessage: handleWebSocketMessage,
+      onStatus: (status) => {
+        connectionStatus.value = status;
+      },
+    });
+  }
 
   if (!roomId.value) {
     addNotification("No room ID provided");
     router.push({ name: "Home" });
   }
 
-  if (!isMissingUsername.value) connectWebSocket(wsUrl.value, handleWebSocketMessage);
+  if (!isMissingUsername.value) connect();
 
   function addNotification(detail: string) {
     toast.add({ severity: "info", summary: "Notification", detail, life: 3000 });
@@ -137,19 +142,15 @@ export function useRoomSession(id: string) {
     syncDeckQuery(deckId);
     const url = new URL(wsUrl.value);
     url.searchParams.set("deck", deckId);
-    updateReconnectUrl(url);
+    connection?.updateUrl(url);
   }
 
-  // While votes are hidden the server masks vote values, so our own vote
-  // has to be re-applied locally — but only if the server still counts
-  // us as voted: it may have been reset (deck change, new round) while
-  // we were disconnected, and a stale local vote must not resurface.
-  function restoreOwnVote() {
-    if (participants.value.get(username.value) != null) {
-      if (pointEstimate.value != null) store.setUserPointEstimate();
-    } else {
-      store.pointEstimate = undefined;
-    }
+  // The server never masks our own vote back to us, so a snapshot is
+  // authoritative for it — adopt the value rather than reconciling
+  // against local state. Covers the round being reset (deck change, new
+  // round) while we were disconnected: the snapshot simply says null.
+  function adoptOwnVote() {
+    store.pointEstimate = participants.value.get(username.value) ?? undefined;
   }
 
   function handleWebSocketMessage(msg: ServerMessage) {
@@ -162,7 +163,7 @@ export function useRoomSession(id: string) {
         votesLocked.value = msg.data.locked;
         votesVisible.value = msg.data.revealed;
         applyDeck(msg.data.deck);
-        if (!msg.data.revealed) restoreOwnVote();
+        adoptOwnVote();
         break;
       case "deckChanged":
         applyDeck(msg.data.deck);
@@ -200,7 +201,7 @@ export function useRoomSession(id: string) {
         if (msg.data.revealed && !votesVisible.value) playRevealCue();
         participants.value = new Map(Object.entries(msg.data.votes));
         votesVisible.value = msg.data.revealed;
-        if (!msg.data.revealed) restoreOwnVote();
+        adoptOwnVote();
         break;
       case "votesCleared":
         store.clearVotes();
@@ -258,17 +259,17 @@ export function useRoomSession(id: string) {
       else delete query.role;
       router.replace({ query });
     }
-    connectWebSocket(wsUrl.value, handleWebSocketMessage);
+    connect();
   }
 
   function toggleVoteVisibility() {
-    if (votesVisible.value) hideVotes();
-    else revealVotes();
+    if (votesVisible.value) connection?.hideVotes();
+    else connection?.revealVotes();
   }
 
   function toggleVoteLock() {
-    if (votesLocked.value) unlockVotes();
-    else lockVotes();
+    if (votesLocked.value) connection?.unlockVotes();
+    else connection?.lockVotes();
   }
 
   function vote(point?: string) {
@@ -276,7 +277,7 @@ export function useRoomSession(id: string) {
     const next = point === pointEstimate.value ? undefined : point;
     store.pointEstimate = next;
     store.setUserPointEstimate(next);
-    submitVote({ vote: next });
+    connection?.submitVote({ vote: next });
   }
 
   function clearMyVote() {
@@ -285,7 +286,7 @@ export function useRoomSession(id: string) {
   }
 
   function clearAllVotes() {
-    clearVotes();
+    connection?.clearVotes();
     store.clearVotes();
   }
 
@@ -295,13 +296,13 @@ export function useRoomSession(id: string) {
 
   function makeAdmin(name: string) {
     if (!isAdmin.value || name === store.adminUsername) return;
-    transferAdmin(name);
+    connection?.transferAdmin(name);
     adminSheetOpen.value = false;
   }
 
   function handleRemoveParticipant(name: string) {
     if (!isAdmin.value || name === store.username) return;
-    removeParticipant(name);
+    connection?.removeParticipant(name);
   }
 
   function copyRoomLink() {
@@ -318,9 +319,14 @@ export function useRoomSession(id: string) {
     router.push({ name: "Home" });
   }
 
+  function changeDeck(deck: DeckId) {
+    connection?.changeDeck(deck);
+  }
+
   function teardownRoomSession() {
     reactions.dispose();
-    disconnect();
+    connection?.disconnect();
+    connection = null;
     store.$reset();
   }
 
@@ -350,6 +356,7 @@ export function useRoomSession(id: string) {
     votedCount,
     votesLocked,
     votesVisible,
+    changeDeck,
     clearAllVotes,
     clearMyVote,
     copyRoomLink,

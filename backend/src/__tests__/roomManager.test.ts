@@ -110,7 +110,7 @@ describe("InMemoryRoomManager", () => {
     test("should get all votes in room", () => {
       roomManager.submitVote("room1", "admin", "5");
       roomManager.submitVote("room1", "user1", "3");
-      expect(roomManager.getRoomVotes("room1")).toEqual(
+      expect(roomManager.voteSnapshot("room1")).toEqual(
         new Map([
           ["admin", "?"],
           ["user1", "?"],
@@ -118,12 +118,86 @@ describe("InMemoryRoomManager", () => {
       );
 
       roomManager.setVoteVisibility("room1", "admin", true);
-      expect(roomManager.getRoomVotes("room1")).toEqual(
+      expect(roomManager.voteSnapshot("room1")).toEqual(
         new Map([
           ["admin", "5"],
           ["user1", "3"],
         ]),
       );
+    });
+  });
+
+  describe("vote masking", () => {
+    beforeEach(() => {
+      roomManager.joinRoom("room1", "admin");
+      roomManager.joinRoom("room1", "user1");
+    });
+
+    test("a member's own vote is never masked from them", () => {
+      roomManager.submitVote("room1", "admin", "5");
+      roomManager.submitVote("room1", "user1", "3");
+
+      expect(roomManager.voteSnapshot("room1", "admin")).toEqual(
+        new Map([
+          ["admin", "5"],
+          ["user1", "?"],
+        ]),
+      );
+      expect(roomManager.voteSnapshot("room1", "user1")).toEqual(
+        new Map([
+          ["admin", "?"],
+          ["user1", "3"],
+        ]),
+      );
+    });
+
+    test("an uncast vote reads as null for everyone, own or not", () => {
+      roomManager.submitVote("room1", "user1", "3");
+
+      expect(roomManager.voteSnapshot("room1", "admin")).toEqual(
+        new Map([
+          ["admin", null],
+          ["user1", "?"],
+        ]),
+      );
+    });
+
+    test("revealing unmasks every vote regardless of the viewer", () => {
+      roomManager.submitVote("room1", "admin", "5");
+      roomManager.submitVote("room1", "user1", "3");
+      roomManager.setVoteVisibility("room1", "admin", true);
+
+      const revealed = new Map([
+        ["admin", "5"],
+        ["user1", "3"],
+      ]);
+      expect(roomManager.voteSnapshot("room1", "user1")).toEqual(revealed);
+      expect(roomManager.voteSnapshot("room1")).toEqual(revealed);
+    });
+
+    test("an unknown viewer gets a fully masked snapshot", () => {
+      roomManager.submitVote("room1", "admin", "5");
+
+      expect(roomManager.voteSnapshot("room1", "stranger")).toEqual(
+        new Map([
+          ["admin", "?"],
+          ["user1", null],
+        ]),
+      );
+    });
+
+    test("getUsersVote always masks — it feeds the broadcast to everyone else", () => {
+      roomManager.submitVote("room1", "admin", "5");
+      expect(roomManager.getUsersVote("room1", "admin")).toBe("?");
+    });
+
+    test("the returned snapshot cannot mutate internal room state", () => {
+      roomManager.submitVote("room1", "admin", "5");
+
+      roomManager.voteSnapshot("room1").set("admin", "999");
+
+      roomManager.setVoteVisibility("room1", "admin", true);
+      expect(roomManager.voteSnapshot("room1").get("admin")).toBe("5");
     });
   });
 
@@ -165,7 +239,7 @@ describe("InMemoryRoomManager", () => {
       expect(users).not.toContain("user1");
 
       // Verify their vote was removed
-      const votes = roomManager.getRoomVotes(roomId);
+      const votes = roomManager.voteSnapshot(roomId);
       expect(votes.has("user1")).toBe(false);
     });
 
@@ -199,13 +273,13 @@ describe("InMemoryRoomManager", () => {
 
       // Verify the vote exists
       roomManager.setVoteVisibility(roomId, admin, true);
-      expect(roomManager.getRoomVotes(roomId).get("user1")).toBe("5");
+      expect(roomManager.voteSnapshot(roomId).get("user1")).toBe("5");
 
       // Remove the participant
       roomManager.removeParticipant(roomId, admin, "user1");
 
       // Verify the vote was removed
-      const votes = roomManager.getRoomVotes(roomId);
+      const votes = roomManager.voteSnapshot(roomId);
       expect(votes.has("user1")).toBe(false);
     });
 
@@ -326,14 +400,14 @@ describe("InMemoryRoomManager", () => {
       expect(roomManager.getRoomSpectators("room1")).toEqual(["watcher"]);
       expect(roomManager.isSpectator("room1", "watcher")).toBe(true);
       expect(roomManager.isSpectator("room1", "voter1")).toBe(false);
-      expect(roomManager.getRoomVotes("room1").has("watcher")).toBe(false);
+      expect(roomManager.voteSnapshot("room1").has("watcher")).toBe(false);
     });
 
     test("spectator cannot vote", () => {
       expect(() => roomManager.submitVote("room1", "watcher", "5")).toThrow(
         "Spectators cannot vote",
       );
-      expect(roomManager.getRoomVotes("room1").has("watcher")).toBe(false);
+      expect(roomManager.voteSnapshot("room1").has("watcher")).toBe(false);
     });
 
     test("spectator username is still reserved", () => {
@@ -356,9 +430,9 @@ describe("InMemoryRoomManager", () => {
       roomManager.transferAdmin("room1", "admin", "watcher");
       roomManager.submitVote("room1", "voter1", "5");
       roomManager.setVoteVisibility("room1", "watcher", true);
-      expect(roomManager.getRoomVotes("room1").get("voter1")).toBe("5");
+      expect(roomManager.voteSnapshot("room1").get("voter1")).toBe("5");
       roomManager.clearVotes("room1", "watcher");
-      expect(roomManager.getRoomVotes("room1").get("voter1")).toBeNull();
+      expect(roomManager.voteSnapshot("room1").get("voter1")).toBeNull();
     });
 
     test("clearVotes and setDeck leave spectators untouched", () => {
@@ -367,7 +441,7 @@ describe("InMemoryRoomManager", () => {
       expect(roomManager.getRoomSpectators("room1")).toEqual(["watcher"]);
       roomManager.setDeck("room1", "admin", "tshirt");
       expect(roomManager.getRoomSpectators("room1")).toEqual(["watcher"]);
-      expect(roomManager.getRoomVotes("room1").has("watcher")).toBe(false);
+      expect(roomManager.voteSnapshot("room1").has("watcher")).toBe(false);
     });
 
     test("getRoomSpectators returns empty for non-existent room", () => {
