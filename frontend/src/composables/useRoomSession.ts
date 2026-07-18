@@ -145,16 +145,12 @@ export function useRoomSession(id: string) {
     connection?.updateUrl(url);
   }
 
-  // While votes are hidden the server masks vote values, so our own vote
-  // has to be re-applied locally — but only if the server still counts
-  // us as voted: it may have been reset (deck change, new round) while
-  // we were disconnected, and a stale local vote must not resurface.
-  function restoreOwnVote() {
-    if (participants.value.get(username.value) != null) {
-      if (pointEstimate.value != null) store.setUserPointEstimate();
-    } else {
-      store.pointEstimate = undefined;
-    }
+  // The server never masks our own vote back to us, so a snapshot is
+  // authoritative for it — adopt the value rather than reconciling
+  // against local state. Covers the round being reset (deck change, new
+  // round) while we were disconnected: the snapshot simply says null.
+  function adoptOwnVote() {
+    store.pointEstimate = participants.value.get(username.value) ?? undefined;
   }
 
   function handleWebSocketMessage(msg: ServerMessage) {
@@ -167,7 +163,7 @@ export function useRoomSession(id: string) {
         votesLocked.value = msg.data.locked;
         votesVisible.value = msg.data.revealed;
         applyDeck(msg.data.deck);
-        if (!msg.data.revealed) restoreOwnVote();
+        adoptOwnVote();
         break;
       case "deckChanged":
         applyDeck(msg.data.deck);
@@ -205,7 +201,7 @@ export function useRoomSession(id: string) {
         if (msg.data.revealed && !votesVisible.value) playRevealCue();
         participants.value = new Map(Object.entries(msg.data.votes));
         votesVisible.value = msg.data.revealed;
-        if (!msg.data.revealed) restoreOwnVote();
+        adoptOwnVote();
         break;
       case "votesCleared":
         store.clearVotes();

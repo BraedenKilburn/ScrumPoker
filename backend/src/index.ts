@@ -70,7 +70,7 @@ const server = Bun.serve<WebSocketData>({
         logger.websocket(`User reconnected`, { roomId, username });
 
         // Send current room state to reconnected user
-        broadcaster.reply(ws, joinRoomSuccessMessage(roomId, roomManager));
+        broadcaster.reply(ws, joinRoomSuccessMessage(roomId, roomManager, username));
 
         // Notify others that user reconnected
         broadcaster.toRoomExcept(ws, { type: "userReconnected", data: { username } });
@@ -97,7 +97,7 @@ const server = Bun.serve<WebSocketData>({
         data: { username, role: roomManager.isSpectator(roomId, username) ? "spectator" : "voter" },
       });
 
-      broadcaster.reply(ws, joinRoomSuccessMessage(roomId, roomManager));
+      broadcaster.reply(ws, joinRoomSuccessMessage(roomId, roomManager, username));
     },
     message(ws, message) {
       clientMessages.handle(ws, message as string);

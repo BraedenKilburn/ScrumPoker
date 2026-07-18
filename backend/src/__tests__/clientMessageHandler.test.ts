@@ -29,10 +29,17 @@ function fakeSocket(roomId: string, username: string): FakeSocket {
   return socket as unknown as FakeSocket;
 }
 
+type EachMemberCall = {
+  to: "eachMember";
+  roomId: string;
+  build: (username: string) => ServerMessage;
+};
+
 type BroadcastCall =
   | { to: "room"; roomId: string; msg: ServerMessage }
   | { to: "roomExcept"; sender: Socket; msg: ServerMessage }
   | { to: "user"; roomId: string; username: string; msg: ServerMessage }
+  | EachMemberCall
   | { to: "reply"; ws: Socket; msg: ServerMessage };
 
 /** The seam's second adapter: records every broadcast instead of sending. */
@@ -42,9 +49,16 @@ function recordingBroadcaster() {
     toRoom: (roomId, msg) => calls.push({ to: "room", roomId, msg }),
     toRoomExcept: (sender, msg) => calls.push({ to: "roomExcept", sender, msg }),
     toUser: (roomId, username, msg) => calls.push({ to: "user", roomId, username, msg }),
+    toEachMember: (roomId, build) => calls.push({ to: "eachMember", roomId, build }),
     reply: (ws, msg) => calls.push({ to: "reply", ws, msg }),
   };
   return { broadcaster, calls };
+}
+
+/** The personalized payload a given member would have received. */
+function payloadFor(call: BroadcastCall | undefined, username: string): ServerMessage {
+  if (!call || call.to !== "eachMember") throw new Error(`Expected an eachMember call, got ${call?.to}`);
+  return call.build(username);
 }
 
 function setup() {
@@ -90,7 +104,7 @@ describe("clientMessageHandler", () => {
 
       send(voter, { type: "submitVote", data: { vote: "5" } });
 
-      expect(roomManager.getRoomVotes("room1").get("voter")).toBe("?");
+      expect(roomManager.voteSnapshot("room1").get("voter")).toBe("?");
       expect(calls).toEqual([
         {
           to: "roomExcept",
@@ -156,36 +170,72 @@ describe("clientMessageHandler", () => {
   });
 
   describe("reveal / hide", () => {
-    test("admin reveal broadcasts an unmasked vote status to the whole room", () => {
+    test("admin reveal sends every member an unmasked vote status", () => {
       const { calls, send, admin, voter } = setup();
 
       send(voter, { type: "submitVote", data: { vote: "5" } });
       send(admin, { type: "revealVotes" });
 
-      expect(calls.at(-1)).toEqual({
-        to: "room",
-        roomId: "room1",
-        msg: {
-          type: "voteStatus",
-          data: { revealed: true, votes: { admin: null, voter: "5" } },
-        },
+      const call = calls.at(-1);
+      expect(call).toMatchObject({ to: "eachMember", roomId: "room1" });
+      // Revealed: everyone sees everything, so payloads are identical.
+      expect(payloadFor(call, "admin")).toEqual({
+        type: "voteStatus",
+        data: { revealed: true, votes: { admin: null, voter: "5" } },
+      });
+      expect(payloadFor(call, "voter")).toEqual({
+        type: "voteStatus",
+        data: { revealed: true, votes: { admin: null, voter: "5" } },
       });
     });
 
-    test("admin hide broadcasts a masked vote status to the whole room", () => {
+    test("admin hide masks other members' votes but never the recipient's own", () => {
       const { calls, send, admin, voter } = setup();
 
       send(voter, { type: "submitVote", data: { vote: "5" } });
+      send(admin, { type: "submitVote", data: { vote: "8" } });
       send(admin, { type: "revealVotes" });
       send(admin, { type: "hideVotes" });
 
-      expect(calls.at(-1)).toEqual({
-        to: "room",
-        roomId: "room1",
-        msg: {
-          type: "voteStatus",
-          data: { revealed: false, votes: { admin: null, voter: "?" } },
-        },
+      const call = calls.at(-1);
+      expect(call).toMatchObject({ to: "eachMember", roomId: "room1" });
+
+      // Each member sees their own real vote and "?" for everyone else.
+      expect(payloadFor(call, "voter")).toEqual({
+        type: "voteStatus",
+        data: { revealed: false, votes: { admin: "?", voter: "5" } },
+      });
+      expect(payloadFor(call, "admin")).toEqual({
+        type: "voteStatus",
+        data: { revealed: false, votes: { admin: "8", voter: "?" } },
+      });
+    });
+
+    test("a hidden payload never carries another member's estimate", () => {
+      const { calls, send, admin, voter, watcher } = setup();
+
+      send(voter, { type: "submitVote", data: { vote: "5" } });
+      send(admin, { type: "submitVote", data: { vote: "8" } });
+      send(admin, { type: "hideVotes" });
+
+      const call = calls.at(-1);
+
+      // The leak assertion: nobody's payload contains a vote value that
+      // isn't their own. A spectator has no vote, so sees only "?".
+      const cases: Array<[string, string[]]> = [
+        ["voter", ["8"]],
+        ["admin", ["5"]],
+        ["watcher", ["5", "8"]],
+      ];
+      for (const [member, forbidden] of cases) {
+        const serialized = JSON.stringify(payloadFor(call, member));
+        for (const estimate of forbidden) {
+          expect(serialized).not.toContain(`"${estimate}"`);
+        }
+      }
+      expect(payloadFor(call, "watcher")).toEqual({
+        type: "voteStatus",
+        data: { revealed: false, votes: { admin: "?", voter: "?" } },
       });
     });
 
@@ -213,7 +263,7 @@ describe("clientMessageHandler", () => {
       send(admin, { type: "revealVotes" });
       send(admin, { type: "clearVotes" });
 
-      expect(roomManager.getRoomVotes("room1").get("voter")).toBeNull();
+      expect(roomManager.voteSnapshot("room1").get("voter")).toBeNull();
       expect(roomManager.getRoomVisibility("room1")).toBe(false);
       // The actor is deliberately excluded: their client clears locally.
       expect(calls.at(-1)).toEqual({
@@ -292,7 +342,7 @@ describe("clientMessageHandler", () => {
       send(admin, { type: "changeDeck", data: { deck: "tshirt" } });
 
       expect(roomManager.getRoomDeck("room1")).toBe("tshirt");
-      expect(roomManager.getRoomVotes("room1").get("voter")).toBeNull();
+      expect(roomManager.voteSnapshot("room1").get("voter")).toBeNull();
       expect(calls.at(-1)).toEqual({
         to: "room",
         roomId: "room1",
@@ -308,7 +358,7 @@ describe("clientMessageHandler", () => {
       send(admin, { type: "changeDeck", data: { deck: "fibonacci" } });
 
       expect(calls.length).toBe(callsBefore);
-      expect(roomManager.getRoomVotes("room1").get("voter")).toBe("?");
+      expect(roomManager.voteSnapshot("room1").get("voter")).toBe("?");
     });
 
     test("an unknown deck id is refused", () => {

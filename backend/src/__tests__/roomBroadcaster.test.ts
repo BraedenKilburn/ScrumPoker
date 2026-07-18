@@ -82,6 +82,34 @@ describe("BunRoomBroadcaster", () => {
     ).not.toThrow();
   });
 
+  test("toEachMember sends a separately-built payload to every member", () => {
+    const { broadcaster, connections } = setup();
+    const alice = fakeSocket("room1", "alice");
+    const bob = fakeSocket("room1", "bob");
+    connections.registerConnection("room1", "alice", alice);
+    connections.registerConnection("room1", "bob", bob);
+
+    broadcaster.toEachMember("room1", (username) => ({
+      type: "notification",
+      data: { details: `hello ${username}` },
+    }));
+
+    expect(alice.sent).toEqual([
+      JSON.stringify({ type: "notification", data: { details: "hello alice" } }),
+    ]);
+    expect(bob.sent).toEqual([
+      JSON.stringify({ type: "notification", data: { details: "hello bob" } }),
+    ]);
+  });
+
+  test("toEachMember reaches nobody in an empty room", () => {
+    const { broadcaster, published } = setup();
+
+    broadcaster.toEachMember("ghost-room", () => ({ type: "votesCleared" }));
+
+    expect(published).toEqual([]);
+  });
+
   test("reply sends on the given socket", () => {
     const { broadcaster } = setup();
     const ws = fakeSocket("room1", "voter");

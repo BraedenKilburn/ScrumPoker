@@ -30,8 +30,15 @@ export interface RoomManager {
   clearVotes(roomId: string, username: string): void;
   getRoomUsers(roomId: string): string[];
   getRoomVisibility(roomId: string): boolean;
+  /** One member's vote as the rest of the room may see it — always masked while hidden. */
   getUsersVote(roomId: string, username: string): Vote;
-  getRoomVotes(roomId: string): Map<string, Vote>;
+  /**
+   * The room's votes as `forUser` is allowed to see them: their own vote
+   * is never masked from them (they cast it), everyone else's stays "?"
+   * until the round is revealed. Omit `forUser` for a fully masked view.
+   * There is no accessor for raw votes — masking cannot be bypassed.
+   */
+  voteSnapshot(roomId: string, forUser?: string): Map<string, Vote>;
   setVoteLock(roomId: string, username: string, locked: boolean): void;
   getRoomLockState(roomId: string): boolean;
   removeParticipant(roomId: string, adminUsername: string, participantToRemove: string): void;
@@ -145,22 +152,39 @@ export class InMemoryRoomManager implements RoomManager {
     return room ? room.revealed : false;
   }
 
+  /**
+   * The single masking rule. While a round is hidden a cast vote reads as
+   * "?" and an uncast one as null — the room learns who is ready, never
+   * what they picked. A member's own vote is never masked from them:
+   * they cast it, so echoing it back reveals nothing they don't know.
+   */
+  private maskVote(vote: Vote, revealed: boolean, isOwn: boolean): Vote {
+    if (revealed || isOwn) return vote;
+    return vote == null ? null : "?";
+  }
+
   getUsersVote(roomId: string, username: string) {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error("Room does not exist");
     if (!room.users.has(username)) throw new Error("User not in room");
 
-    const vote = room.votes.get(username) ?? null;
-    return room.revealed ? vote : vote == null ? null : "?";
+    // Never treated as "own": this feeds the userVoted broadcast, which
+    // goes to the rest of the room and excludes the voter themselves.
+    return this.maskVote(room.votes.get(username) ?? null, room.revealed, false);
   }
 
-  getRoomVotes(roomId: string) {
+  voteSnapshot(roomId: string, forUser?: string): Map<string, Vote> {
     const room = this.rooms.get(roomId);
     if (!room) return new Map();
 
-    return room.revealed
-      ? room.votes
-      : new Map(room.votes.entries().map(([key, value]) => [key, value == null ? value : "?"]));
+    return new Map(
+      room.votes
+        .entries()
+        .map(([username, vote]) => [
+          username,
+          this.maskVote(vote, room.revealed, username === forUser),
+        ]),
+    );
   }
 
   setVoteLock(roomId: string, username: string, locked: boolean) {

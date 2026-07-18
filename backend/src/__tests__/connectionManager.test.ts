@@ -138,6 +138,34 @@ describe("ConnectionManager", () => {
     });
   });
 
+  describe("forRoom", () => {
+    test("should return every live connection in the room as pairs", () => {
+      connectionManager.registerConnection("room1", "user1", mockWs1 as any);
+      connectionManager.registerConnection("room1", "user2", mockWs2 as any);
+      connectionManager.registerConnection("room2", "user3", mockWs1 as any);
+
+      expect(connectionManager.forRoom("room1")).toEqual([
+        ["user1", mockWs1 as any],
+        ["user2", mockWs2 as any],
+      ]);
+    });
+
+    test("should return an empty list for an unknown room", () => {
+      expect(connectionManager.forRoom("nonexistent")).toEqual([]);
+    });
+
+    test("should return a snapshot that is safe to iterate while removing", () => {
+      connectionManager.registerConnection("room1", "user1", mockWs1 as any);
+      connectionManager.registerConnection("room1", "user2", mockWs2 as any);
+
+      const members = connectionManager.forRoom("room1");
+      for (const [username] of members) connectionManager.removeConnection("room1", username);
+
+      expect(members).toHaveLength(2);
+      expect(connectionManager.forRoom("room1")).toEqual([]);
+    });
+  });
+
   describe("isConnected", () => {
     beforeEach(() => {
       connectionManager.registerConnection("room1", "user1", mockWs1 as any);

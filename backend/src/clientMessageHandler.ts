@@ -38,6 +38,13 @@ export function createClientMessageHandler(deps: ClientMessageHandlerDeps) {
     }
   }
 
+  // Personalized per member: a snapshot carries the recipient's own vote
+  // unmasked, so it can't be one shared broadcast. Reveal and hide take
+  // the same path so the audience isn't re-decided case by case.
+  function sendVoteStatus(roomId: string): void {
+    broadcaster.toEachMember(roomId, (member) => voteStatusMessage(roomId, roomManager, member));
+  }
+
   function dispatch(ws: Socket, msg: ClientMessage): void {
     const { roomId, username } = ws.data;
 
@@ -70,12 +77,12 @@ export function createClientMessageHandler(deps: ClientMessageHandlerDeps) {
 
       case "revealVotes":
         roomManager.setVoteVisibility(roomId, username, true);
-        broadcaster.toRoom(roomId, voteStatusMessage(roomId, roomManager));
+        sendVoteStatus(roomId);
         break;
 
       case "hideVotes":
         roomManager.setVoteVisibility(roomId, username, false);
-        broadcaster.toRoom(roomId, voteStatusMessage(roomId, roomManager));
+        sendVoteStatus(roomId);
         break;
 
       case "clearVotes":

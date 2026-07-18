@@ -7,20 +7,22 @@ import type { RoomManager } from "./roomManager";
 
 /**
  * Snapshot builders: the authoritative views of a room a client receives.
- * The masking rule (hidden votes read as "?") lives in the RoomManager's
- * vote getters; these builders shape that state into typed wire messages.
- * Reactions are live-only and never appear in a snapshot.
+ * Every snapshot is built *for a recipient* — the masking rule in the
+ * RoomManager gives them their own vote unmasked and everyone else's as
+ * "?" until the round is revealed, so a snapshot can never carry another
+ * member's estimate. Reactions are live-only and never appear in one.
  */
 
 /** Full room state, sent to a client on join and on reconnect. */
 export function joinRoomSuccessMessage(
   roomId: string,
   roomManager: RoomManager,
+  forUser: string,
 ): JoinRoomSuccessMessage {
   return {
     type: "joinRoomSuccess",
     data: {
-      participants: Object.fromEntries(roomManager.getRoomVotes(roomId)),
+      participants: Object.fromEntries(roomManager.voteSnapshot(roomId, forUser)),
       spectators: roomManager.getRoomSpectators(roomId),
       admin: roomManager.getAdmin(roomId)!,
       locked: roomManager.getRoomLockState(roomId),
@@ -30,13 +32,17 @@ export function joinRoomSuccessMessage(
   };
 }
 
-/** The vote board after a visibility change (reveal/hide). */
-export function voteStatusMessage(roomId: string, roomManager: RoomManager): VoteStatusMessage {
+/** The vote board after a visibility change (reveal/hide), per recipient. */
+export function voteStatusMessage(
+  roomId: string,
+  roomManager: RoomManager,
+  forUser: string,
+): VoteStatusMessage {
   return {
     type: "voteStatus",
     data: {
       revealed: roomManager.getRoomVisibility(roomId),
-      votes: Object.fromEntries(roomManager.getRoomVotes(roomId)),
+      votes: Object.fromEntries(roomManager.voteSnapshot(roomId, forUser)),
     },
   };
 }

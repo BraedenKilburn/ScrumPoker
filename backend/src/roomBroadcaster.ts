@@ -17,6 +17,12 @@ export interface RoomBroadcaster {
   toRoomExcept(sender: Socket, msg: ServerMessage): void;
   /** One named member, looked up in the connection registry. */
   toUser(roomId: string, username: string, msg: ServerMessage): void;
+  /**
+   * A separate message per member, built for that recipient. Used where
+   * the payload differs by who receives it — a vote snapshot carries the
+   * recipient's own vote unmasked, so it cannot be one shared broadcast.
+   */
+  toEachMember(roomId: string, build: (username: string) => ServerMessage): void;
   /** The sender's own socket only — errors, rate-limit notices, snapshots. */
   reply(ws: Socket, msg: ServerMessage): void;
 }
@@ -42,6 +48,12 @@ export class BunRoomBroadcaster implements RoomBroadcaster {
 
   toUser(roomId: string, username: string, msg: ServerMessage): void {
     this.connections.getConnection(roomId, username)?.send(JSON.stringify(msg));
+  }
+
+  toEachMember(roomId: string, build: (username: string) => ServerMessage): void {
+    for (const [username, ws] of this.connections.forRoom(roomId)) {
+      ws.send(JSON.stringify(build(username)));
+    }
   }
 
   reply(ws: Socket, msg: ServerMessage): void {

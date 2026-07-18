@@ -63,6 +63,16 @@ export class ConnectionManager {
   }
 
   /**
+   * Every live connection in a room, as [username, socket] pairs. Returned
+   * as a snapshot array so a send that closes a socket can't disturb the
+   * iteration. Used by the broadcaster to address a message per member.
+   * @param roomId - The room ID
+   */
+  forRoom(roomId: string): Array<[string, ServerWebSocket<WebSocketData>]> {
+    return Array.from(this.connections.get(roomId)?.entries() ?? []);
+  }
+
+  /**
    * Check if a user is connected to a room
    * @param roomId - The room ID
    * @param username - The username
