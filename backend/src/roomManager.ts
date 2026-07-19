@@ -24,7 +24,8 @@ export interface RoomManager {
   transferAdmin(roomId: string, currentAdmin: string, newAdmin: string): void;
   isAdmin(roomId: string, username: string): boolean;
   getAdmin(roomId: string): string | null;
-  leaveRoom(roomId: string, username: string): { shouldDestroyRoom: boolean };
+  /** Drop a member; `destroyed` means the room is gone and members must be told. */
+  leaveRoom(roomId: string, username: string): { destroyed: boolean };
   submitVote(roomId: string, username: string, vote: Vote): void;
   setVoteVisibility(roomId: string, username: string, revealed: boolean): void;
   clearVotes(roomId: string, username: string): void;
@@ -98,21 +99,27 @@ export class InMemoryRoomManager implements RoomManager {
     return room ? room.admin : null;
   }
 
-  leaveRoom(roomId: string, username: string) {
+  /**
+   * Drop a member from the room. The room itself goes when its admin
+   * leaves — and only then: every other member can leave without ending
+   * the session, and the admin is necessarily the last one standing
+   * (`transferAdmin` moves the role, it never vacates it).
+   *
+   * `destroyed` says exactly that the room is gone, so callers must tell
+   * the remaining members. It is not a proxy for "was this the admin".
+   */
+  leaveRoom(roomId: string, username: string): { destroyed: boolean } {
     const room = this.rooms.get(roomId);
-    if (!room) return { shouldDestroyRoom: false };
+    if (!room) return { destroyed: false };
 
     room.users.delete(username);
     room.spectators.delete(username);
     room.votes.delete(username);
 
-    const isAdmin = room.admin === username;
+    const destroyed = room.admin === username;
+    if (destroyed) this.rooms.delete(roomId);
 
-    if (room.users.size === 0 || isAdmin) {
-      this.rooms.delete(roomId);
-    }
-
-    return { shouldDestroyRoom: isAdmin };
+    return { destroyed };
   }
 
   submitVote(roomId: string, username: string, vote: Vote) {

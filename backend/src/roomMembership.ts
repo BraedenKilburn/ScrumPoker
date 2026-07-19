@@ -54,12 +54,27 @@ export function createRoomMembership(deps: RoomMembershipDeps) {
     return "lost";
   }
 
-  /** Drop from the roster and tell the room, unless the room itself went. */
+  /**
+   * Drop from the roster and tell the room what happened to it. Losing
+   * the admin ends the session, so that case announces `roomClosed`
+   * instead of `userLeft` — including when the admin's grace period is
+   * what expired, which is reachable because `transferAdmin` can hand the
+   * role to a member who is currently absent.
+   */
   function removeAndAnnounce(roomId: string, username: string): void {
-    const { shouldDestroyRoom } = roomManager.leaveRoom(roomId, username);
-    if (!shouldDestroyRoom) {
+    const { destroyed } = roomManager.leaveRoom(roomId, username);
+
+    if (!destroyed) {
       broadcaster.toRoom(roomId, { type: "userLeft", data: { username } });
+      return;
     }
+
+    // Grace timers must never outlive the room they would fire against.
+    disconnectManager.clearRoom(roomId);
+    broadcaster.toRoom(roomId, {
+      type: "roomClosed",
+      data: { reason: "Admin left the room" },
+    });
   }
 
   /**
@@ -132,23 +147,14 @@ export function createRoomMembership(deps: RoomMembershipDeps) {
 
     switch (departure) {
       case "adminLeft":
-        // Grace timers must go before the room does, or they fire against
-        // a room that no longer exists.
-        disconnectManager.clearRoom(roomId);
-        if (roomManager.leaveRoom(roomId, username).shouldDestroyRoom) {
-          broadcaster.toRoom(roomId, {
-            type: "roomClosed",
-            data: { reason: "Admin left the room" },
-          });
-        }
+      case "left":
+        // One operation: leave the roster, tell the room. Whether that
+        // ends the session is the roster's answer, not the reason's.
+        removeAndAnnounce(roomId, username);
         return;
 
       case "evicted":
         // evict() already dropped them from the roster and told the room.
-        return;
-
-      case "left":
-        removeAndAnnounce(roomId, username);
         return;
 
       case "lost":

@@ -241,6 +241,31 @@ describe("roomMembership", () => {
       expect(calls).toEqual([]);
     });
 
+    test("an absent admin's grace period expiring closes the room", () => {
+      // transferAdmin can hand the role to a member who is currently in
+      // the grace period, so the expiry path has to be able to end the
+      // session — not just announce a userLeft into a room that is gone.
+      const { roomManager, membership, calls, connect, reset, advance } = setup();
+      const admin = connect("admin");
+      const voter = connect("voter");
+
+      voter.close(1006, "");
+      roomManager.transferAdmin("room1", "admin", "voter");
+      admin.close(1000, CloseReason.UserLeft);
+      reset();
+
+      advance(GRACE_MS);
+
+      expect(roomManager.roomExists("room1")).toBe(false);
+      expect(calls).toEqual([
+        {
+          to: "room",
+          roomId: "room1",
+          msg: { type: "roomClosed", data: { reason: "Admin left the room" } },
+        },
+      ]);
+    });
+
     test("a UsernameTaken close unwinds nothing", () => {
       const { connectionManager, membership, calls, connect, reset } = setup();
       connect("admin");

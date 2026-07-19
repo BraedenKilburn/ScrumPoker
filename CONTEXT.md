@@ -15,6 +15,12 @@ Membership transitions live in one place, `backend/src/roomMembership.ts`
 sequences the room roster, the connection registry and the disconnect
 registry together; nothing else may mutate more than one of them.
 
+A room ends when it loses its admin, and only then: any other member can
+leave without ending the session, and the admin is necessarily the last
+one standing because `transferAdmin` moves the role rather than vacating
+it. `leaveRoom` reports this as `destroyed` — the room is gone and the
+remaining members must be told.
+
 ## Presence
 
 Whether a member holds a live socket right now. Presence is *not*
@@ -30,7 +36,9 @@ their vote, and their name against a would-be duplicate.
 
 The 30 seconds after an unexpected socket close during which a member
 keeps their membership without presence. Announced with
-`userDisconnected` on entry and, if it expires, `userLeft`. Reconnecting
+`userDisconnected` on entry and, if it expires, `userLeft` — or
+`roomClosed`, when the member who expired had meanwhile been made admin
+(`transferAdmin` accepts an absent member). Reconnecting
 inside the window restores presence and replays a
 [Snapshot](#snapshot); nothing about the member's membership changed, so
 the room hears `userReconnected` rather than a rejoin.
