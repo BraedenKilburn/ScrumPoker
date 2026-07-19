@@ -1,5 +1,11 @@
 import { computed, ref, watch } from "vue";
-import { isDeckId, isParticipantRole, type DeckId, type ParticipantRole } from "@shared/types";
+import {
+  isDeckId,
+  isParticipantRole,
+  normalizeRoomId,
+  type DeckId,
+  type ParticipantRole,
+} from "@shared/types";
 
 export type RecentRoom = {
   id: string;
@@ -41,7 +47,7 @@ function getStoredRooms() {
  */
 export function rememberRoomDeck(roomId: string, deck: DeckId): void {
   const rooms = getStoredRooms();
-  const entry = rooms.find((room) => room.id.toLowerCase() === roomId.toLowerCase());
+  const entry = rooms.find((room) => normalizeRoomId(room.id) === normalizeRoomId(roomId));
   if (!entry || entry.deck === deck) return;
 
   entry.deck = deck;
@@ -70,7 +76,7 @@ export function useRecentRooms() {
     storedRooms.value = [
       room,
       ...storedRooms.value.filter(
-        (recentRoom) => recentRoom.id.toLowerCase() !== room.id.toLowerCase(),
+        (recentRoom) => normalizeRoomId(recentRoom.id) !== normalizeRoomId(room.id),
       ),
     ].slice(0, MAX_RECENT_ROOMS);
   }

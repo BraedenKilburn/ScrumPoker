@@ -2,7 +2,13 @@ import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useToast } from "primevue/usetoast";
-import { decks, isDeckId, type DeckId, type ServerMessage } from "@shared/types";
+import {
+  decks,
+  isDeckId,
+  normalizeRoomId,
+  type DeckId,
+  type ServerMessage,
+} from "@shared/types";
 import { usernameKey } from "@/modules/constants";
 import {
   createRoomConnection,
@@ -59,7 +65,7 @@ export function useRoomSession(id: string) {
     );
   }
 
-  const roomId = computed(() => id?.toLowerCase() ?? "");
+  const roomId = computed(() => normalizeRoomId(id ?? ""));
   // Deck chosen at creation arrives as a `?deck=` route query; harmless
   // for joiners since the backend ignores it when the room exists.
   const pendingDeck = computed<DeckId | undefined>(() => {

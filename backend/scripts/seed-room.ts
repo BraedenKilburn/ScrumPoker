@@ -7,6 +7,8 @@
 // when this script exits. Ctrl+C makes every seeded user leave immediately
 // (no reconnect grace period).
 
+import { normalizeRoomId } from "@shared/types";
+
 const NAMES = [
   "Goku",
   "Vegeta",
@@ -41,7 +43,10 @@ const NAMES = [
 ];
 
 const args = process.argv.slice(2);
-const roomId = args.find((a) => !a.startsWith("--"));
+const rawRoomId = args.find((a) => !a.startsWith("--"));
+// Normalized so `seed Sprint42` seeds the same room a browser reaches at
+// /room/Sprint42, rather than a second one keyed by the exact casing.
+const roomId = rawRoomId ? normalizeRoomId(rawRoomId) : undefined;
 
 function flag(name: string, fallback: string): string {
   const idx = args.indexOf(`--${name}`);

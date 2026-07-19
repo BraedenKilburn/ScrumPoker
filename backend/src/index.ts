@@ -1,4 +1,4 @@
-import { isDeckId, isParticipantRole, type WebSocketData } from "@shared/types";
+import { isDeckId, isParticipantRole, normalizeRoomId, type WebSocketData } from "@shared/types";
 import { InMemoryRoomManager } from "./roomManager";
 import { ConnectionManager } from "./connectionManager";
 import { DisconnectManager } from "./disconnectManager";
@@ -26,7 +26,7 @@ const server = Bun.serve<WebSocketData>({
       // can't name a room, so answer the probe instead of 500ing.
       let id = "";
       try {
-        id = decodeURIComponent(roomsMatch[1]).toLowerCase();
+        id = normalizeRoomId(decodeURIComponent(roomsMatch[1]));
       } catch {}
       const exists = id !== "" && roomManager.roomExists(id);
       return Response.json(
@@ -35,12 +35,16 @@ const server = Bun.serve<WebSocketData>({
       );
     }
 
-    const roomId = url.searchParams.get("roomId");
+    const rawRoomId = url.searchParams.get("roomId");
     const username = url.searchParams.get("username");
     const deckParam = url.searchParams.get("deck");
     const deck = deckParam && isDeckId(deckParam) ? deckParam : undefined;
     const roleParam = url.searchParams.get("role");
     const role = roleParam && isParticipantRole(roleParam) ? roleParam : undefined;
+
+    // Normalized here so the socket and the probe above agree, whatever
+    // the client sent. Everything downstream reads ws.data.roomId.
+    const roomId = rawRoomId ? normalizeRoomId(rawRoomId) : "";
 
     if (!username) return new Response("Username is required", { status: 400 });
     if (!roomId) return new Response("Room ID is required", { status: 400 });

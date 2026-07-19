@@ -3,6 +3,19 @@
 Glossary of domain terms. Grown lazily: a term is added when a piece of
 work actually resolves it (see `docs/agents/domain.md`), not speculatively.
 
+## Room id
+
+The name a room is reached by. Case- and whitespace-insensitive:
+`Sprint42`, `sprint42` and ` sprint42 ` are one room. Every entry point
+normalizes through `normalizeRoomId` in `shared/types.ts` — the HTTP
+existence probe, the socket upgrade, the frontend's route handling and
+the seed script.
+
+The rule has to be shared because the probe and the socket must agree: a
+room existing under one spelling while the probe reports it missing under
+another sends two people who think they are in the same room into two
+different ones, silently.
+
 ## Membership
 
 A name on a room's roster (`room.users`). Membership is what other

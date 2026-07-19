@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { decks, defaultDeckId, type DeckId } from "@shared/types";
+import { decks, defaultDeckId, normalizeRoomId, type DeckId } from "@shared/types";
 import DeckOptionCard from "@/components/DeckOptionCard.vue";
 import { useRecentRooms } from "@/composables/useRecentRooms";
 import { checkRoom } from "@/modules/api";
@@ -33,7 +33,7 @@ const isCreate = computed(() => props.mode === "create");
 // Role picked on the home form rides along as `?role=spectator` so the
 // create flow (home → chooser → room) doesn't lose it.
 const asSpectator = computed(() => isCreate.value && route.query.role === "spectator");
-const roomId = computed(() => props.id.toLowerCase());
+const roomId = computed(() => normalizeRoomId(props.id));
 const selected = ref<DeckId>(props.currentDeck ?? defaultDeckId);
 const deckList = Object.values(decks);
 

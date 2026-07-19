@@ -104,7 +104,19 @@ export function isParticipantRole(value: string): value is ParticipantRole {
   return (participantRoles as readonly string[]).includes(value)
 }
 
+/**
+ * Room ids are case- and whitespace-insensitive: `Sprint42` and
+ * `sprint42 ` name the same room. Every entry point normalizes through
+ * here — the HTTP existence probe and the socket upgrade must agree, or a
+ * room can exist under one spelling while the probe reports it missing
+ * under another, and two people "in the same room" never meet.
+ */
+export function normalizeRoomId(raw: string): string {
+  return raw.trim().toLowerCase()
+}
+
 export type WebSocketData = {
+  /** Always normalized — see {@link normalizeRoomId}. */
   roomId: string
   username: string
   /** Deck chosen at creation — only meaningful for the room creator's connection. */
