@@ -1,4 +1,11 @@
-import type { ClientMessage, DeckId, ReactionEmoji, ServerMessage } from "@shared/types";
+import {
+  CloseCode,
+  CloseReason,
+  type ClientMessage,
+  type DeckId,
+  type ReactionEmoji,
+  type ServerMessage,
+} from "@shared/types";
 
 export type ConnectionStatus = "connected" | "disconnected" | "reconnecting" | "failed";
 
@@ -115,10 +122,10 @@ export function createRoomConnection(config: RoomConnectionConfig): RoomConnecti
       if (intentionalClose) return;
 
       // Removed by admin comes with its own notification in the room view
-      if (event.reason === "Removed by admin") return;
+      if (event.reason === CloseReason.RemovedByAdmin) return;
 
       // Username taken — no reconnection
-      if (event.code === 4001) {
+      if (event.code === CloseCode.UsernameTaken) {
         onMessage({ type: "roomClosed", data: { reason: event.reason ?? "Username is taken" } });
         return;
       }
@@ -155,7 +162,7 @@ export function createRoomConnection(config: RoomConnectionConfig): RoomConnecti
       intentionalClose = true;
       clearReconnectTimer();
       reconnectAttempts = 0;
-      socket?.close(1000, "User left room");
+      socket?.close(1000, CloseReason.UserLeft);
       socket = null;
     },
     updateUrl: (url) => {

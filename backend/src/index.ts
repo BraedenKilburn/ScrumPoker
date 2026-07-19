@@ -1,4 +1,4 @@
-import { isDeckId, isParticipantRole, type WebSocketData } from "@shared/types";
+import { isDeckId, isParticipantRole, normalizeRoomId, type WebSocketData } from "@shared/types";
 import { InMemoryRoomManager } from "./roomManager";
 import { ConnectionManager } from "./connectionManager";
 import { DisconnectManager } from "./disconnectManager";
@@ -6,19 +6,16 @@ import { logger } from "./logger";
 import { ReactionRateLimiter } from "./reactionRateLimiter";
 import { BunRoomBroadcaster } from "./roomBroadcaster";
 import { createClientMessageHandler } from "./clientMessageHandler";
-import { joinRoomSuccessMessage } from "./roomSnapshots";
+import { createRoomMembership } from "./roomMembership";
 
 const connectionManager = new ConnectionManager();
 const roomManager = new InMemoryRoomManager();
 const disconnectManager = new DisconnectManager();
 const reactionRateLimiter = new ReactionRateLimiter();
 
-const ErrorCodes = {
-  Unknown: 4000,
-  UsernameTaken: 4001,
-} as const;
-
-const server = Bun.serve<WebSocketData>({
+// Exported so an integration test can bind an ephemeral port (PORT=0)
+// and stop the server afterwards. Production still runs `bun index.ts`.
+export const server = Bun.serve<WebSocketData>({
   fetch(req, server) {
     const url = new URL(req.url);
 
@@ -31,7 +28,7 @@ const server = Bun.serve<WebSocketData>({
       // can't name a room, so answer the probe instead of 500ing.
       let id = "";
       try {
-        id = decodeURIComponent(roomsMatch[1]).toLowerCase();
+        id = normalizeRoomId(decodeURIComponent(roomsMatch[1]));
       } catch {}
       const exists = id !== "" && roomManager.roomExists(id);
       return Response.json(
@@ -40,12 +37,16 @@ const server = Bun.serve<WebSocketData>({
       );
     }
 
-    const roomId = url.searchParams.get("roomId");
+    const rawRoomId = url.searchParams.get("roomId");
     const username = url.searchParams.get("username");
     const deckParam = url.searchParams.get("deck");
     const deck = deckParam && isDeckId(deckParam) ? deckParam : undefined;
     const roleParam = url.searchParams.get("role");
     const role = roleParam && isParticipantRole(roleParam) ? roleParam : undefined;
+
+    // Normalized here so the socket and the probe above agree, whatever
+    // the client sent. Everything downstream reads ws.data.roomId.
+    const roomId = rawRoomId ? normalizeRoomId(rawRoomId) : "";
 
     if (!username) return new Response("Username is required", { status: 400 });
     if (!roomId) return new Response("Room ID is required", { status: 400 });
@@ -58,106 +59,13 @@ const server = Bun.serve<WebSocketData>({
     idleTimeout: 960,
     sendPings: true,
     open(ws) {
-      const { roomId, username } = ws.data;
-
-      // Check if this is a reconnection
-      if (disconnectManager.isDisconnected(roomId, username)) {
-        disconnectManager.cancelDisconnect(roomId, username);
-
-        ws.subscribe(roomId);
-        connectionManager.registerConnection(roomId, username, ws);
-
-        logger.websocket(`User reconnected`, { roomId, username });
-
-        // Send current room state to reconnected user
-        broadcaster.reply(ws, joinRoomSuccessMessage(roomId, roomManager, username));
-
-        // Notify others that user reconnected
-        broadcaster.toRoomExcept(ws, { type: "userReconnected", data: { username } });
-        return;
-      }
-
-      // Normal join flow
-      try {
-        roomManager.joinRoom(roomId, username, ws.data.deck, ws.data.role);
-      } catch (error: any) {
-        ws.close(ErrorCodes.UsernameTaken, error.message);
-        return;
-      }
-
-      ws.subscribe(roomId);
-      connectionManager.registerConnection(roomId, username, ws);
-
-      logger.websocket(`Connection opened`, { roomId, username });
-
-      // Role comes from room state, not the query param, so the broadcast
-      // matches what joinRoom actually recorded.
-      broadcaster.toRoomExcept(ws, {
-        type: "userJoined",
-        data: { username, role: roomManager.isSpectator(roomId, username) ? "spectator" : "voter" },
-      });
-
-      broadcaster.reply(ws, joinRoomSuccessMessage(roomId, roomManager, username));
+      membership.arrive(ws);
     },
     message(ws, message) {
       clientMessages.handle(ws, message as string);
     },
     close(ws, code, reason) {
-      const { roomId, username } = ws.data;
-      if (!roomId || !username) return;
-
-      const log = code === 1000 ? logger.websocket : logger.error;
-      switch (code) {
-        case ErrorCodes.UsernameTaken:
-          logger.error(`Username taken`, { roomId, username, code, reason });
-          return;
-        default:
-          log(`Connection closed`, { roomId, username, code, reason });
-      }
-
-      // Remove the connection
-      connectionManager.removeConnection(roomId, username);
-
-      // Admin disconnect → destroy room immediately
-      if (roomManager.isAdmin(roomId, username)) {
-        disconnectManager.clearRoom(roomId);
-        const { shouldDestroyRoom } = roomManager.leaveRoom(roomId, username);
-        if (shouldDestroyRoom) {
-          broadcaster.toRoom(roomId, {
-            type: "roomClosed",
-            data: { reason: "Admin left the room" },
-          });
-        }
-        return;
-      }
-
-      // User was removed by admin — already handled
-      if (reason === "Removed by admin") return;
-
-      // User intentionally left — no grace period
-      if (reason === "User left room") {
-        const { shouldDestroyRoom } = roomManager.leaveRoom(roomId, username);
-        if (!shouldDestroyRoom) {
-          broadcaster.toRoom(roomId, { type: "userLeft", data: { username } });
-        }
-        return;
-      }
-
-      // Unexpected disconnect — start grace period
-      logger.websocket(`User disconnected unexpectedly, starting grace period`, {
-        roomId,
-        username,
-      });
-      broadcaster.toRoom(roomId, { type: "userDisconnected", data: { username } });
-
-      disconnectManager.markDisconnected(roomId, username, () => {
-        // Grace period expired — remove the user
-        logger.websocket(`Grace period expired`, { roomId, username });
-        const { shouldDestroyRoom } = roomManager.leaveRoom(roomId, username);
-        if (!shouldDestroyRoom) {
-          broadcaster.toRoom(roomId, { type: "userLeft", data: { username } });
-        }
-      });
+      membership.depart(ws, code, reason);
     },
   },
 });
@@ -166,11 +74,17 @@ const server = Bun.serve<WebSocketData>({
 // server handle. Safe: the websocket callbacks above can't fire until this
 // synchronous startup block finishes.
 const broadcaster = new BunRoomBroadcaster(server, connectionManager);
-const clientMessages = createClientMessageHandler({
+const membership = createRoomMembership({
   roomManager,
   connectionManager,
+  disconnectManager,
+  broadcaster,
+});
+const clientMessages = createClientMessageHandler({
+  roomManager,
   broadcaster,
   rateLimiter: reactionRateLimiter,
+  membership,
 });
 
 console.log(`Listening on ${server.hostname}:${server.port}`);

@@ -206,7 +206,7 @@ describe("InMemoryRoomManager", () => {
       roomManager.joinRoom("room1", "admin");
       roomManager.joinRoom("room1", "user1");
       const result = roomManager.leaveRoom("room1", "admin");
-      expect(result.shouldDestroyRoom).toBe(true);
+      expect(result.destroyed).toBe(true);
       expect(roomManager.getRoomUsers("room1")).toEqual([]);
       expect(() => roomManager.submitVote("room1", "user1", "5")).toThrow("Room does not exist");
     });
@@ -215,8 +215,30 @@ describe("InMemoryRoomManager", () => {
       roomManager.joinRoom("room1", "admin");
       roomManager.joinRoom("room1", "user1");
       const result = roomManager.leaveRoom("room1", "user1");
-      expect(result.shouldDestroyRoom).toBe(false);
+      expect(result.destroyed).toBe(false);
       expect(roomManager.getRoomUsers("room1")).toEqual(["admin"]);
+    });
+
+    test("the last non-admin leaving keeps the room open for the admin", () => {
+      roomManager.joinRoom("room1", "admin");
+      roomManager.joinRoom("room1", "user1");
+
+      expect(roomManager.leaveRoom("room1", "user1").destroyed).toBe(false);
+      expect(roomManager.roomExists("room1")).toBe(true);
+      expect(roomManager.getRoomUsers("room1")).toEqual(["admin"]);
+    });
+
+    test("destruction follows the admin role, not the original creator", () => {
+      roomManager.joinRoom("room1", "admin");
+      roomManager.joinRoom("room1", "user1");
+      roomManager.transferAdmin("room1", "admin", "user1");
+
+      // The creator is now an ordinary member.
+      expect(roomManager.leaveRoom("room1", "admin").destroyed).toBe(false);
+      expect(roomManager.roomExists("room1")).toBe(true);
+
+      expect(roomManager.leaveRoom("room1", "user1").destroyed).toBe(true);
+      expect(roomManager.roomExists("room1")).toBe(false);
     });
   });
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { decks, type DeckId, type ParticipantRole } from "@shared/types";
+import { decks, normalizeRoomId, type DeckId, type ParticipantRole } from "@shared/types";
 import PointCard from "@/components/PointCard.vue";
 import RoleToggle from "@/components/RoleToggle.vue";
 import type { RecentRoom } from "@/composables/useRecentRooms";
@@ -37,13 +37,13 @@ let checkToken = 0;
 watch(roomId, (value) => {
   resolvedAction.value = null;
   clearTimeout(debounceTimer);
-  const id = value.trim().toLowerCase();
+  const id = normalizeRoomId(value);
   if (!id) return;
 
   debounceTimer = setTimeout(async () => {
     const token = ++checkToken;
     const result = await checkRoom(id);
-    if (token !== checkToken || roomId.value.trim().toLowerCase() !== id) return;
+    if (token !== checkToken || normalizeRoomId(roomId.value) !== id) return;
     if (result) resolvedAction.value = result.exists ? "join" : "create";
   }, 400);
 });
@@ -77,7 +77,7 @@ async function submit() {
 
   const role = joinRole.value;
   const chooserQuery = role === "spectator" ? { role } : undefined;
-  const typedRoomId = roomId.value.trim().toLowerCase();
+  const typedRoomId = normalizeRoomId(roomId.value);
 
   // Empty Room ID → create with a generated one; a fresh random ID is
   // new, so no existence check needed. The recent-rooms entry is saved
@@ -108,7 +108,7 @@ function useRecentRoom(recentRoom: RecentRoom) {
   store.setUsername(username.value);
   // One click, no existence check: a live room ignores the deck param,
   // a dead one is recreated on the deck the user last saw there.
-  joinRoom(recentRoom.id.toLowerCase(), recentRoom.deck, recentRoom.role);
+  joinRoom(normalizeRoomId(recentRoom.id), recentRoom.deck, recentRoom.role);
 }
 
 const HOUR = 3_600_000;

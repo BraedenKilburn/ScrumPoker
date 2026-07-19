@@ -1,77 +1,34 @@
 import type { ServerWebSocket } from "bun";
 import { describe, expect, test } from "bun:test";
-import type { ClientMessage, ServerMessage, WebSocketData } from "@shared/types";
+import type { ClientMessage, WebSocketData } from "@shared/types";
 import { createClientMessageHandler } from "../clientMessageHandler";
 import { ConnectionManager } from "../connectionManager";
+import { DisconnectManager } from "../disconnectManager";
 import { REACTION_REFILL_INTERVAL_MS, ReactionRateLimiter } from "../reactionRateLimiter";
 import { InMemoryRoomManager } from "../roomManager";
-import type { RoomBroadcaster } from "../roomBroadcaster";
+import { createRoomMembership } from "../roomMembership";
+import { fakeSocket, payloadFor, recordingBroadcaster } from "./testDoubles";
 
 type Socket = ServerWebSocket<WebSocketData>;
-
-type FakeSocket = Socket & {
-  sent: string[];
-  closed?: { code?: number; reason?: string };
-};
-
-function fakeSocket(roomId: string, username: string): FakeSocket {
-  const socket = {
-    data: { roomId, username },
-    sent: [] as string[],
-    closed: undefined as { code?: number; reason?: string } | undefined,
-    send(raw: string) {
-      socket.sent.push(raw);
-    },
-    close(code?: number, reason?: string) {
-      socket.closed = { code, reason };
-    },
-  };
-  return socket as unknown as FakeSocket;
-}
-
-type EachMemberCall = {
-  to: "eachMember";
-  roomId: string;
-  build: (username: string) => ServerMessage;
-};
-
-type BroadcastCall =
-  | { to: "room"; roomId: string; msg: ServerMessage }
-  | { to: "roomExcept"; sender: Socket; msg: ServerMessage }
-  | { to: "user"; roomId: string; username: string; msg: ServerMessage }
-  | EachMemberCall
-  | { to: "reply"; ws: Socket; msg: ServerMessage };
-
-/** The seam's second adapter: records every broadcast instead of sending. */
-function recordingBroadcaster() {
-  const calls: BroadcastCall[] = [];
-  const broadcaster: RoomBroadcaster = {
-    toRoom: (roomId, msg) => calls.push({ to: "room", roomId, msg }),
-    toRoomExcept: (sender, msg) => calls.push({ to: "roomExcept", sender, msg }),
-    toUser: (roomId, username, msg) => calls.push({ to: "user", roomId, username, msg }),
-    toEachMember: (roomId, build) => calls.push({ to: "eachMember", roomId, build }),
-    reply: (ws, msg) => calls.push({ to: "reply", ws, msg }),
-  };
-  return { broadcaster, calls };
-}
-
-/** The personalized payload a given member would have received. */
-function payloadFor(call: BroadcastCall | undefined, username: string): ServerMessage {
-  if (!call || call.to !== "eachMember") throw new Error(`Expected an eachMember call, got ${call?.to}`);
-  return call.build(username);
-}
 
 function setup() {
   const roomManager = new InMemoryRoomManager();
   const connectionManager = new ConnectionManager();
+  const disconnectManager = new DisconnectManager();
   let now = 0;
   const rateLimiter = new ReactionRateLimiter(() => now);
   const { broadcaster, calls } = recordingBroadcaster();
-  const handler = createClientMessageHandler({
+  const membership = createRoomMembership({
     roomManager,
     connectionManager,
+    disconnectManager,
+    broadcaster,
+  });
+  const handler = createClientMessageHandler({
+    roomManager,
     broadcaster,
     rateLimiter,
+    membership,
   });
 
   // Standard room: an admin voter, a second voter, and a spectator.
@@ -415,42 +372,28 @@ describe("clientMessageHandler", () => {
     });
   });
 
+  // The eviction sequence itself is a membership transition and is
+  // covered in roomMembership.test.ts. What belongs here is the wiring:
+  // the message reaches evict(), and a refusal becomes an error reply.
   describe("removeParticipant", () => {
-    test("removes a connected member: notify them, close them, tell the room", () => {
+    test("delegates to the membership seam", () => {
       const { roomManager, connectionManager, calls, send, admin, voter } = setup();
       connectionManager.registerConnection("room1", "voter", voter);
 
       send(admin, { type: "removeParticipant", data: { participant: "voter" } });
 
       expect(roomManager.isUserInRoom("room1", "voter")).toBe(false);
-      expect(voter.closed).toEqual({ code: 1000, reason: "Removed by admin" });
-      expect(connectionManager.isConnected("room1", "voter")).toBe(false);
-      expect(calls).toEqual([
-        {
-          to: "user",
-          roomId: "room1",
-          username: "voter",
-          msg: { type: "youWereRemoved", data: { removedBy: "admin" } },
-        },
-        {
-          to: "room",
-          roomId: "room1",
-          msg: {
-            type: "participantRemoved",
-            data: { removedBy: "admin", participant: "voter" },
-          },
-        },
+      expect(calls.map((call) => call.msg.type)).toEqual([
+        "youWereRemoved",
+        "participantRemoved",
       ]);
     });
 
-    test("removing a member in the disconnect grace period broadcasts nothing", () => {
-      // No live connection: the room learns of the removal when the
-      // grace period expires (userLeft) — preserved wire behavior.
-      const { roomManager, calls, send, admin } = setup();
+    test("a missing participant is ignored, not dispatched", () => {
+      const { calls, send, admin } = setup();
 
-      send(admin, { type: "removeParticipant", data: { participant: "voter" } });
+      send(admin, { type: "removeParticipant", data: { participant: "" } });
 
-      expect(roomManager.isUserInRoom("room1", "voter")).toBe(false);
       expect(calls).toEqual([]);
     });
 

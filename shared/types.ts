@@ -104,7 +104,19 @@ export function isParticipantRole(value: string): value is ParticipantRole {
   return (participantRoles as readonly string[]).includes(value)
 }
 
+/**
+ * Room ids are case- and whitespace-insensitive: `Sprint42` and
+ * `sprint42 ` name the same room. Every entry point normalizes through
+ * here — the HTTP existence probe and the socket upgrade must agree, or a
+ * room can exist under one spelling while the probe reports it missing
+ * under another, and two people "in the same room" never meet.
+ */
+export function normalizeRoomId(raw: string): string {
+  return raw.trim().toLowerCase()
+}
+
 export type WebSocketData = {
+  /** Always normalized — see {@link normalizeRoomId}. */
   roomId: string
   username: string
   /** Deck chosen at creation — only meaningful for the room creator's connection. */
@@ -112,6 +124,32 @@ export type WebSocketData = {
   /** Role chosen at join — defaults to voter when absent. */
   role?: ParticipantRole
 }
+
+// ── Close frame contract ──
+
+/**
+ * The close frame is part of the wire contract: the backend classifies a
+ * departure from the code and reason it arrives with, so both sides must
+ * agree on the exact strings. A silent typo here reclassifies a clean
+ * leave as an unexpected drop (a 30s ghost in the room), which is why
+ * these are constants rather than literals at each site.
+ */
+export const CloseReason = {
+  /** The member chose to leave — no grace period. */
+  UserLeft: 'User left room',
+  /** The admin removed them; the room was already told. */
+  RemovedByAdmin: 'Removed by admin',
+} as const
+
+export type CloseReason = (typeof CloseReason)[keyof typeof CloseReason]
+
+export const CloseCode = {
+  Unknown: 4000,
+  /** The username is already taken in this room; the client must not retry. */
+  UsernameTaken: 4001,
+} as const
+
+export type CloseCode = (typeof CloseCode)[keyof typeof CloseCode]
 
 // ── Client → Server messages ──
 

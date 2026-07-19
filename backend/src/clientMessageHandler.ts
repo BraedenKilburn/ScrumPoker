@@ -7,8 +7,8 @@ import {
 } from "@shared/types";
 import type { RoomManager } from "./roomManager";
 import type { RoomBroadcaster } from "./roomBroadcaster";
-import type { ConnectionManager } from "./connectionManager";
 import type { ReactionRateLimiter } from "./reactionRateLimiter";
+import type { RoomMembership } from "./roomMembership";
 import { userVotedMessage, voteStatusMessage } from "./roomSnapshots";
 import { logger } from "./logger";
 
@@ -16,9 +16,9 @@ type Socket = ServerWebSocket<WebSocketData>;
 
 export type ClientMessageHandlerDeps = {
   roomManager: RoomManager;
-  connectionManager: ConnectionManager;
   broadcaster: RoomBroadcaster;
   rateLimiter: ReactionRateLimiter;
+  membership: RoomMembership;
 };
 
 /**
@@ -28,7 +28,7 @@ export type ClientMessageHandlerDeps = {
  * in and assert recorded broadcasts out.
  */
 export function createClientMessageHandler(deps: ClientMessageHandlerDeps) {
-  const { roomManager, connectionManager, broadcaster, rateLimiter } = deps;
+  const { roomManager, broadcaster, rateLimiter, membership } = deps;
 
   function parseMessage(raw: string): ClientMessage {
     try {
@@ -128,22 +128,11 @@ export function createClientMessageHandler(deps: ClientMessageHandlerDeps) {
         const participantToRemove = msg.data.participant;
         if (!participantToRemove) break;
 
-        roomManager.removeParticipant(roomId, username, participantToRemove);
-
-        // A member in the disconnect grace period has no live connection;
-        // in that case nothing is broadcast and the room learns of the
-        // removal when the grace period expires (userLeft).
-        if (!connectionManager.isConnected(roomId, participantToRemove)) break;
-
-        broadcaster.toUser(roomId, participantToRemove, {
-          type: "youWereRemoved",
-          data: { removedBy: username },
-        });
-        connectionManager.closeConnection(roomId, participantToRemove, "Removed by admin");
-        broadcaster.toRoom(roomId, {
-          type: "participantRemoved",
-          data: { removedBy: username, participant: participantToRemove },
-        });
+        // Removal is a membership transition: it touches the roster, the
+        // connection registry and any pending grace entry, so it lives
+        // behind that seam. Authorization failures throw through to the
+        // error reply below.
+        membership.evict(roomId, username, participantToRemove);
         break;
       }
 
