@@ -318,13 +318,20 @@ describe("clientMessageHandler", () => {
       expect(roomManager.voteSnapshot("room1").get("voter")).toBe("?");
     });
 
-    test("an unknown deck id is refused", () => {
-      const { calls, send, admin } = setup();
+    test("an unknown deck id never reaches the room", () => {
+      // The rejection itself is clientMessageParser's; what matters here
+      // is that a refused message changes nothing and answers the sender.
+      const { roomManager, calls, send, admin } = setup();
 
-      send(admin, { type: "changeDeck", data: { deck: "tarot" } });
+      send(admin, JSON.stringify({ type: "changeDeck", data: { deck: "tarot" } }));
 
+      expect(roomManager.getRoomDeck("room1")).toBe("fibonacci");
       expect(calls).toEqual([
-        { to: "reply", ws: admin, msg: { type: "error", data: { message: "Invalid deck" } } },
+        {
+          to: "reply",
+          ws: admin,
+          msg: { type: "error", data: { message: "changeDeck requires a known deck" } },
+        },
       ]);
     });
   });
@@ -341,16 +348,6 @@ describe("clientMessageHandler", () => {
           roomId: "room1",
           msg: { type: "reaction", data: { username: "voter", emoji: "🎉" } },
         },
-      ]);
-    });
-
-    test("an emoji outside the allowlist is refused", () => {
-      const { calls, send, voter } = setup();
-
-      send(voter, JSON.stringify({ type: "sendReaction", data: { emoji: "🔥" } }));
-
-      expect(calls).toEqual([
-        { to: "reply", ws: voter, msg: { type: "error", data: { message: "Invalid reaction" } } },
       ]);
     });
 
@@ -389,12 +386,18 @@ describe("clientMessageHandler", () => {
       ]);
     });
 
-    test("a missing participant is ignored, not dispatched", () => {
+    test("an empty participant is answered, not silently dropped", () => {
       const { calls, send, admin } = setup();
 
-      send(admin, { type: "removeParticipant", data: { participant: "" } });
+      send(admin, JSON.stringify({ type: "removeParticipant", data: { participant: "" } }));
 
-      expect(calls).toEqual([]);
+      expect(calls).toEqual([
+        {
+          to: "reply",
+          ws: admin,
+          msg: { type: "error", data: { message: "removeParticipant requires a participant" } },
+        },
+      ]);
     });
 
     test("non-admin removal is refused", () => {

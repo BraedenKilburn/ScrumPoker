@@ -152,9 +152,17 @@ export const CloseCode = {
 export type CloseCode = (typeof CloseCode)[keyof typeof CloseCode]
 
 // ── Client → Server messages ──
+//
+// These describe messages that have already been validated at the
+// backend's inbound seam (`clientMessageParser`). Values drawn from a
+// closed set are typed as that set, because the door checks membership
+// before anything downstream sees the message. `vote` stays a plain
+// string: whether a card belongs to the room's deck depends on room
+// state, so only the domain can answer it.
 
 export type SubmitVoteMessage = {
   type: 'submitVote'
+  /** An absent `vote` retracts: `{"type":"submitVote","data":{}}`. */
   data: { vote?: string }
 }
 
@@ -190,7 +198,7 @@ export type RemoveParticipantMessage = {
 
 export type ChangeDeckMessage = {
   type: 'changeDeck'
-  data: { deck: string }
+  data: { deck: DeckId }
 }
 
 export type SendReactionMessage = {
