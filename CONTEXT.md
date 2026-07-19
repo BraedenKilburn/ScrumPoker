@@ -81,6 +81,38 @@ contract (`CloseReason`, `CloseCode` in `shared/types.ts`) — both the
 frontend and the backend import them rather than repeating literals,
 because a typo would silently reclassify a departure.
 
+## Inbound contract
+
+What a client is allowed to send. Every message crosses one seam,
+`parseClientMessage` (`backend/src/clientMessageParser.ts`), which either
+yields a `ClientMessage` or a reason it was refused — nothing downstream
+re-checks shape.
+
+The split is what the door can answer alone:
+
+| Checked at the door                 | Checked in the domain                    |
+| ----------------------------------- | ---------------------------------------- |
+| valid JSON, object, known `type`    | is this card in **this room's** deck      |
+| field present and the right type    | is this member the admin                  |
+| value in a closed set (deck, emoji) | are votes locked; is the target a member  |
+
+Closed-set membership belongs to the door because it needs no room
+state, which is why `ChangeDeckMessage.data.deck` is a `DeckId` and not a
+string: by the time anything sees the message, it has been proven. A
+vote stays a plain string — only the room knows its deck.
+
+Messages are **rebuilt**, not passed through, so unknown fields are
+dropped rather than refused; a newer client stays compatible with an
+older backend. Refusals name the offending field, because the contract is
+public — it ships in the frontend bundle — so there is nothing to
+withhold and a misbehaving client should be diagnosable.
+
+Validation is hand-written guards, not a schema library: ten message
+types, most with a single field, against a backend that otherwise ships
+**zero runtime dependencies**. Worth reconsidering if the message set
+outgrows what is comfortable to hand-check, or if a message ever needs
+nested or conditional structure.
+
 ## Snapshot
 
 The authoritative view of a room a client receives on join or reconnect
