@@ -113,6 +113,32 @@ export type WebSocketData = {
   role?: ParticipantRole
 }
 
+// ── Close frame contract ──
+
+/**
+ * The close frame is part of the wire contract: the backend classifies a
+ * departure from the code and reason it arrives with, so both sides must
+ * agree on the exact strings. A silent typo here reclassifies a clean
+ * leave as an unexpected drop (a 30s ghost in the room), which is why
+ * these are constants rather than literals at each site.
+ */
+export const CloseReason = {
+  /** The member chose to leave — no grace period. */
+  UserLeft: 'User left room',
+  /** The admin removed them; the room was already told. */
+  RemovedByAdmin: 'Removed by admin',
+} as const
+
+export type CloseReason = (typeof CloseReason)[keyof typeof CloseReason]
+
+export const CloseCode = {
+  Unknown: 4000,
+  /** The username is already taken in this room; the client must not retry. */
+  UsernameTaken: 4001,
+} as const
+
+export type CloseCode = (typeof CloseCode)[keyof typeof CloseCode]
+
 // ── Client → Server messages ──
 
 export type SubmitVoteMessage = {

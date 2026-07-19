@@ -1,17 +1,17 @@
-import { expect, test, describe, beforeEach, afterEach, mock } from "bun:test";
+import { expect, test, describe, beforeEach, mock } from "bun:test";
 import { DisconnectManager } from "../disconnectManager";
+import { fakeScheduler } from "./testDoubles";
 
 describe("DisconnectManager", () => {
   let disconnectManager: DisconnectManager;
+  let advance: (ms: number) => void;
 
   beforeEach(() => {
-    disconnectManager = new DisconnectManager();
-  });
-
-  afterEach(() => {
-    // Clean up any remaining timers
-    disconnectManager.clearRoom("room1");
-    disconnectManager.clearRoom("room2");
+    // Expiry is asserted by advancing a fake clock, so no test sleeps and
+    // no timer survives the run.
+    const clock = fakeScheduler();
+    advance = clock.advance;
+    disconnectManager = new DisconnectManager(clock.scheduler);
   });
 
   describe("markDisconnected", () => {
@@ -22,20 +22,22 @@ describe("DisconnectManager", () => {
       expect(disconnectManager.isDisconnected("room1", "user1")).toBe(true);
     });
 
-    test("should call onExpiry after grace period", async () => {
+    test("should call onExpiry after grace period", () => {
       const onExpiry = mock(() => {});
       disconnectManager.markDisconnected("room1", "user1", onExpiry, 50);
 
+      advance(49);
       expect(onExpiry).not.toHaveBeenCalled();
-      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      advance(1);
       expect(onExpiry).toHaveBeenCalledTimes(1);
     });
 
-    test("should remove user from disconnected after expiry", async () => {
+    test("should remove user from disconnected after expiry", () => {
       const onExpiry = mock(() => {});
       disconnectManager.markDisconnected("room1", "user1", onExpiry, 50);
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      advance(50);
       expect(disconnectManager.isDisconnected("room1", "user1")).toBe(false);
     });
   });
@@ -50,12 +52,12 @@ describe("DisconnectManager", () => {
       expect(disconnectManager.isDisconnected("room1", "user1")).toBe(false);
     });
 
-    test("should not call onExpiry after cancel", async () => {
+    test("should not call onExpiry after cancel", () => {
       const onExpiry = mock(() => {});
       disconnectManager.markDisconnected("room1", "user1", onExpiry, 50);
 
       disconnectManager.cancelDisconnect("room1", "user1");
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      advance(100);
       expect(onExpiry).not.toHaveBeenCalled();
     });
 
@@ -106,12 +108,12 @@ describe("DisconnectManager", () => {
       expect(disconnectManager.isDisconnected("room1", "user2")).toBe(false);
     });
 
-    test("should not call onExpiry after clearing", async () => {
+    test("should not call onExpiry after clearing", () => {
       const onExpiry = mock(() => {});
       disconnectManager.markDisconnected("room1", "user1", onExpiry, 50);
 
       disconnectManager.clearRoom("room1");
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      advance(100);
       expect(onExpiry).not.toHaveBeenCalled();
     });
 

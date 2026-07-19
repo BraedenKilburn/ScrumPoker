@@ -1,14 +1,32 @@
 type DisconnectEntry = {
-  timer: ReturnType<typeof setTimeout>;
-  onExpiry: () => void;
+  timer: unknown;
 };
 
+/**
+ * The scheduling seam. Production passes real timers; tests pass a fake
+ * clock so grace-period expiry is asserted by advancing time rather than
+ * by sleeping. Mirrors the injectable clock in ReactionRateLimiter.
+ */
+export type Scheduler = {
+  schedule(callback: () => void, delayMs: number): unknown;
+  cancel(timer: unknown): void;
+};
+
+const realTimers: Scheduler = {
+  schedule: (callback, delayMs) => setTimeout(callback, delayMs),
+  cancel: (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>),
+};
+
+/**
+ * Who is inside the disconnect grace period: a member of the room roster
+ * with no live socket. Timer handles never escape — callers mark, cancel,
+ * or ask, and the entry cleans itself up before onExpiry runs so the
+ * callback sees consistent state.
+ */
 export class DisconnectManager {
   private disconnected = new Map<string, Map<string, DisconnectEntry>>();
 
-  private getKey(roomId: string, username: string): string {
-    return `${roomId}:${username}`;
-  }
+  constructor(private readonly scheduler: Scheduler = realTimers) {}
 
   markDisconnected(
     roomId: string,
@@ -20,7 +38,7 @@ export class DisconnectManager {
       this.disconnected.set(roomId, new Map());
     }
 
-    const timer = setTimeout(() => {
+    const timer = this.scheduler.schedule(() => {
       this.disconnected.get(roomId)?.delete(username);
       if (this.disconnected.get(roomId)?.size === 0) {
         this.disconnected.delete(roomId);
@@ -28,7 +46,7 @@ export class DisconnectManager {
       onExpiry();
     }, gracePeriodMs);
 
-    this.disconnected.get(roomId)!.set(username, { timer, onExpiry });
+    this.disconnected.get(roomId)!.set(username, { timer });
   }
 
   cancelDisconnect(roomId: string, username: string): boolean {
@@ -38,7 +56,7 @@ export class DisconnectManager {
     const entry = roomDisconnects.get(username);
     if (!entry) return false;
 
-    clearTimeout(entry.timer);
+    this.scheduler.cancel(entry.timer);
     roomDisconnects.delete(username);
 
     if (roomDisconnects.size === 0) {
@@ -57,7 +75,7 @@ export class DisconnectManager {
     if (!roomDisconnects) return;
 
     for (const entry of roomDisconnects.values()) {
-      clearTimeout(entry.timer);
+      this.scheduler.cancel(entry.timer);
     }
 
     this.disconnected.delete(roomId);
