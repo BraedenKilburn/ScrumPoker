@@ -13,7 +13,9 @@ const roomManager = new InMemoryRoomManager();
 const disconnectManager = new DisconnectManager();
 const reactionRateLimiter = new ReactionRateLimiter();
 
-const server = Bun.serve<WebSocketData>({
+// Exported so an integration test can bind an ephemeral port (PORT=0)
+// and stop the server afterwards. Production still runs `bun index.ts`.
+export const server = Bun.serve<WebSocketData>({
   fetch(req, server) {
     const url = new URL(req.url);
 
