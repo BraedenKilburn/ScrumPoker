@@ -1,8 +1,12 @@
 #!/usr/bin/env bun
-// Pre-compress built static assets at maximum level so nginx can serve them via
-// brotli_static / gzip_static: best possible ratio with zero per-request CPU.
-// Safe because Vite fingerprints these filenames — a *.br/*.gz is produced once
-// per build and lives beside the original. Run from deploy.sh after `bun build`.
+// Pre-compress built static assets at maximum level so Caddy can serve them via
+// `file_server { precompressed br gzip }`: best possible ratio with zero
+// per-request CPU. Caddy's core `encode` covers gzip and zstd but not brotli,
+// so these .br files are the only path by which brotli reaches a client.
+// Safe because the whole dist/ tree is rebuilt from scratch each deploy, so a
+// *.br/*.gz is always regenerated beside the file it came from — never edit a
+// file under /var/www/scrum-poker by hand without rerunning this.
+// Run from deploy.sh after `bun build`.
 //
 //   bun scripts/precompress.mjs <dir>
 import { readdirSync, statSync, readFileSync, writeFileSync } from "node:fs";
@@ -15,10 +19,20 @@ if (!root) {
   process.exit(1);
 }
 
-// Mirror nginx brotli_types/gzip_types. Already-compressed formats (woff2, png,
-// jpg, gif, ico) are skipped — recompressing them wastes space and CPU.
-const COMPRESSIBLE = new Set([".js", ".css", ".svg", ".json", ".wasm", ".map"]);
-const MIN_BYTES = 256; // matches *_min_length; tiny files don't benefit
+// Already-compressed formats (woff2, png, jpg, gif, ico) are skipped —
+// recompressing them wastes space and CPU. `.html` is included so the SPA
+// entrypoint gets brotli too: it is served on every cold load and is the one
+// compressible file Vite does not fingerprint.
+const COMPRESSIBLE = new Set([
+  ".js",
+  ".css",
+  ".svg",
+  ".json",
+  ".wasm",
+  ".map",
+  ".html",
+]);
+const MIN_BYTES = 256; // tiny files don't benefit from compression
 
 let count = 0;
 let brSaved = 0;

@@ -20,8 +20,9 @@ export const server = Bun.serve<WebSocketData>({
     const url = new URL(req.url);
 
     // Room-existence probe for the home page. Matched by pathname suffix
-    // because in prod only `location /ws` is proxied to the backend, so
-    // the request arrives as `/ws/rooms/:id`.
+    // because in prod only the `/ws` prefix is proxied here (and the prefix is
+    // forwarded intact), so the request arrives as `/ws/rooms/:id` — while
+    // deploy.sh's health check hits `/rooms/:id` directly on :3000.
     const roomsMatch = url.pathname.match(/\/rooms\/([^/]+)$/);
     if (req.method === "GET" && roomsMatch) {
       // decodeURIComponent throws on malformed %-encoding — such an id

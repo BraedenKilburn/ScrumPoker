@@ -23,11 +23,11 @@ log() { echo "[$(date +%H:%M:%S)] $*"; }
 rollback() {
   log "Deployment failed. Rolling back..."
 
-  # Restore the previous frontend if we already swapped it in.
+  # Restore the previous frontend if we already swapped it in. Caddy resolves
+  # files per request, so the swap is live immediately — no reload needed.
   if [ "$FRONTEND_SWAPPED" -eq 1 ] && [ -d "$OLD_DIR" ]; then
     sudo rm -rf "$WWW_DIR"
     sudo mv "$OLD_DIR" "$WWW_DIR"
-    sudo systemctl reload nginx || true
     log "Frontend rolled back."
   fi
 
@@ -77,15 +77,18 @@ cd "$PROJECT_DIR/frontend"
 bun install --frozen-lockfile
 bun run --bun build
 
-# Pre-compress the built assets at max level so nginx serves them via
-# brotli_static / gzip_static — best ratio, no per-request CPU.
+# Pre-compress the built assets at max level so Caddy serves them via
+# `file_server { precompressed br gzip }` — best ratio, no per-request CPU.
+# This matters more under Caddy than it did under nginx: Caddy's core `encode`
+# does gzip and zstd but not brotli, so these .br files are the only way
+# brotli reaches the client.
 log "Pre-compressing static assets (brotli -11 / gzip -9)..."
 bun "$PROJECT_DIR/scripts/precompress.mjs" "$PROJECT_DIR/frontend/dist"
 
 log "Staging frontend..."
 sudo rm -rf "$STAGING_DIR"
 sudo cp -r "$PROJECT_DIR/frontend/dist" "$STAGING_DIR"
-sudo chown -R www-data:www-data "$STAGING_DIR"
+sudo chown -R caddy:caddy "$STAGING_DIR"
 
 # 2. Rebuild the backend image, tagging the current one as a rollback target.
 cd "$PROJECT_DIR"
@@ -121,9 +124,10 @@ fi
 sudo mv "$STAGING_DIR" "$WWW_DIR"
 FRONTEND_SWAPPED=1
 
-log "Reloading Nginx..."
-sudo nginx -t
-sudo systemctl reload nginx
+# No web-server reload here: Caddy resolves files per request, so the directory
+# swap above is already live. (nginx needed an explicit `nginx -t && reload`.)
+# Verified: swapping the docroot under a running Caddy serves the new content
+# on the very next request.
 
 SUCCESS=1
 log "Deployment complete at $(date)"

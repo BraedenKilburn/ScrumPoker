@@ -5,7 +5,7 @@ const CHECK_ROOM_TIMEOUT_MS = 2000;
 /**
  * HTTP base derived from VITE_SOCKET_URL by swapping the protocol while
  * keeping the path — in prod the socket URL is `wss://…/ws` and the API
- * rides the same NGINX-proxied `/ws` prefix, so the probe must hit
+ * rides the same reverse-proxied `/ws` prefix, so the probe must hit
  * `…/ws/rooms/:id`.
  */
 function apiBaseUrl(): string {
