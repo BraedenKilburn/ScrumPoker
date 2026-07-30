@@ -44,7 +44,7 @@ export function createClientMessageHandler(deps: ClientMessageHandlerDeps) {
     switch (msg.type) {
       case "submitVote":
         roomManager.submitVote(roomId, username, msg.data.vote ?? null);
-        broadcaster.toRoomExcept(ws, userVotedMessage(roomId, username, roomManager));
+        broadcaster.toRoom(roomId, userVotedMessage(roomId, username, roomManager));
         break;
 
       case "sendReaction": {
@@ -80,9 +80,7 @@ export function createClientMessageHandler(deps: ClientMessageHandlerDeps) {
       case "clearVotes":
         roomManager.clearVotes(roomId, username);
         roomManager.setVoteVisibility(roomId, username, false);
-        // Deliberately excludes the actor: the admin's client clears
-        // locally and stays silent (no new-round cue for one's own clear).
-        broadcaster.toRoomExcept(ws, { type: "votesCleared" });
+        broadcaster.toRoom(roomId, { type: "votesCleared", data: { clearedBy: username } });
         break;
 
       case "transferAdmin":

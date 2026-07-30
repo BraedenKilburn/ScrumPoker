@@ -152,7 +152,16 @@ and hide, so the audience isn't re-decided case by case.
 
 **Actor**: the member whose client message triggered the broadcast.
 
-The actor-exclusion on `votesCleared` is deliberate: the actor's client
-applies the clear locally and stays silent (no new-round sound cue for
-one's own clear). Whether to normalize this asymmetry so every action
-echoes to its actor is an open question tracked in the issue tracker.
+Room actions handled from authenticated client messages use the **room**
+audience, so every member follows one receive path. The frontend
+explicitly gates the two optimistic actions when their echoes return:
+`userVoted` already names its actor, and `votesCleared` carries
+`clearedBy`. A client keeps its own unmasked optimistic vote instead of
+adopting the hidden room payload, and an admin acknowledges its own clear
+without replaying the reset or new-round cue. Clears by another admin
+still apply the reset and play the cue.
+
+`toRoomExcept` remains for membership arrivals (`userJoined` and
+`userReconnected`): the arriving member gets an authoritative
+[Snapshot](#snapshot) reply instead of consuming its own presence
+announcement.

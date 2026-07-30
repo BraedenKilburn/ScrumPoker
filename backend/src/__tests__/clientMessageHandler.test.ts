@@ -56,7 +56,7 @@ function setup() {
 
 describe("clientMessageHandler", () => {
   describe("submitVote", () => {
-    test("records the vote and broadcasts it masked while votes are hidden", () => {
+    test("records the vote and broadcasts it masked to the whole room while votes are hidden", () => {
       const { roomManager, calls, send, voter } = setup();
 
       send(voter, { type: "submitVote", data: { vote: "5" } });
@@ -64,22 +64,22 @@ describe("clientMessageHandler", () => {
       expect(roomManager.voteSnapshot("room1").get("voter")).toBe("?");
       expect(calls).toEqual([
         {
-          to: "roomExcept",
-          sender: voter,
+          to: "room",
+          roomId: "room1",
           msg: { type: "userVoted", data: { username: "voter", vote: "?" } },
         },
       ]);
     });
 
-    test("broadcasts the real vote once votes are revealed", () => {
+    test("broadcasts the real vote to the whole room once votes are revealed", () => {
       const { calls, send, admin, voter } = setup();
 
       send(admin, { type: "revealVotes" });
       send(voter, { type: "submitVote", data: { vote: "8" } });
 
       expect(calls.at(-1)).toEqual({
-        to: "roomExcept",
-        sender: voter,
+        to: "room",
+        roomId: "room1",
         msg: { type: "userVoted", data: { username: "voter", vote: "8" } },
       });
     });
@@ -213,7 +213,7 @@ describe("clientMessageHandler", () => {
   });
 
   describe("clearVotes", () => {
-    test("clears state and notifies everyone except the acting admin", () => {
+    test("clears state and notifies the whole room who acted", () => {
       const { roomManager, calls, send, admin, voter } = setup();
 
       send(voter, { type: "submitVote", data: { vote: "5" } });
@@ -222,11 +222,10 @@ describe("clientMessageHandler", () => {
 
       expect(roomManager.voteSnapshot("room1").get("voter")).toBeNull();
       expect(roomManager.getRoomVisibility("room1")).toBe(false);
-      // The actor is deliberately excluded: their client clears locally.
       expect(calls.at(-1)).toEqual({
-        to: "roomExcept",
-        sender: admin,
-        msg: { type: "votesCleared" },
+        to: "room",
+        roomId: "room1",
+        msg: { type: "votesCleared", data: { clearedBy: "admin" } },
       });
     });
 

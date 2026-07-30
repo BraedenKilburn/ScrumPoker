@@ -49,12 +49,18 @@ describe("BunRoomBroadcaster", () => {
     const { broadcaster, published } = setup();
     const sender = fakeSocket("room1", "admin");
 
-    broadcaster.toRoomExcept(sender, { type: "votesCleared" });
+    broadcaster.toRoomExcept(sender, {
+      type: "votesCleared",
+      data: { clearedBy: "admin" },
+    });
 
     // ws.publish excludes the sender's own subscription — that transport
     // behavior is what makes this the "room except actor" audience.
     expect(sender.published).toEqual([
-      { topic: "room1", raw: JSON.stringify({ type: "votesCleared" }) },
+      {
+        topic: "room1",
+        raw: JSON.stringify({ type: "votesCleared", data: { clearedBy: "admin" } }),
+      },
     ]);
     expect(published).toEqual([]);
   });
@@ -78,7 +84,10 @@ describe("BunRoomBroadcaster", () => {
     const { broadcaster } = setup();
 
     expect(() =>
-      broadcaster.toUser("room1", "ghost", { type: "votesCleared" }),
+      broadcaster.toUser("room1", "ghost", {
+        type: "votesCleared",
+        data: { clearedBy: "admin" },
+      }),
     ).not.toThrow();
   });
 
@@ -105,7 +114,10 @@ describe("BunRoomBroadcaster", () => {
   test("toEachMember reaches nobody in an empty room", () => {
     const { broadcaster, published } = setup();
 
-    broadcaster.toEachMember("ghost-room", () => ({ type: "votesCleared" }));
+    broadcaster.toEachMember("ghost-room", () => ({
+      type: "votesCleared",
+      data: { clearedBy: "admin" },
+    }));
 
     expect(published).toEqual([]);
   });
