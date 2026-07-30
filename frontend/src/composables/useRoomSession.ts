@@ -39,8 +39,8 @@ export function useRoomSession(id: string) {
     deck,
   } = storeToRefs(store);
 
-  // Cues fire only on incoming server messages, so self-initiated new
-  // rounds stay silent (the server doesn't echo votesCleared to the actor).
+  // Cues fire on incoming server messages. The switch below gates the
+  // actor's votesCleared echo so self-initiated rounds stay silent.
   const { soundCuesEnabled, toggleSoundCues, playRevealCue, playNewRoundCue } = useSoundCues();
 
   const connectionStatus = ref<ConnectionStatus>("disconnected");
@@ -201,6 +201,9 @@ export function useRoomSession(id: string) {
         addNotification(`Admin role transferred to ${msg.data.newAdmin}`);
         break;
       case "userVoted":
+        // Our optimistic vote is unmasked; do not replace it with the
+        // masked whole-room echo while the round is hidden.
+        if (msg.data.username === username.value) break;
         store.setParticipantPointEstimate(msg.data.username, msg.data.vote);
         break;
       case "voteStatus":
@@ -210,6 +213,9 @@ export function useRoomSession(id: string) {
         adoptOwnVote();
         break;
       case "votesCleared":
+        // startNewRound already applied our own clear locally. Acknowledge
+        // its echo without replaying the state change or its sound cue.
+        if (msg.data.clearedBy === username.value) break;
         store.clearVotes();
         votesVisible.value = false;
         playNewRoundCue();

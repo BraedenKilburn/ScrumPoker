@@ -256,6 +256,7 @@ export type VoteStatusMessage = {
 
 export type VotesClearedMessage = {
   type: 'votesCleared'
+  data: { clearedBy: string }
 }
 
 export type AdminTransferredMessage = {

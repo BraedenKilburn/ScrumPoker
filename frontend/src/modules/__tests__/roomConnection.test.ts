@@ -4,46 +4,8 @@ import {
   createRoomConnection,
   type ConnectionStatus,
   type RoomConnection,
-  type WebSocketLike,
 } from "../roomConnection";
-
-/**
- * A fake socket the tests drive by hand. It records what was sent/closed
- * and exposes helpers to simulate the events a real WebSocket would fire.
- */
-class FakeSocket implements WebSocketLike {
-  onopen: (() => void) | null = null;
-  onmessage: ((event: { data: unknown }) => void) | null = null;
-  onclose: ((event: { code: number; reason: string }) => void) | null = null;
-  onerror: ((event: unknown) => void) | null = null;
-
-  sent: string[] = [];
-  closedWith: { code?: number; reason?: string } | null = null;
-
-  constructor(readonly url: URL) {}
-
-  send(data: string) {
-    this.sent.push(data);
-  }
-
-  // The connection calls this on disconnect(); a real socket would then
-  // fire onclose asynchronously — tests drive that explicitly via emitClose.
-  close(code?: number, reason?: string) {
-    this.closedWith = { code, reason };
-  }
-
-  emitOpen() {
-    this.onopen?.();
-  }
-
-  emitMessage(msg: unknown) {
-    this.onmessage?.({ data: JSON.stringify(msg) });
-  }
-
-  emitClose(code: number, reason = "") {
-    this.onclose?.({ code, reason });
-  }
-}
+import { FakeSocket } from "@/testing/fakeSocket";
 
 function setup(url = new URL("ws://localhost:3000/?roomId=r&username=u")) {
   const sockets: FakeSocket[] = [];
@@ -94,10 +56,10 @@ describe("createRoomConnection", () => {
     const { latest, statuses, messages } = setup();
 
     latest().emitOpen();
-    latest().emitMessage({ type: "votesCleared" });
+    latest().emitMessage({ type: "votesCleared", data: { clearedBy: "admin" } });
 
     expect(statuses).toEqual(["connected"]);
-    expect(messages).toEqual([{ type: "votesCleared" }]);
+    expect(messages).toEqual([{ type: "votesCleared", data: { clearedBy: "admin" } }]);
   });
 
   describe("senders", () => {
