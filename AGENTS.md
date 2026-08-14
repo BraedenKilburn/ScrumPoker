@@ -1,6 +1,6 @@
 # AGENTS.md
 
-- No root package manager config exists; work inside `frontend/` or `backend/`.
+- The root is a Bun workspace for `frontend/` and `backend/`; install dependencies and run cross-project checks from the root.
 - `frontend/` uses Bun + Vite + Vue 3; `backend/` uses Bun.
 - `shared/` contains TypeScript types shared between frontend and backend (imported as `@shared/*`).
 
@@ -9,7 +9,8 @@
 - Dev stack: `docker compose -f docker-compose.dev.yml up --build`
 - Prod stack: `docker compose -f docker-compose.prod.yml up --build`
 - Frontend: `bun run dev`, `bun run build`, `bun run type-check`, `bun run lint` (oxlint), `bun run fmt` (oxfmt)
-- Backend: `bun --watch src/index.ts` for local dev, `bun test` for coverage-enabled tests
+- Backend: `bun --watch src/index.ts` for local dev, `bun run type-check`, `bun test` for coverage-enabled tests
+- Workspace checks: `bun run lint`, `bun run fmt`, `bun run type-check`, `bun run test`
 
 ## Frontend Patterns
 
@@ -24,7 +25,7 @@
 - Frontend reads `VITE_SOCKET_URL`.
 - Frontend Vite alias `@` points to `frontend/src`.
 - Frontend dev server runs on port `8080` and uses polling file watch.
-- Backend entrypoint is `backend/src/index.ts`; the Docker release image copies `src/` to the image root and runs `bun index.ts`, so do not assume a repo-root `index.ts` exists.
+- Backend entrypoint is `backend/src/index.ts`; the Docker release image runs it from `/workspace/backend`, so do not assume a repository-root `index.ts` exists.
 
 ## Formatting
 

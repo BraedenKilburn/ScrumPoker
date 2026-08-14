@@ -169,7 +169,7 @@ describe("clientMessageHandler", () => {
     });
 
     test("a hidden payload never carries another member's estimate", () => {
-      const { calls, send, admin, voter, watcher } = setup();
+      const { calls, send, admin, voter } = setup();
 
       send(voter, { type: "submitVote", data: { vote: "5" } });
       send(admin, { type: "submitVote", data: { vote: "8" } });
@@ -379,7 +379,7 @@ describe("clientMessageHandler", () => {
       send(admin, { type: "removeParticipant", data: { participant: "voter" } });
 
       expect(roomManager.isUserInRoom("room1", "voter")).toBe(false);
-      expect(calls.map((call) => call.msg.type)).toEqual([
+      expect(calls.filter((call) => "msg" in call).map((call) => call.msg.type)).toEqual([
         "youWereRemoved",
         "participantRemoved",
       ]);

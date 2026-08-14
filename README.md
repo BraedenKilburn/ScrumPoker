@@ -79,13 +79,15 @@ The production build will be available at:
 ```bash
 ├── backend # Bun backend application
 │   ├── Dockerfile
-│   ├── bun.lock
 │   ├── package.json
 │   ├── src
 │   ├── tsconfig.json
 │   └── types.d.ts
+├── bun.lock
+├── bunfig.toml
 ├── docker-compose.dev.yml
 ├── docker-compose.prod.yml
+├── package.json
 └── frontend # Vue 3 frontend application
     ├── Dockerfile
     ├── env.d.ts
@@ -96,6 +98,21 @@ The production build will be available at:
 ```
 
 ## Development
+
+### Project Checks
+
+Run checks for both the frontend and backend from the repository root:
+
+```bash
+bun run lint
+bun run fmt
+bun run type-check
+bun run test
+```
+
+`bun run lint:fix` applies lint fixes, while `bun run fmt:check` checks formatting
+without changing files. Install dependencies for the entire workspace from the
+repository root with `bun install`.
 
 ### Frontend Development
 

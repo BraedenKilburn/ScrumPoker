@@ -44,7 +44,12 @@ export function createRoomMembership(deps: RoomMembershipDeps) {
    */
   type DepartureReason = "usernameTaken" | "adminLeft" | "evicted" | "left" | "lost";
 
-  function classify(roomId: string, username: string, code: number, reason: string): DepartureReason {
+  function classify(
+    roomId: string,
+    username: string,
+    code: number,
+    reason: string,
+  ): DepartureReason {
     if (code === CloseCode.UsernameTaken) return "usernameTaken";
     // Checked before the reason strings: an admin who leaves deliberately
     // still closes the room, so their "User left room" must not win here.

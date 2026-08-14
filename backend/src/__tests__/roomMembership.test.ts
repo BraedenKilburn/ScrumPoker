@@ -31,15 +31,12 @@ function setup() {
     return ws;
   }
 
-  const types = () => calls.map((call) => call.msg.type);
-
   return {
     roomManager,
     connectionManager,
     disconnectManager,
     membership,
     calls,
-    types,
     connect,
     advance,
     pendingCount,
@@ -245,7 +242,7 @@ describe("roomMembership", () => {
       // transferAdmin can hand the role to a member who is currently in
       // the grace period, so the expiry path has to be able to end the
       // session — not just announce a userLeft into a room that is gone.
-      const { roomManager, membership, calls, connect, reset, advance } = setup();
+      const { roomManager, calls, connect, reset, advance } = setup();
       const admin = connect("admin");
       const voter = connect("voter");
 

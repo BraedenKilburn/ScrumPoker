@@ -1,8 +1,6 @@
 import { isDeckId, isReactionEmoji, type ClientMessage } from "@shared/types";
 
-export type ParseResult =
-  | { ok: true; message: ClientMessage }
-  | { ok: false; reason: string };
+export type ParseResult = { ok: true; message: ClientMessage } | { ok: false; reason: string };
 
 /**
  * The inbound seam. Everything arriving from a client passes through

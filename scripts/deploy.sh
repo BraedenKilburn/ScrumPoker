@@ -73,9 +73,9 @@ SUDO_KEEPALIVE_PID=$!
 # 1. Build the frontend FIRST. A build failure aborts here, before the backend
 #    is touched or anything is swapped — no half-deployed state.
 log "Building frontend..."
-cd "$PROJECT_DIR/frontend"
+cd "$PROJECT_DIR"
 bun install --frozen-lockfile
-bun run --bun build
+bun run --cwd frontend --bun build
 
 # Pre-compress the built assets at max level so Caddy serves them via
 # `file_server { precompressed br gzip }` — best ratio, no per-request CPU.

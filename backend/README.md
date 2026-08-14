@@ -4,7 +4,7 @@ A simple WebSocket server for a Scrum Poker application.
 
 ## Installation
 
-To install dependencies:
+Install workspace dependencies from the repository root:
 
 ```bash
 bun install

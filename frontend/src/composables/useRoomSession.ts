@@ -2,13 +2,7 @@ import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useToast } from "primevue/usetoast";
-import {
-  decks,
-  isDeckId,
-  normalizeRoomId,
-  type DeckId,
-  type ServerMessage,
-} from "@shared/types";
+import { decks, isDeckId, normalizeRoomId, type DeckId, type ServerMessage } from "@shared/types";
 import { usernameKey } from "@/modules/constants";
 import {
   createRoomConnection,

@@ -1,16 +1,18 @@
-FROM oven/bun:1-slim AS development
-WORKDIR /app
-COPY frontend/package.json frontend/bun.lock ./
+FROM oven/bun:1.3.14-slim AS dependencies
+WORKDIR /workspace
+COPY package.json bun.lock bunfig.toml ./
+COPY frontend/package.json frontend/package.json
+COPY backend/package.json backend/package.json
 RUN bun install --frozen-lockfile
-COPY frontend/ .
-COPY shared/ ../shared/
+
+FROM dependencies AS development
+COPY frontend/ frontend/
+COPY shared/ shared/
+WORKDIR /workspace/frontend
 CMD ["bun", "run", "dev", "--host"]
 
-FROM oven/bun:1-slim AS build
-WORKDIR /app
-COPY frontend/package.json frontend/bun.lock ./
-RUN bun install --frozen-lockfile
-COPY frontend/ .
-COPY shared/ ../shared/
+FROM dependencies AS build
+COPY frontend/ frontend/
+COPY shared/ shared/
+WORKDIR /workspace/frontend
 RUN bun run build
-CMD ["echo", "Finished"]

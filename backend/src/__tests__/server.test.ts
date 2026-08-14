@@ -33,7 +33,10 @@ function join(params: Record<string, string>) {
   return new Promise<{ socket: WebSocket; messages: ServerMessage[] }>((resolve, reject) => {
     const socket = new WebSocket(wsUrl(params));
     const messages: ServerMessage[] = [];
-    const timer = setTimeout(() => reject(new Error("timed out waiting for joinRoomSuccess")), 2000);
+    const timer = setTimeout(
+      () => reject(new Error("timed out waiting for joinRoomSuccess")),
+      2000,
+    );
 
     socket.onmessage = (event) => {
       const msg = JSON.parse(event.data as string) as ServerMessage;
@@ -128,7 +131,9 @@ describe("server", () => {
     });
 
     test("rejects a room id that normalizes to nothing", async () => {
-      const response = await fetch(`${baseUrl}/?username=alice&roomId=${encodeURIComponent("   ")}`);
+      const response = await fetch(
+        `${baseUrl}/?username=alice&roomId=${encodeURIComponent("   ")}`,
+      );
 
       expect(response.status).toBe(400);
       expect(await response.text()).toBe("Room ID is required");
