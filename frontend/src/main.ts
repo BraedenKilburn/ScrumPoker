@@ -23,6 +23,7 @@ const pinia = createPinia();
 app.use(pinia);
 
 app.use(PrimeVue, {
+  license: import.meta.env.VITE_PRIMEVUE_LICENSE_KEY,
   theme: {
     preset: Lara,
     options: {
