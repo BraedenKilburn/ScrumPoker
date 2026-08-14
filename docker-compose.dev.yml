@@ -12,7 +12,7 @@ services:
       - /workspace/node_modules
       - /workspace/frontend/node_modules
     env_file:
-      - ./frontend/.env.development
+      - ${FRONTEND_ENV_FILE:-./frontend/.env.development}
     depends_on:
       - backend
 

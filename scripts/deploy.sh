@@ -46,7 +46,9 @@ rollback() {
 cleanup() {
   trap - EXIT
   # Stop the sudo keep-alive so it doesn't outlive the script.
-  [ -n "$SUDO_KEEPALIVE_PID" ] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+  if [ -n "$SUDO_KEEPALIVE_PID" ]; then
+    kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+  fi
   if [ "$SUCCESS" -eq 1 ]; then
     sudo rm -rf "$OLD_DIR"
     docker image rm "${BACKEND_IMAGE}:rollback" >/dev/null 2>&1 || true

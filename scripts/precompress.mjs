@@ -23,15 +23,7 @@ if (!root) {
 // recompressing them wastes space and CPU. `.html` is included so the SPA
 // entrypoint gets brotli too: it is served on every cold load and is the one
 // compressible file Vite does not fingerprint.
-const COMPRESSIBLE = new Set([
-  ".js",
-  ".css",
-  ".svg",
-  ".json",
-  ".wasm",
-  ".map",
-  ".html",
-]);
+const COMPRESSIBLE = new Set([".js", ".css", ".svg", ".json", ".wasm", ".map", ".html"]);
 const MIN_BYTES = 256; // tiny files don't benefit from compression
 
 let count = 0;
