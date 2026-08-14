@@ -29,8 +29,6 @@
     "@vue/devtools-api": "^8.1.5",
     "@vue/tsconfig": "^0.9.1",
     "npm-audit-resolver": "3.0.0-RC.0",
-    "oxfmt": "^0.63.0",
-    "oxlint": "^1.78.0",
     "pinia": "^4.0.3",
     "prettier": "^3.9.6",
     "primeicons": "^8.0.0",

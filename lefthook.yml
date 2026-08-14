@@ -13,12 +13,12 @@ pre-commit:
       group:
         jobs:
           - name: format
-            glob: "*.{ts,vue,css,scss,json,yml,yaml}"
+            glob: "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,vue,css,scss,json,yml,yaml}"
             run: bunx oxfmt --write {staged_files}
             stage_fixed: true
 
           - name: lint
-            glob: "*.{ts,vue}"
+            glob: "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,vue}"
             run: bunx oxlint {staged_files}
 
     - name: typecheck
