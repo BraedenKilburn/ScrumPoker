@@ -15,7 +15,7 @@
     "test": "bun run --parallel --no-exit-on-error --workspaces test",
     "build": "bun run --cwd frontend build",
     "audit": "bun audit",
-    "validate:compose": "docker compose -f docker-compose.dev.yml config --no-env-resolution --quiet && docker compose -f docker-compose.prod.yml config --no-env-resolution --quiet",
+    "validate:compose": "FRONTEND_ENV_FILE=./frontend/.env.sample docker compose -f docker-compose.dev.yml config --quiet && docker compose -f docker-compose.prod.yml config --quiet",
     "validate:shell": "shellcheck scripts/*.sh"
   },
   "devDependencies": {
