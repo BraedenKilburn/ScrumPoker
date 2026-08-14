@@ -91,7 +91,7 @@ export function fakeScheduler() {
   /** Advance the clock, firing anything that comes due. */
   function advance(ms: number): void {
     now += ms;
-    for (const [id, entry] of [...pending]) {
+    for (const [id, entry] of Array.from(pending)) {
       if (entry.runAt <= now) {
         pending.delete(id);
         entry.callback();

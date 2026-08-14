@@ -30,7 +30,13 @@ describe("createRoomMembers", () => {
     });
 
     it("flags nobody when the admin and current user are not in the room", () => {
-      const members = createRoomMembers(participants({ alice: "5" }), "ghost", "nobody", true, fibonacci);
+      const members = createRoomMembers(
+        participants({ alice: "5" }),
+        "ghost",
+        "nobody",
+        true,
+        fibonacci,
+      );
 
       expect(members[0]).toEqual({
         name: "alice",

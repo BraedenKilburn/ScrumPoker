@@ -7,9 +7,10 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./frontend:/app
-      - ./shared:/shared
-      - /app/node_modules
+      - ./frontend:/workspace/frontend
+      - ./shared:/workspace/shared
+      - /workspace/node_modules
+      - /workspace/frontend/node_modules
     env_file:
       - ./frontend/.env.development
     depends_on:
@@ -23,9 +24,10 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./backend:/usr/src/app
-      - ./shared:/shared
-      - /usr/src/app/node_modules
+      - ./backend:/workspace/backend
+      - ./shared:/workspace/shared
+      - /workspace/node_modules
+      - /workspace/backend/node_modules
     logging:
       driver: "json-file"
       options:

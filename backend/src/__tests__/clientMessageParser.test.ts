@@ -185,7 +185,9 @@ describe("parseClientMessage", () => {
     });
 
     test("does not carry a prototype-polluting key through", () => {
-      const parsed = accepted('{"type":"transferAdmin","data":{"newAdmin":"alice","__proto__":{"x":1}}}');
+      const parsed = accepted(
+        '{"type":"transferAdmin","data":{"newAdmin":"alice","__proto__":{"x":1}}}',
+      );
 
       expect(parsed).toEqual({ type: "transferAdmin", data: { newAdmin: "alice" } });
       expect(Object.keys((parsed as { data: object }).data)).toEqual(["newAdmin"]);

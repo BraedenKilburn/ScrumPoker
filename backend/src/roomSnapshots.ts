@@ -1,8 +1,4 @@
-import type {
-  JoinRoomSuccessMessage,
-  UserVotedMessage,
-  VoteStatusMessage,
-} from "@shared/types";
+import type { JoinRoomSuccessMessage, UserVotedMessage, VoteStatusMessage } from "@shared/types";
 import type { RoomManager } from "./roomManager";
 
 /**
