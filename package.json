@@ -1,14 +1,21 @@
 {
   "name": "scrum-poker",
   "private": true,
-  "packageManager": "bun@1.3.14",
-  "workspaces": ["frontend", "backend"],
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
+    "prepare": "lefthook install || echo 'lefthook: hooks not installed (no git repository, or lefthook unavailable) — expected inside a Docker build'",
     "lint": "bun run --parallel --no-exit-on-error --workspaces lint",
     "lint:fix": "bun run --parallel --no-exit-on-error --workspaces lint:fix",
     "fmt": "bun run --parallel --no-exit-on-error --workspaces fmt",
     "fmt:check": "bun run --parallel --no-exit-on-error --workspaces fmt:check",
     "type-check": "bun run --parallel --no-exit-on-error --workspaces type-check",
     "test": "bun run --parallel --no-exit-on-error --workspaces test"
-  }
+  },
+  "devDependencies": {
+    "lefthook": "^2.1.10"
+  },
+  "packageManager": "bun@1.3.14"
 }

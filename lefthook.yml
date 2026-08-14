@@ -1,0 +1,28 @@
+# Keep the full local quality gate in pre-commit while the repository is small
+# enough for every check to finish quickly. If this hook starts taking long
+# enough to interrupt normal commits, move the whole-repository typecheck and
+# test jobs to a parallel pre-push hook.
+#
+# The staged-file group stays sequential so oxfmt rewrites and re-stages files
+# before oxlint reads them. That group, typechecking, and tests run in parallel.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: staged files
+      group:
+        jobs:
+          - name: format
+            glob: "*.{ts,vue,css,scss,json,yml,yaml}"
+            run: bunx oxfmt --write {staged_files}
+            stage_fixed: true
+
+          - name: lint
+            glob: "*.{ts,vue}"
+            run: bunx oxlint {staged_files}
+
+    - name: typecheck
+      run: bun run type-check
+
+    - name: test
+      run: bun run test
