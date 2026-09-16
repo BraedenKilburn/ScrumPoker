@@ -134,7 +134,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
     position: absolute;
     top: -5px;
     right: -6px;
-    color: var(--p-amber-400);
+    color: var(--ink-amber);
     font-size: 0.6rem;
     background: var(--p-content-background);
     border-radius: 999px;
@@ -177,7 +177,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
 
     &:hover,
     &:focus-visible {
-      color: var(--p-amber-400);
+      color: var(--ink-amber);
       border-color: color-mix(in srgb, var(--p-amber-400) 60%, transparent);
       transform: translateY(-1px);
       opacity: 1;
@@ -246,8 +246,8 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
 
     &:hover,
     &:focus-visible {
-      color: var(--p-red-400);
-      border-color: var(--p-red-400);
+      color: var(--ink-red);
+      border-color: var(--ink-red);
       opacity: 1;
     }
 

@@ -277,7 +277,7 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
     line-height: 1;
 
     &.ready {
-      color: var(--p-emerald-400);
+      color: var(--ink-emerald);
     }
   }
 

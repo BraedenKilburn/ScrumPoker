@@ -19,10 +19,19 @@
   --surface-page: var(--p-surface-100);
   --surface-panel: var(--p-surface-0);
   --surface-raised: var(--p-surface-200);
-  --surface-elevated: var(--p-surface-0);
+  --surface-elevated: var(--p-surface-200);
   /* rgb triplets — components supply the alpha: rgb(var(--shadow-color) / 35%) */
   --shadow-color: 71 85 105; /* slate-600: a soft grey shadow, not black */
   --edge-highlight: 255 255 255; /* white on white: near-invisible by design */
+
+  /* Accent ink — an accent colour used as text or icon ink (admin chip,
+     crown, "ready", danger actions). The 400 step reads on a dark page but
+     is too pale on a light one, so light steps down; fills and borders
+     keep using the palette directly. */
+  --ink-amber: var(--p-amber-700);
+  --ink-red: var(--p-red-600);
+  --ink-emerald: var(--p-emerald-700);
+  --ink-violet: var(--p-violet-600);
 
   font-family: "Open Sans", sans-serif;
   font-optical-sizing: auto;
@@ -38,6 +47,10 @@
   --surface-elevated: color-mix(in srgb, var(--p-content-background) 80%, white 4%);
   --shadow-color: 0 0 0;
   --edge-highlight: 255 255 255;
+  --ink-amber: var(--p-amber-400);
+  --ink-red: var(--p-red-400);
+  --ink-emerald: var(--p-emerald-400);
+  --ink-violet: var(--p-violet-400);
 }
 
 body {

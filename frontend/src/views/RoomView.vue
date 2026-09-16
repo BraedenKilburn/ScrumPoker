@@ -519,7 +519,7 @@ main {
   }
 
   &.leave {
-    color: var(--p-red-400);
+    color: var(--ink-red);
   }
 
   &.leave:hover .pi {
@@ -527,8 +527,8 @@ main {
   }
 
   &.leave:hover {
-    color: var(--p-red-400);
-    border-color: var(--p-red-400);
+    color: var(--ink-red);
+    border-color: var(--ink-red);
   }
 
   .hide-mobile {
@@ -556,7 +556,7 @@ main {
     align-items: center;
     gap: 0.35rem;
     background: color-mix(in srgb, var(--p-amber-400) 15%, transparent);
-    color: var(--p-amber-400);
+    color: var(--ink-amber);
     min-height: 2rem;
     padding: 0 0.75rem;
     border-radius: 0.6rem;
@@ -648,13 +648,13 @@ main {
     }
 
     &.on {
-      color: var(--p-amber-400);
+      color: var(--ink-amber);
       border-color: color-mix(in srgb, var(--p-amber-400) 60%, transparent);
     }
 
     &.danger:hover:not(:disabled) {
-      color: var(--p-red-400);
-      border-color: var(--p-red-400);
+      color: var(--ink-red);
+      border-color: var(--ink-red);
     }
 
     &.danger {
@@ -921,7 +921,7 @@ main {
     padding-inline: 0.7rem;
     border-radius: 999px;
     background: color-mix(in srgb, var(--p-violet-400) 18%, transparent);
-    color: var(--p-violet-400);
+    color: var(--ink-violet);
     font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -1183,7 +1183,9 @@ main {
   line-height: 1.5;
 }
 
-.join-cta {
+/* .p-button prefix: this block is unscoped, so it needs to out-rank
+   PrimeVue's own .p-button:not(:disabled):hover on specificity alone. */
+.p-button.join-cta {
   width: 100%;
   min-height: 3rem;
   border: 0;
@@ -1191,7 +1193,17 @@ main {
   background: linear-gradient(110deg, var(--p-primary-color), var(--p-green-400));
   color: var(--p-primary-contrast-color);
   font-weight: 700;
-  transition: background 0.2s ease;
+
+  // PrimeVue's own :hover drops the gradient and fades in a flat colour
+  // (and swaps the ink), so every variant restates both on hover.
+  &:not(:disabled):hover {
+    background: linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--p-primary-color) 88%, white),
+      color-mix(in srgb, var(--p-green-400) 88%, white)
+    );
+    color: var(--p-primary-contrast-color);
+  }
 
   &.spectating {
     background: linear-gradient(
@@ -1200,6 +1212,15 @@ main {
       color-mix(in srgb, var(--p-violet-400) 70%, var(--p-amber-400))
     );
     color: var(--p-surface-950);
+
+    &:not(:disabled):hover {
+      background: linear-gradient(
+        110deg,
+        color-mix(in srgb, var(--p-violet-400) 88%, white),
+        color-mix(in srgb, var(--p-violet-400) 64%, var(--p-amber-300))
+      );
+      color: var(--p-surface-950);
+    }
   }
 
   &:disabled {

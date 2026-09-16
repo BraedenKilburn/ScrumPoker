@@ -473,7 +473,17 @@ const disabled = computed(() => !username.value || submitting.value);
   background: linear-gradient(110deg, var(--p-primary-color), var(--p-green-400));
   color: var(--p-primary-contrast-color);
   font-weight: 800;
-  transition: background 0.2s ease;
+
+  // PrimeVue's own :hover drops the gradient and fades in a flat colour
+  // (and swaps the ink), so every variant restates both on hover.
+  &:not(:disabled):hover {
+    background: linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--p-primary-color) 88%, white),
+      color-mix(in srgb, var(--p-green-400) 88%, white)
+    );
+    color: var(--p-primary-contrast-color);
+  }
 
   // Spectating tints the CTA violet so the chosen role is visible right
   // where you commit to it.
@@ -486,12 +496,12 @@ const disabled = computed(() => !username.value || submitting.value);
     color: var(--p-surface-950);
 
     &:not(:disabled):hover {
-      border: 0;
       background: linear-gradient(
         110deg,
         color-mix(in srgb, var(--p-violet-400) 88%, white),
         color-mix(in srgb, var(--p-violet-400) 64%, var(--p-amber-300))
       );
+      color: var(--p-surface-950);
     }
   }
 }

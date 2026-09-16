@@ -97,7 +97,7 @@ const options = [
     }
 
     &.spectator.active .pi {
-      color: var(--p-violet-400);
+      color: var(--ink-violet);
     }
   }
 }

@@ -58,7 +58,7 @@ const labels: Record<ReactionEmoji, string> = {
 
   .rate-limit-status {
     min-height: 1em;
-    color: var(--p-amber-400);
+    color: var(--ink-amber);
     font-size: 0.7rem;
     line-height: 1;
     white-space: nowrap;

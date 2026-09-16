@@ -93,7 +93,7 @@ const manageableMembers = computed(() => [
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: var(--p-amber-400);
+  color: var(--ink-amber);
 }
 
 .sheet-body {
@@ -168,7 +168,7 @@ const manageableMembers = computed(() => [
     }
 
     &.danger:hover:not(:disabled) {
-      color: var(--p-red-400);
+      color: var(--ink-red);
       border-color: var(--p-red-400);
     }
 
