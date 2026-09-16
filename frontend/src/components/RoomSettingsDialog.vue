@@ -62,7 +62,7 @@ function updateDeck() {
       <div class="sound-copy">
         <span id="settings-sound-label" class="setting-title">Sound</span>
         <p id="settings-sound-description">
-          Play a chime in the room, or allow native notification sounds when you are away.
+          Play in-app chimes when votes are revealed or a new round starts.
         </p>
       </div>
       <button

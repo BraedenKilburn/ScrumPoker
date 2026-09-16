@@ -1,7 +1,6 @@
 import { computed, ref, watch, type Ref } from "vue";
 import type { RoomAlertEvent } from "@shared/types";
 import type { ConnectionStatus } from "@/modules/roomConnection";
-import { soundCuesKey } from "@/modules/constants";
 import { createNotificationBrowser, type NotificationBrowser } from "@/modules/notificationBrowser";
 
 export type RoomCue = "newRound" | "reveal";
@@ -20,7 +19,6 @@ export function useRoomNotifications(options: {
   roomId: string;
   username: Ref<string>;
   connectionStatus: Ref<ConnectionStatus>;
-  soundEnabled: Ref<boolean>;
   playCue: (kind: RoomCue) => void;
   browser?: NotificationBrowser;
 }) {
@@ -72,7 +70,7 @@ export function useRoomNotifications(options: {
     if (permission.value === "denied")
       return "Notifications are blocked. Allow notifications for this site in your browser settings.";
     if (requesting.value) return "Waiting for notification permission…";
-    return "Notify you about new rounds and revealed votes in another tab or app. Sound follows your Sound preference and system settings.";
+    return "Notify you about new rounds and revealed votes in another tab or app. Notification sound follows your system settings.";
   });
 
   async function toggleNotifications() {
@@ -191,20 +189,12 @@ export function useRoomNotifications(options: {
           return;
         }
         dismiss();
-        const storedSound = browser.read(soundCuesKey);
-        const sound = storedSound === null ? options.soundEnabled.value : storedSound === "true";
-        notification = browser.show(
-          options.roomId,
-          {
-            body: item.kind === "newRound" ? "New round started" : "Votes revealed",
-            silent: sound ? undefined : true,
-          },
-          () => {
-            browser.focus();
-            dismiss();
-            channel?.postMessage({ type: "dismiss" });
-          },
-        );
+        const update = item.kind === "newRound" ? "New round started" : "Votes revealed";
+        notification = browser.show(`${options.roomId} — ${update}`, {}, () => {
+          browser.focus();
+          dismiss();
+          channel?.postMessage({ type: "dismiss" });
+        });
       })
       .catch(() => {
         error.value = "Desktop notification delivery failed. Check your browser's site settings.";

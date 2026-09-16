@@ -9,8 +9,9 @@
   including re-reveals.
 - Do not notify on join or reconnect or replay missed events.
 - Include spectators; suppress notifications for the member's own actions.
-- Show the room name and “New round started” or “Votes revealed”, without
-  ticket details or results. Clicking brings the existing room tab forward.
+- Keep the room and update together in the title: “room — New round started”
+  or “room — Votes revealed”, without ticket details or results. Omit body
+  text so the browser-controlled website address cannot separate them. Clicking brings the existing room tab forward.
 - Keep only the latest notification per room. Dismiss it when the member
   returns to the room or leaves it.
 - Default notifications off; remember the preference across visits on the
@@ -18,9 +19,9 @@
   blocked permission or missing browser support in Settings.
 - Coordinate tabs: at most one notification per room, and none while any
   copy of that room is actively viewed (visible and focused).
-- When issuing a native notification with Sound enabled, allow the native
-  notification sound and suppress the original app cue for that event.
-  With Sound disabled, request a silent notification.
+- Native notifications always follow system sound settings, independently of
+  the app's Sound toggle. Suppress the original app cue for the same event.
+  The Sound toggle controls in-app chimes only.
 - Native sound follows browser and OS settings; the app cannot guarantee
   an audible notification or override system muting.
 - When the room is foregrounded and no native notification is sent, keep
@@ -55,11 +56,10 @@ play an app cue after native sound. An owner who initiated an event yields
 delivery to an eligible tab. Queued
 alerts older than five seconds are discarded when delivery resumes.
 
-The Notifications API's `silent: true` requests silence; leaving `silent`
-unset respects device defaults when Sound is enabled. Current desktop
-Chrome, Edge, Firefox, and Safari support this option, per
-[MDN compatibility data](https://github.com/mdn/browser-compat-data/blob/main/api/Notification.json).
-See [silent option semantics](https://developer.mozilla.org/en-US/docs/Web/API/Notification/silent).
+Leave the Notifications API's `silent` option unset to respect device defaults
+regardless of the app's Sound preference. See
+[notification options](https://developer.mozilla.org/en-US/docs/Web/API/Notification/Notification).
+The API exposes title/body content but no control over the browser's address row.
 Verify actual native sound behavior on target browsers and operating systems.
 
 ## Validation

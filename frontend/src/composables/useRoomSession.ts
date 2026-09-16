@@ -69,7 +69,6 @@ export function useRoomSession(
     roomId: roomId.value,
     username,
     connectionStatus,
-    soundEnabled: soundCuesEnabled,
     playCue: (kind) => (kind === "reveal" ? playRevealCue() : playNewRoundCue()),
     browser: options.notificationBrowser,
   });

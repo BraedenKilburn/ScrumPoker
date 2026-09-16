@@ -187,14 +187,14 @@ describe("room session desktop notifications", () => {
     const event = { stream: "server", sequence: 1, actor: "admin" };
     socket.emitMessage({ type: "votesCleared", data: { clearedBy: "admin" }, event });
     await settleNotifications();
-    expect(tab.shown.at(-1)?.options.body).toBe("New round started");
+    expect(tab.shown.at(-1)?.title).toBe("room1 — New round started");
     socket.emitMessage({
       type: "voteStatus",
       data: { revealed: true, votes: { admin: "5" } },
       event: { ...event, sequence: 2 },
     });
     await settleNotifications();
-    expect(tab.shown.at(-1)?.options.body).toBe("Votes revealed");
+    expect(tab.shown.at(-1)?.title).toBe("room1 — Votes revealed");
     socket.emitMessage({
       type: "voteStatus",
       data: { revealed: false, votes: { admin: "?" } },
@@ -213,7 +213,7 @@ describe("room session desktop notifications", () => {
       event: { ...event, sequence: 5 },
     });
     await settleNotifications();
-    expect(tab.shown.at(-1)?.options.body).toBe("New round started");
+    expect(tab.shown.at(-1)?.title).toBe("room1 — New round started");
     expect(audioStarts).toEqual([]);
     socket.emitMessage(snapshot);
     await settleNotifications();

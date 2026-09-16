@@ -26,7 +26,7 @@ describe("room notification preference", () => {
       roomId: "room1",
       username: ref("voter"),
       connectionStatus: ref("disconnected" as const),
-      soundEnabled: ref(false),
+
       playCue: vi.fn(),
       browser,
     };
@@ -46,8 +46,9 @@ describe("room notification preference", () => {
 
 import { notificationBrowserFamily, settleNotifications } from "@/testing/fakeNotificationBrowser";
 
-it("shows a silent background alert and closes it when the room becomes active", async () => {
+it("keeps room and update together, respects system sound with app sound off, and closes on return", async () => {
   const family = notificationBrowserFamily();
+  family.values.set("sound-cues-enabled", "false");
   family.values.set("desktop-notifications-enabled", "true");
   const tab = family.tab();
   const playCue = vi.fn();
@@ -55,7 +56,7 @@ it("shows a silent background alert and closes it when the room becomes active",
     roomId: "room1",
     username: ref("voter"),
     connectionStatus: ref("connected"),
-    soundEnabled: ref(false),
+
     playCue,
     browser: tab.browser,
   });
@@ -63,10 +64,12 @@ it("shows a silent background alert and closes it when the room becomes active",
   await settleNotifications();
   expect(tab.shown).toHaveLength(1);
   expect(tab.shown[0]).toMatchObject({
-    title: "room1",
-    options: { body: "New round started", silent: true },
+    title: "room1 — New round started",
+    options: {},
     closed: false,
   });
+  expect(tab.shown[0]!.options).not.toHaveProperty("silent");
+  expect(tab.shown[0]!.options).not.toHaveProperty("body");
   expect(playCue).not.toHaveBeenCalled();
   tab.setActive(true);
   await settleNotifications();
@@ -76,6 +79,7 @@ it("shows a silent background alert and closes it when the room becomes active",
 
 it("coordinates two background copies, suppresses both app cues, and replaces the previous notification", async () => {
   const family = notificationBrowserFamily();
+  family.values.set("sound-cues-enabled", "true");
   family.values.set("desktop-notifications-enabled", "true");
   const tabs = [family.tab(), family.tab()];
   const cues = [vi.fn(), vi.fn()];
@@ -84,7 +88,7 @@ it("coordinates two background copies, suppresses both app cues, and replaces th
       roomId: "room1",
       username: ref(`voter${i}`),
       connectionStatus: ref("connected"),
-      soundEnabled: ref(true),
+
       playCue: cues[i]!,
       browser: tab.browser,
     }),
@@ -100,7 +104,7 @@ it("coordinates two background copies, suppresses both app cues, and replaces th
   const shown = tabs.flatMap((t) => t.shown);
   expect(shown).toHaveLength(2);
   expect(shown[0]!.closed).toBe(true);
-  expect(shown[1]!.options.body).toBe("Votes revealed");
+  expect(shown[1]!.title).toBe("room1 — Votes revealed");
   alerts.forEach((a) => a.dispose());
 });
 
@@ -115,7 +119,7 @@ it("suppresses background notifications while another copy is active, then trans
       roomId: "room1",
       username: ref("voter"),
       connectionStatus: ref("connected"),
-      soundEnabled: ref(true),
+
       playCue: cues[i]!,
       browser: tab.browser,
     }),
@@ -147,7 +151,7 @@ it("does not replay pending alerts after disconnect and ignores own actions", as
     roomId: "room1",
     username: ref("admin"),
     connectionStatus,
-    soundEnabled: ref(false),
+
     playCue: vi.fn(),
     browser: tab.browser,
   });
@@ -177,7 +181,7 @@ it("never replays a foreground event when another copy receives it after focus m
       roomId: "room1",
       username: ref("voter"),
       connectionStatus: ref("connected"),
-      soundEnabled: ref(true),
+
       playCue: vi.fn(),
       browser,
     });
@@ -203,7 +207,7 @@ it("explains denied and unsupported permission without prompting again", async (
       roomId: "room1",
       username: ref("voter"),
       connectionStatus: ref("disconnected"),
-      soundEnabled: ref(false),
+
       playCue: vi.fn(),
       browser,
     });
@@ -230,7 +234,7 @@ it("leaves dismissed permission off and prevents an outstanding permission respo
       roomId: "room1",
       username: ref("voter"),
       connectionStatus: ref("disconnected"),
-      soundEnabled: ref(false),
+
       playCue: vi.fn(),
       browser,
     });
@@ -259,7 +263,7 @@ it("keeps app cues when disabled and closes existing notifications when toggled 
     roomId: "room1",
     username: ref("voter"),
     connectionStatus: ref("connected"),
-    soundEnabled: ref(true),
+
     playCue: cue,
     browser: tab.browser,
   });
@@ -283,7 +287,7 @@ it("handles rejected permission and storage failures without breaking the room",
     roomId: "room1",
     username: ref("voter"),
     connectionStatus: ref("disconnected"),
-    soundEnabled: ref(false),
+
     playCue: vi.fn(),
     browser,
   });
@@ -297,7 +301,7 @@ it("handles rejected permission and storage failures without breaking the room",
     roomId: "room1",
     username: ref("voter"),
     connectionStatus: ref("disconnected"),
-    soundEnabled: ref(false),
+
     playCue: vi.fn(),
     browser,
   });
@@ -314,7 +318,7 @@ it("drops delivery delayed by a suspended tab instead of showing a catch-up aler
     roomId: "room1",
     username: ref("voter"),
     connectionStatus: ref("connected"),
-    soundEnabled: ref(false),
+
     playCue: vi.fn(),
     browser: tab.browser,
   });
@@ -336,7 +340,7 @@ it("does not play an app cue when an already notified event reaches a newly focu
       roomId: "room1",
       username: ref("voter"),
       connectionStatus: ref("connected"),
-      soundEnabled: ref(true),
+
       playCue: cues[i]!,
       browser: tab.browser,
     }),
@@ -361,7 +365,7 @@ it("transfers notification ownership to an eligible member when the owner initia
       roomId: "room1",
       username: ref(i === 0 ? "admin" : "voter"),
       connectionStatus: ref("connected"),
-      soundEnabled: ref(true),
+
       playCue: vi.fn(),
       browser: tab.browser,
     }),
@@ -386,7 +390,7 @@ it("keeps unsupported insecure contexts usable when secure-context UUID generati
       roomId: "room1",
       username: ref("voter"),
       connectionStatus: ref("disconnected"),
-      soundEnabled: ref(false),
+
       playCue: vi.fn(),
       browser,
     });

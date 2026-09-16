@@ -18,7 +18,6 @@ export function createNotificationBrowser(): NotificationBrowser {
     supported:
       typeof Notification !== "undefined" &&
       globalThis.isSecureContext === true &&
-      "silent" in Notification.prototype &&
       typeof BroadcastChannel !== "undefined" &&
       typeof navigator !== "undefined" &&
       !!navigator.locks,
