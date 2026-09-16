@@ -15,11 +15,11 @@ const tokenSheet = join(src, "assets", "base.scss");
 
 const darkAssumptions: Array<[label: string, pattern: RegExp]> = [
   [
-    "page background mixed toward black/white",
-    /color-mix\(in srgb, var\(--p-content-background\)[^)]*\b(?:black|white)\b/,
+    "PrimeVue surface mixed toward black/white (use --surface-*)",
+    /color-mix\(in srgb, var\(--p-(?:content-background|surface-\d+)\)[^)]*\b(?:black|white)\b/,
   ],
-  ["literal black shadow", /rgba?\(\s*0\s*,?\s*0\s*,?\s*0\b/],
-  ["literal white highlight", /rgba?\(\s*255\s*,?\s*255\s*,?\s*255\b/],
+  ["literal black (use --shadow-color)", /rgba?\(\s*0\s*,?\s*0\s*,?\s*0\b/],
+  ["literal white (use --edge-highlight)", /rgba?\(\s*255\s*,?\s*255\s*,?\s*255\b/],
 ];
 
 function stylesheets(dir: string): string[] {
