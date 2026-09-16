@@ -23,6 +23,7 @@
   /* rgb triplets — components supply the alpha: rgb(var(--shadow-color) / 35%) */
   --shadow-color: 71 85 105; /* slate-600: a soft grey shadow, not black */
   --edge-highlight: 255 255 255; /* white on white: near-invisible by design */
+  --card-back-stripe: 15 23 42; /* slate-900: the face-down stripes go dark-on-grey */
 
   /* Accent ink — an accent colour used as text or icon ink (admin chip,
      crown, "ready", danger actions). The 400 step reads on a dark page but
@@ -47,6 +48,7 @@
   --surface-elevated: color-mix(in srgb, var(--p-content-background) 80%, white 4%);
   --shadow-color: 0 0 0;
   --edge-highlight: 255 255 255;
+  --card-back-stripe: 255 255 255;
   --ink-amber: var(--p-amber-400);
   --ink-red: var(--p-red-400);
   --ink-emerald: var(--p-emerald-400);

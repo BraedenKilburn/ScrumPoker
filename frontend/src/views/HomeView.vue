@@ -474,9 +474,11 @@ const disabled = computed(() => !username.value || submitting.value);
   color: var(--p-primary-contrast-color);
   font-weight: 800;
 
-  // PrimeVue's own :hover drops the gradient and fades in a flat colour
-  // (and swaps the ink), so every variant restates both on hover.
+  // PrimeVue's own :hover drops the gradient, fades in a flat colour,
+  // swaps the ink and adds a 1px border — so every variant restates the
+  // gradient and ink on hover, and the border stays off.
   &:not(:disabled):hover {
+    border: 0;
     background: linear-gradient(
       110deg,
       color-mix(in srgb, var(--p-primary-color) 88%, white),

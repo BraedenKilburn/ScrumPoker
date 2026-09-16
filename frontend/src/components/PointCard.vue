@@ -137,8 +137,8 @@ withDefaults(
     background:
       repeating-linear-gradient(
         135deg,
-        rgb(var(--edge-highlight) / 4%) 0 6px,
-        rgb(var(--edge-highlight) / 1%) 6px 12px
+        rgb(var(--card-back-stripe) / 4%) 0 6px,
+        rgb(var(--card-back-stripe) / 1%) 6px 12px
       ),
       var(--surface-elevated);
     border: 1px solid var(--p-content-border-color);
