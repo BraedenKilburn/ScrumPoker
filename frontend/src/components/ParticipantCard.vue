@@ -120,7 +120,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
     font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
     font-size: 0.75rem;
     letter-spacing: 0.02em;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px rgb(var(--shadow-color) / 30%);
 
     @media (min-width: 480px) {
       width: 3rem;
@@ -227,7 +227,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
     height: 1.4rem;
     border: 1px solid var(--p-content-border-color);
     border-radius: 999px;
-    background: color-mix(in srgb, var(--p-content-background) 85%, black);
+    background: var(--surface-raised);
     color: var(--p-text-muted-color);
     padding: 0;
     display: flex;

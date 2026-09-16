@@ -378,7 +378,7 @@ main {
   align-items: center;
   gap: clamp(0.5rem, 2vw, 1rem);
   padding: 0.85rem clamp(0.75rem, 3vw, 1.75rem);
-  background: color-mix(in srgb, var(--p-content-background) 88%, black);
+  background: var(--surface-panel);
   border-bottom: 1px solid var(--p-content-border-color);
 
   .brand {
@@ -447,7 +447,7 @@ main {
       padding: 0.15rem 0.6rem;
       border: 1px solid var(--p-content-border-color);
       border-radius: 999px;
-      background: color-mix(in srgb, var(--p-content-background) 70%, black);
+      background: var(--surface-raised);
       color: var(--p-text-muted-color);
       font-family: inherit;
       font-size: 0.68rem;
@@ -889,7 +889,7 @@ main {
       color-mix(in srgb, var(--p-blue-500) 12%, transparent) 0%,
       transparent 65%
     ),
-    color-mix(in srgb, var(--p-content-background) 88%, black);
+    var(--surface-panel);
   padding: 1.25rem 1rem;
   min-height: 12rem;
   display: flex;
@@ -935,7 +935,7 @@ main {
     gap: 0.4rem;
     padding-inline: 0.7rem;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--p-content-background) 70%, black);
+    background: var(--surface-raised);
     border: 1px solid var(--p-content-border-color);
     font-size: 0.72rem;
     color: var(--p-text-muted-color);
@@ -949,7 +949,7 @@ main {
     gap: 0.5rem;
     padding-inline: 0.85rem;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--p-content-background) 70%, black);
+    background: var(--surface-raised);
     border: 1px solid var(--p-content-border-color);
     font-size: 0.8rem;
     color: var(--p-text-color);
@@ -1011,7 +1011,7 @@ main {
   .reaction-burst {
     position: absolute;
     bottom: 16%;
-    filter: drop-shadow(0 0.35rem 0.65rem rgb(0 0 0 / 45%));
+    filter: drop-shadow(0 0.35rem 0.65rem rgb(var(--shadow-color) / 45%));
     font-size: clamp(1.75rem, 3.5vw, 2.4rem);
     line-height: 1;
     will-change: transform, opacity;

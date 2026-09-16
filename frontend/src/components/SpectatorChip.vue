@@ -31,7 +31,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
   padding: 0.3rem 0.65rem 0.3rem 0.3rem;
   border: 1px solid var(--p-content-border-color);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--p-content-background) 88%, black);
+  background: var(--surface-panel);
 
   &.is-current {
     border-color: color-mix(in srgb, var(--p-primary-color) 60%, transparent);

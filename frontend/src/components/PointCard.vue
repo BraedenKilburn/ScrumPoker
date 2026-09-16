@@ -59,8 +59,8 @@ withDefaults(
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   user-select: none;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 6px 18px rgba(0, 0, 0, 0.35);
+    0 1px 0 rgb(var(--edge-highlight) / 8%) inset,
+    0 6px 18px rgb(var(--shadow-color) / 35%);
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -137,14 +137,14 @@ withDefaults(
     background:
       repeating-linear-gradient(
         135deg,
-        rgba(255, 255, 255, 0.04) 0 6px,
-        rgba(255, 255, 255, 0.01) 6px 12px
+        rgb(var(--edge-highlight) / 4%) 0 6px,
+        rgb(var(--edge-highlight) / 1%) 6px 12px
       ),
-      color-mix(in srgb, var(--p-content-background) 80%, white 4%);
+      var(--surface-elevated);
     border: 1px solid var(--p-content-border-color);
     box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.04) inset,
-      0 4px 14px rgba(0, 0, 0, 0.35);
+      0 1px 0 rgb(var(--edge-highlight) / 4%) inset,
+      0 4px 14px rgb(var(--shadow-color) / 35%);
   }
 
   &.interactive {
@@ -153,8 +153,8 @@ withDefaults(
     &:hover:not(.disabled) {
       transform: translateY(-3px);
       box-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.12) inset,
-        0 12px 28px rgba(0, 0, 0, 0.45);
+        0 1px 0 rgb(var(--edge-highlight) / 12%) inset,
+        0 12px 28px rgb(var(--shadow-color) / 45%);
     }
   }
 

@@ -401,7 +401,7 @@ const disabled = computed(() => !username.value || submitting.value);
   }
 
   &:hover {
-    box-shadow: 0 1.35rem 2.75rem color-mix(in srgb, var(--p-surface-950) 28%, transparent);
+    box-shadow: 0 1.35rem 2.75rem rgb(var(--shadow-color) / 28%);
     transform: translateY(-0.65rem) rotate(var(--card-rotation));
   }
 }
@@ -416,7 +416,7 @@ const disabled = computed(() => !username.value || submitting.value);
   border: 1px solid var(--p-content-border-color);
   border-radius: 1.25rem;
   background: var(--p-content-background);
-  box-shadow: 0 1.5rem 4rem color-mix(in srgb, var(--p-surface-950) 18%, transparent);
+  box-shadow: 0 1.5rem 4rem rgb(var(--shadow-color) / 18%);
 }
 
 .panel-heading {

@@ -78,7 +78,7 @@ const labels: Record<ReactionEmoji, string> = {
     padding: 0;
     border: 1px solid var(--p-content-border-color);
     border-radius: 0.65rem;
-    background: color-mix(in srgb, var(--p-content-background) 72%, white 4%);
+    background: var(--surface-elevated);
     color: inherit;
     cursor: pointer;
     font: inherit;

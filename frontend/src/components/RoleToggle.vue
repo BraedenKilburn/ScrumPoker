@@ -40,7 +40,7 @@ const options = [
   display: flex;
   gap: 4px;
   padding: 4px;
-  background: color-mix(in srgb, var(--p-content-background) 70%, black);
+  background: var(--surface-raised);
   border: 1px solid var(--p-content-border-color);
   border-radius: 0.75rem;
 
@@ -53,7 +53,7 @@ const options = [
     width: calc((100% - 12px) / 2);
     border-radius: 0.5rem;
     background: var(--p-content-hover-background);
-    box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
+    box-shadow: 0 1px 4px rgb(var(--shadow-color) / 25%);
     pointer-events: none;
     transition: transform 0.2s ease;
   }
