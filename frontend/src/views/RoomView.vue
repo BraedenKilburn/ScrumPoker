@@ -13,7 +13,7 @@ import SpectatorChip from "@/components/SpectatorChip.vue";
 import HandStrip from "@/components/HandStrip.vue";
 import ReactionBar from "@/components/ReactionBar.vue";
 import ReactionFeed from "@/components/ReactionFeed.vue";
-import DeckChooserView from "@/views/DeckChooserView.vue";
+import RoomSettingsDialog from "@/components/RoomSettingsDialog.vue";
 import { useRoomSession } from "@/composables/useRoomSession";
 import { deckTone } from "@/modules/deckTone";
 
@@ -61,10 +61,8 @@ const {
   vote,
 } = useRoomSession(props.id);
 
-// The change-deck chooser renders as an overlay (not a route) so the
-// socket stays alive — leaving the Room route disconnects and an admin
-// disconnect destroys the room.
-const deckChooserOpen = ref(false);
+const settingsOpen = ref(false);
+const settingsButton = ref<HTMLButtonElement | null>(null);
 
 // The join dialog's RoleToggle speaks roles; the session tracks the
 // boolean it feeds into the connect URL.
@@ -74,8 +72,8 @@ const joinRole = computed<ParticipantRole>({
 });
 
 function handleDeckConfirm(newDeck: DeckId) {
-  if (newDeck !== deck.value) changeDeck(newDeck);
-  deckChooserOpen.value = false;
+  if (isAdmin.value && newDeck !== deck.value) changeDeck(newDeck);
+  settingsOpen.value = false;
 }
 
 onBeforeRouteLeave(() => {
@@ -100,22 +98,14 @@ onBeforeRouteLeave(() => {
       </div>
       <div class="header-actions">
         <button
-          v-if="isAdmin"
-          class="ghost-btn change-deck"
-          aria-label="Change deck"
-          @click="deckChooserOpen = true"
+          ref="settingsButton"
+          class="ghost-btn settings"
+          aria-haspopup="dialog"
+          :aria-expanded="settingsOpen"
+          @click="settingsOpen = true"
         >
-          <i class="pi pi-pencil" />
-          <span class="hide-mobile">Change deck</span>
-        </button>
-        <button
-          class="ghost-btn sound"
-          :aria-label="soundCuesEnabled ? 'Turn sound cues off' : 'Turn sound cues on'"
-          :aria-pressed="soundCuesEnabled"
-          @click="toggleSoundCues"
-        >
-          <i :class="soundCuesEnabled ? 'pi pi-volume-up' : 'pi pi-volume-off'" />
-          <span class="hide-mobile">{{ soundCuesEnabled ? "Sound on" : "Sound off" }}</span>
+          <i class="pi pi-cog" aria-hidden="true" />
+          <span>Settings</span>
         </button>
         <button
           class="ghost-btn invite"
@@ -283,15 +273,15 @@ onBeforeRouteLeave(() => {
       </div>
     </div>
 
-    <div v-if="deckChooserOpen" class="deck-overlay">
-      <DeckChooserView
-        :id="roomId"
-        mode="change"
-        :current-deck="deck"
-        @close="deckChooserOpen = false"
-        @confirm="handleDeckConfirm"
-      />
-    </div>
+    <RoomSettingsDialog
+      v-model:visible="settingsOpen"
+      :is-admin="isAdmin"
+      :current-deck="deck"
+      :sound-enabled="soundCuesEnabled"
+      @toggle-sound="toggleSoundCues"
+      @change-deck="handleDeckConfirm"
+      @after-hide="settingsButton?.focus()"
+    />
 
     <ParticipantManageSheet
       v-if="isAdmin"
@@ -470,6 +460,14 @@ main {
     }
   }
 
+  @media (max-width: 380px) {
+    flex-wrap: wrap;
+
+    .header-actions {
+      margin-left: auto;
+    }
+  }
+
   .header-actions {
     display: flex;
     gap: 0.5rem;
@@ -481,10 +479,10 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  // Icon-only below 768px (labels are .hide-mobile) — slim the padding
-  // so four buttons leave the brand text some room.
+  // Keep Settings labelled; the other actions become icons on small screens.
   padding: 0.5rem 0.6rem;
-  border-radius: 0.6rem;
+  border-radius: 999px;
+  min-height: 2.75rem;
   background: transparent;
   border: 1px solid var(--p-content-border-color);
   color: var(--p-text-color);
@@ -509,20 +507,19 @@ main {
     }
   }
 
-  &.change-deck:hover .pi {
-    animation: pencil-scribble 550ms ease-in-out;
+  &.settings {
+    background: var(--p-content-background);
+    font-weight: 600;
+
+    @media (prefers-reduced-motion: no-preference) {
+      &:hover .pi-cog {
+        animation: settings-turn 450ms ease-in-out;
+      }
+    }
   }
 
-  &.sound {
-    // Hover only wobbles the off-state icon (like .invite) so the
-    // pop below isn't overridden while the cursor is still on the button.
-    &:hover .pi-volume-off {
-      animation: sound-ring 650ms ease-in-out;
-    }
-
-    .pi-volume-up {
-      animation: check-pop 350ms ease-out;
-    }
+  &.leave {
+    color: var(--p-red-400);
   }
 
   &.leave:hover .pi {
@@ -841,49 +838,18 @@ main {
   }
 }
 
-@keyframes sound-ring {
+@keyframes settings-turn {
   0%,
   100% {
-    transform: rotate(0deg) scale(1);
+    transform: rotate(0deg);
   }
 
-  20% {
-    transform: rotate(-14deg) scale(1.12);
-  }
-
-  45% {
-    transform: rotate(10deg) scale(1.06);
-  }
-
-  70% {
-    transform: rotate(-6deg) scale(1);
-  }
-
-  85% {
-    transform: rotate(3deg) scale(1);
-  }
-}
-
-@keyframes pencil-scribble {
-  0%,
-  100% {
-    transform: translate(0, 0) rotate(0deg);
-  }
-
-  20% {
-    transform: translate(-1.5px, 1px) rotate(-16deg);
-  }
-
-  40% {
-    transform: translate(1.5px, -0.5px) rotate(-10deg);
-  }
-
-  60% {
-    transform: translate(-1px, 1px) rotate(-15deg);
+  55% {
+    transform: rotate(30deg);
   }
 
   80% {
-    transform: translate(1px, 0) rotate(-5deg);
+    transform: rotate(-5deg);
   }
 }
 
@@ -1142,15 +1108,6 @@ main {
   position: sticky;
   bottom: 0.5rem;
   z-index: 5;
-}
-
-/* ===== Change-deck overlay ===== */
-.deck-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  overflow-y: auto;
-  background: var(--p-content-background);
 }
 
 /* ===== Join dialog ===== */
