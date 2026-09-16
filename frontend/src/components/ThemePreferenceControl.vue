@@ -27,12 +27,15 @@ const options: { id: ThemePreference; label: string; icon: string }[] = [
   { id: "light", label: "Light", icon: "pi pi-sun" },
   { id: "dark", label: "Dark", icon: "pi pi-moon" },
 ];
+// Drives the sliding selected-segment backing (see ::before below).
+const selectedIndex = computed(() => options.findIndex((o) => o.id === selected.value));
 </script>
 
 <template>
   <div
     class="theme-preference"
     :class="{ compact }"
+    :style="{ '--selected-index': selectedIndex }"
     role="radiogroup"
     :aria-label="props.labelledby ? undefined : 'Appearance'"
     :aria-labelledby="props.labelledby"
@@ -60,18 +63,40 @@ const options: { id: ThemePreference; label: string; icon: string }[] = [
 
 <style scoped lang="scss">
 .theme-preference {
-  display: inline-flex;
+  position: relative;
+  display: grid;
+  // Equal columns whether shrink-wrapped or stretched, so the backing
+  // below can slide in exact thirds.
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   flex-shrink: 0;
   gap: 4px;
   padding: 4px;
   background: var(--surface-raised);
   border: 1px solid var(--p-content-border-color);
   border-radius: 0.75rem;
+
+  // The selected segment's backing: one pill slid between segments
+  // (same treatment as RoleToggle) rather than repainted per segment.
+  &::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc((100% - 16px) / 3);
+    border-radius: 0.5rem;
+    background: var(--p-content-hover-background);
+    box-shadow: 0 1px 4px rgb(var(--shadow-color) / 25%);
+    transform: translateX(calc(var(--selected-index) * (100% + 4px)));
+    transition: transform 0.2s ease;
+    pointer-events: none;
+  }
 }
 
 .segment {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
@@ -81,6 +106,7 @@ const options: { id: ThemePreference; label: string; icon: string }[] = [
   color: var(--p-text-muted-color);
   font-size: 0.85rem;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   user-select: none;
 
@@ -94,8 +120,6 @@ const options: { id: ThemePreference; label: string; icon: string }[] = [
 
   &.selected {
     color: var(--p-text-color);
-    background: var(--p-content-hover-background);
-    box-shadow: 0 1px 4px rgb(var(--shadow-color) / 25%);
 
     .pi {
       color: var(--p-primary-color);

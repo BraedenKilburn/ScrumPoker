@@ -330,11 +330,14 @@ button:focus-visible {
   outline-offset: 3px;
 }
 
-@media (max-width: 480px) {
+// Narrow dialog: the control takes its own full-width line under the
+// copy (indented past the icon column) instead of squeezing it.
+@media (max-width: 560px) {
   .appearance-setting {
     flex-wrap: wrap;
 
     .theme-preference {
+      flex: 1 1 100%;
       margin-left: 1.9rem;
     }
   }
