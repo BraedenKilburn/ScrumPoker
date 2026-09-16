@@ -156,6 +156,18 @@ p {
 }
 
 /**
+ * Held on <html> by useAppearance for the instant an appearance change is
+ * applied, so a switch lands at once instead of every component tweening
+ * its own colours toward it.
+ */
+html.appearance-switching,
+html.appearance-switching *,
+html.appearance-switching *::before,
+html.appearance-switching *::after {
+  transition: none !important;
+}
+
+/**
  * Respect users who prefer reduced motion. Neutralizes the app's
  * animations/transitions without removing final visual states.
  */
