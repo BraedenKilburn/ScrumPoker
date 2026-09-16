@@ -15,7 +15,7 @@ export function resolveAppearance(
 }
 
 /** Anything unknown or corrupt in storage reads as System. */
-export function parseThemePreference(value: unknown): ThemePreference {
+function parseThemePreference(value: unknown): ThemePreference {
   return value === "light" || value === "dark" ? value : "system";
 }
 
@@ -46,7 +46,7 @@ export type AppearanceRoot = {
 const OS_DARK_QUERY = "(prefers-color-scheme: dark)";
 /** The page background per appearance (`--surface-page` in base.scss),
  *  so mobile browser chrome matches the page. Mirrored in index.html. */
-const THEME_COLOR: Record<Appearance, string> = { light: "#f1f5f9", dark: "#18181b" };
+export const THEME_COLOR: Record<Appearance, string> = { light: "#f1f5f9", dark: "#18181b" };
 
 // Module scope so the whole app shares one preference and one appearance.
 const themePreference = ref<ThemePreference>("system");
@@ -72,7 +72,9 @@ function readStoredPreference(storage: Pick<Storage, "getItem">): unknown {
 
 function defaultBrowser(): AppearanceBrowser {
   return {
-    storage: localStorage,
+    // Accessed lazily: merely touching window.localStorage can throw when
+    // storage is disabled, and that must read as System, not abort boot.
+    storage: { getItem: (key) => localStorage.getItem(key) },
     matchMedia: (query) => window.matchMedia(query),
     root: document.documentElement,
   };
@@ -86,14 +88,14 @@ function defaultBrowser(): AppearanceBrowser {
 export function bootAppearance(browser: AppearanceBrowser = defaultBrowser()): () => void {
   const { storage, matchMedia, root } = browser;
   themePreference.value = parseThemePreference(readStoredPreference(storage));
-  const osDark = matchMedia(OS_DARK_QUERY);
+  const osDarkQuery = matchMedia(OS_DARK_QUERY);
   const apply = (systemPrefersDark: boolean) =>
     applyAppearance(root, resolveAppearance(themePreference.value, systemPrefersDark));
-  apply(osDark.matches);
-  // Scheduled/sunset OS themes flip while a tab is open; re-apply at once.
+  apply(osDarkQuery.matches);
+  // Scheduled/sunset OS appearances flip while a tab is open; re-apply at once.
   const onChange = (event: { matches: boolean }) => apply(event.matches);
-  osDark.addEventListener("change", onChange);
-  return () => osDark.removeEventListener("change", onChange);
+  osDarkQuery.addEventListener("change", onChange);
+  return () => osDarkQuery.removeEventListener("change", onChange);
 }
 
 export function useAppearance() {

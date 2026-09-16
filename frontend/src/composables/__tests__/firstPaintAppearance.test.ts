@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { resolveAppearance } from "@/composables/useAppearance";
+import { THEME_COLOR, resolveAppearance } from "@/composables/useAppearance";
 import { themePreferenceKey } from "@/modules/constants";
 
 /**
@@ -64,20 +64,17 @@ describe("first-paint appearance script", () => {
     "agrees with resolveAppearance for %s preference, OS dark=%s",
     (preference, osDark) => {
       const expected = resolveAppearance(preference, osDark);
-      const painted = runFirstPaint({
-        stored: preference === "system" ? null : preference,
-        osDark,
-      });
+      const painted = runFirstPaint({ stored: preference, osDark });
 
       expect(painted.dark).toBe(expected === "dark");
       expect(painted.colorScheme).toBe(expected);
-      expect(painted.themeColor).toBe(expected === "dark" ? "#18181b" : "#f1f5f9");
+      expect(painted.themeColor).toBe(THEME_COLOR[expected]);
     },
   );
 
-  it("treats an unknown stored value as System", () => {
-    expect(runFirstPaint({ stored: "auto", osDark: true }).dark).toBe(true);
-    expect(runFirstPaint({ stored: "auto", osDark: false }).dark).toBe(false);
+  it.each([null, "auto"])("treats a missing or unknown stored value (%j) as System", (stored) => {
+    expect(runFirstPaint({ stored, osDark: true }).dark).toBe(true);
+    expect(runFirstPaint({ stored, osDark: false }).dark).toBe(false);
   });
 
   it("ships a theme-color meta for the script and composable to update", () => {

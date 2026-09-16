@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { bootAppearance, resolveAppearance, useAppearance } from "@/composables/useAppearance";
+import {
+  THEME_COLOR,
+  bootAppearance,
+  resolveAppearance,
+  useAppearance,
+} from "@/composables/useAppearance";
 import { themePreferenceKey } from "@/modules/constants";
 
 describe("resolveAppearance", () => {
@@ -81,7 +86,7 @@ describe("appearance", () => {
 
     expect(browser.root.classes.has("p-dark")).toBe(false);
     expect(browser.root.style.colorScheme).toBe("light");
-    expect(browser.root.themeColor.content).toBe("#f1f5f9");
+    expect(browser.root.themeColor.content).toBe(THEME_COLOR.light);
     expect(useAppearance().appearance.value).toBe("light");
   });
 
@@ -91,16 +96,18 @@ describe("appearance", () => {
 
     expect(browser.root.classes.has("p-dark")).toBe(true);
     expect(browser.root.style.colorScheme).toBe("dark");
-    expect(browser.root.themeColor.content).toBe("#18181b");
+    expect(browser.root.themeColor.content).toBe(THEME_COLOR.dark);
     expect(useAppearance().appearance.value).toBe("dark");
   });
 
   it.each([
+    ["system", false, "light"],
+    ["system", true, "dark"],
     ["light", false, "light"],
     ["light", true, "light"],
     ["dark", false, "dark"],
     ["dark", true, "dark"],
-  ] as const)("a stored %s preference wins over OS dark=%s", (stored, osDark, expected) => {
+  ] as const)("a stored %s preference with OS dark=%s renders %s", (stored, osDark, expected) => {
     const browser = fakeBrowser({ stored, osDark });
     dispose = bootAppearance(browser);
 
@@ -138,13 +145,13 @@ describe("appearance", () => {
     browser.query.change(true);
     expect(browser.root.classes.has("p-dark")).toBe(true);
     expect(browser.root.style.colorScheme).toBe("dark");
-    expect(browser.root.themeColor.content).toBe("#18181b");
+    expect(browser.root.themeColor.content).toBe(THEME_COLOR.dark);
     expect(useAppearance().appearance.value).toBe("dark");
 
     browser.query.change(false);
     expect(browser.root.classes.has("p-dark")).toBe(false);
     expect(browser.root.style.colorScheme).toBe("light");
-    expect(browser.root.themeColor.content).toBe("#f1f5f9");
+    expect(browser.root.themeColor.content).toBe(THEME_COLOR.light);
     expect(useAppearance().appearance.value).toBe("light");
   });
 
