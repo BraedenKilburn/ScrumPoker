@@ -510,6 +510,12 @@ main {
   &.settings {
     background: var(--p-content-background);
     font-weight: 600;
+
+    @media (prefers-reduced-motion: no-preference) {
+      &:hover .pi-cog {
+        animation: settings-turn 450ms ease-in-out;
+      }
+    }
   }
 
   &.leave {
@@ -829,6 +835,21 @@ main {
 
   100% {
     transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes settings-turn {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  55% {
+    transform: rotate(30deg);
+  }
+
+  80% {
+    transform: rotate(-5deg);
   }
 }
 
