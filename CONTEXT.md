@@ -165,3 +165,36 @@ still apply the reset and play the cue.
 `userReconnected`): the arriving member gets an authoritative
 [Snapshot](#snapshot) reply instead of consuming its own presence
 announcement.
+
+## Device preference
+
+A setting that lives in the browser it was made in — never sent to the
+server, never tied to a room or a name. Username, sound cues, recent
+rooms and the [Theme preference](#theme-preference) are all device
+preferences: two people in the same room can hold different ones, and
+one person on two devices does not carry them across.
+
+_Avoid_: user setting, account setting — nothing here has an account.
+
+## Theme preference
+
+What the user chose about light or dark: **System**, **Light** or
+**Dark**. A [Device preference](#device-preference). System is the
+default and means "follow the operating system"; Light and Dark are an
+override of it. The choice is one of three values, never a boolean — a
+toggle that only flips between Light and Dark would make System
+unreachable once touched.
+
+_Avoid_: theme (bare — PrimeVue calls its presets "themes" too), dark
+mode (a value, not the preference).
+
+## Appearance
+
+The light-or-dark the app is actually showing. Derived from the
+[Theme preference](#theme-preference) and, when that is System, from
+the operating system's current setting — so with System selected the
+appearance can change while the tab is open, without the preference
+changing. Appearance is the thing styles respond to; preference is the
+thing the user edits.
+
+_Avoid_: theme, mode, scheme.
