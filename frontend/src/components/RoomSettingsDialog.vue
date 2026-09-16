@@ -8,11 +8,15 @@ const props = defineProps<{
   isAdmin: boolean;
   currentDeck: DeckId;
   soundEnabled: boolean;
+  notificationsEnabled: boolean;
+  notificationsUnavailable: boolean;
+  notificationDescription: string;
 }>();
 
 const emit = defineEmits<{
   "update:visible": [visible: boolean];
   toggleSound: [];
+  toggleNotifications: [];
   changeDeck: [deck: DeckId];
   afterHide: [];
 }>();
@@ -58,7 +62,7 @@ function updateDeck() {
       <div class="sound-copy">
         <span id="settings-sound-label" class="setting-title">Sound</span>
         <p id="settings-sound-description">
-          Play a chime when votes are revealed or a new round starts.
+          Play a chime in the room, or allow native notification sounds when you are away.
         </p>
       </div>
       <button
@@ -71,6 +75,28 @@ function updateDeck() {
         aria-describedby="settings-sound-description"
         autofocus
         @click="emit('toggleSound')"
+      >
+        <span aria-hidden="true" />
+      </button>
+    </div>
+
+    <div class="sound-setting notification-setting">
+      <i class="pi pi-bell" aria-hidden="true" />
+      <div class="sound-copy">
+        <span id="settings-notifications-label" class="setting-title">Desktop notifications</span>
+        <p id="settings-notifications-description" aria-live="polite">
+          {{ notificationDescription }}
+        </p>
+      </div>
+      <button
+        type="button"
+        class="sound-switch"
+        role="switch"
+        :aria-checked="notificationsEnabled"
+        :disabled="notificationsUnavailable"
+        aria-labelledby="settings-notifications-label"
+        aria-describedby="settings-notifications-description"
+        @click="emit('toggleNotifications')"
       >
         <span aria-hidden="true" />
       </button>
@@ -135,6 +161,15 @@ function updateDeck() {
     margin-top: 0.25rem;
     color: var(--p-text-muted-color);
   }
+}
+
+.notification-setting {
+  margin-top: 1rem;
+}
+
+.sound-switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .sound-copy {

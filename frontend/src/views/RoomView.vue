@@ -39,6 +39,10 @@ const {
   reactionsRateLimited,
   roomId,
   soundCuesEnabled,
+  notificationsEnabled,
+  notificationsUnavailable,
+  notificationDescription,
+  toggleNotifications,
   spectatorMembers,
   totalCount,
   usernameModel,
@@ -278,6 +282,10 @@ onBeforeRouteLeave(() => {
       :is-admin="isAdmin"
       :current-deck="deck"
       :sound-enabled="soundCuesEnabled"
+      :notifications-enabled="notificationsEnabled"
+      :notifications-unavailable="notificationsUnavailable"
+      :notification-description="notificationDescription"
+      @toggle-notifications="toggleNotifications"
       @toggle-sound="toggleSoundCues"
       @change-deck="handleDeckConfirm"
       @after-hide="settingsButton?.focus()"
