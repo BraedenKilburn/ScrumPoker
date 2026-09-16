@@ -56,8 +56,9 @@ play an app cue after native sound. An owner who initiated an event yields
 delivery to an eligible tab. Queued
 alerts older than five seconds are discarded when delivery resumes.
 
-Leave the Notifications API's `silent` option unset to respect device defaults
-regardless of the app's Sound preference. See
+Set the Notifications API's `silent` option to `false` to explicitly allow
+native sound regardless of the app's Sound preference; the browser and OS
+retain the final decision. See
 [notification options](https://developer.mozilla.org/en-US/docs/Web/API/Notification/Notification).
 The API exposes title/body content but no control over the browser's address row.
 Verify actual native sound behavior on target browsers and operating systems.
@@ -76,3 +77,12 @@ setting it only inside the integration test did not avoid a port-3000 conflict.
 No connected browser was available to the Browser runtime during implementation.
 Native banners, click-to-focus restrictions, OS sound, and visual layout in
 Chrome/Edge, Firefox, and Safari therefore still require manual verification.
+
+### Native audio comparison (2026-09-16)
+
+The user tested a minimal native Notification constructor with omitted options
+and with `silent: false`, switching away before each notification. Safari
+played sound only with explicit `silent: false`; Helium played sound with
+neither variant. Production now uses the Safari-working option. This does not
+establish why Helium is silent and does not add an in-app audio fallback.
+The room flow with the updated option still needs user verification.

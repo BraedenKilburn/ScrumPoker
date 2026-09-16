@@ -190,7 +190,9 @@ export function useRoomNotifications(options: {
         }
         dismiss();
         const update = item.kind === "newRound" ? "New round started" : "Votes revealed";
-        notification = browser.show(`${options.roomId} — ${update}`, {}, () => {
+        // Safari was silent with omitted options in the native-audio comparison.
+        // Explicitly allow sound; the browser and OS retain the final decision.
+        notification = browser.show(`${options.roomId} — ${update}`, { silent: false }, () => {
           browser.focus();
           dismiss();
           channel?.postMessage({ type: "dismiss" });

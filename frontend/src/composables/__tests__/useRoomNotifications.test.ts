@@ -65,10 +65,10 @@ it("keeps room and update together, respects system sound with app sound off, an
   expect(tab.shown).toHaveLength(1);
   expect(tab.shown[0]).toMatchObject({
     title: "room1 — New round started",
-    options: {},
+    options: { silent: false },
     closed: false,
   });
-  expect(tab.shown[0]!.options).not.toHaveProperty("silent");
+  expect(tab.shown[0]!.options.silent).toBe(false);
   expect(tab.shown[0]!.options).not.toHaveProperty("body");
   expect(playCue).not.toHaveBeenCalled();
   tab.setActive(true);
@@ -97,7 +97,7 @@ it("coordinates two background copies, suppresses both app cues, and replaces th
   alerts.forEach((a) => a.newRound(first));
   await settleNotifications();
   expect(tabs.flatMap((t) => t.shown)).toHaveLength(1);
-  expect(tabs.flatMap((t) => t.shown)[0]!.options.silent).not.toBe(true);
+  expect(tabs.flatMap((t) => t.shown)[0]!.options.silent).toBe(false);
   cues.forEach((cue) => expect(cue).not.toHaveBeenCalled());
   alerts.forEach((a) => a.reveal({ ...first, sequence: 2 }));
   await settleNotifications();
