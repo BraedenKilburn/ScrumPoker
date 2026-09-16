@@ -216,7 +216,7 @@ legend {
   margin-bottom: 0.85rem;
 
   .pi {
-    color: var(--p-amber-400);
+    color: var(--ink-amber);
     margin-right: 0.5rem;
     font-size: 0.85rem;
   }

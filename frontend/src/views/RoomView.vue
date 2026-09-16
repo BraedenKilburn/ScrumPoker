@@ -100,12 +100,13 @@ onBeforeRouteLeave(() => {
         <button
           ref="settingsButton"
           class="ghost-btn settings"
+          aria-label="Settings"
           aria-haspopup="dialog"
           :aria-expanded="settingsOpen"
           @click="settingsOpen = true"
         >
           <i class="pi pi-cog" aria-hidden="true" />
-          <span>Settings</span>
+          <span class="hide-mobile">Settings</span>
         </button>
         <button
           class="ghost-btn invite"
@@ -378,7 +379,7 @@ main {
   align-items: center;
   gap: clamp(0.5rem, 2vw, 1rem);
   padding: 0.85rem clamp(0.75rem, 3vw, 1.75rem);
-  background: color-mix(in srgb, var(--p-content-background) 88%, black);
+  background: var(--surface-panel);
   border-bottom: 1px solid var(--p-content-border-color);
 
   .brand {
@@ -447,7 +448,7 @@ main {
       padding: 0.15rem 0.6rem;
       border: 1px solid var(--p-content-border-color);
       border-radius: 999px;
-      background: color-mix(in srgb, var(--p-content-background) 70%, black);
+      background: var(--surface-raised);
       color: var(--p-text-muted-color);
       font-family: inherit;
       font-size: 0.68rem;
@@ -479,7 +480,8 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  // Keep Settings labelled; the other actions become icons on small screens.
+  // The actions become icons on small screens; each button carries an
+  // aria-label so the name survives the hidden text.
   padding: 0.5rem 0.6rem;
   border-radius: 999px;
   min-height: 2.75rem;
@@ -519,7 +521,7 @@ main {
   }
 
   &.leave {
-    color: var(--p-red-400);
+    color: var(--ink-red);
   }
 
   &.leave:hover .pi {
@@ -527,8 +529,8 @@ main {
   }
 
   &.leave:hover {
-    color: var(--p-red-400);
-    border-color: var(--p-red-400);
+    color: var(--ink-red);
+    border-color: var(--ink-red);
   }
 
   .hide-mobile {
@@ -556,7 +558,7 @@ main {
     align-items: center;
     gap: 0.35rem;
     background: color-mix(in srgb, var(--p-amber-400) 15%, transparent);
-    color: var(--p-amber-400);
+    color: var(--ink-amber);
     min-height: 2rem;
     padding: 0 0.75rem;
     border-radius: 0.6rem;
@@ -648,13 +650,13 @@ main {
     }
 
     &.on {
-      color: var(--p-amber-400);
+      color: var(--ink-amber);
       border-color: color-mix(in srgb, var(--p-amber-400) 60%, transparent);
     }
 
     &.danger:hover:not(:disabled) {
-      color: var(--p-red-400);
-      border-color: var(--p-red-400);
+      color: var(--ink-red);
+      border-color: var(--ink-red);
     }
 
     &.danger {
@@ -889,7 +891,7 @@ main {
       color-mix(in srgb, var(--p-blue-500) 12%, transparent) 0%,
       transparent 65%
     ),
-    color-mix(in srgb, var(--p-content-background) 88%, black);
+    var(--surface-panel);
   padding: 1.25rem 1rem;
   min-height: 12rem;
   display: flex;
@@ -921,7 +923,7 @@ main {
     padding-inline: 0.7rem;
     border-radius: 999px;
     background: color-mix(in srgb, var(--p-violet-400) 18%, transparent);
-    color: var(--p-violet-400);
+    color: var(--ink-violet);
     font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -935,7 +937,7 @@ main {
     gap: 0.4rem;
     padding-inline: 0.7rem;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--p-content-background) 70%, black);
+    background: var(--surface-raised);
     border: 1px solid var(--p-content-border-color);
     font-size: 0.72rem;
     color: var(--p-text-muted-color);
@@ -949,7 +951,7 @@ main {
     gap: 0.5rem;
     padding-inline: 0.85rem;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--p-content-background) 70%, black);
+    background: var(--surface-raised);
     border: 1px solid var(--p-content-border-color);
     font-size: 0.8rem;
     color: var(--p-text-color);
@@ -1011,7 +1013,7 @@ main {
   .reaction-burst {
     position: absolute;
     bottom: 16%;
-    filter: drop-shadow(0 0.35rem 0.65rem rgb(0 0 0 / 45%));
+    filter: drop-shadow(0 0.35rem 0.65rem rgb(var(--shadow-color) / 45%));
     font-size: clamp(1.75rem, 3.5vw, 2.4rem);
     line-height: 1;
     will-change: transform, opacity;
@@ -1183,7 +1185,9 @@ main {
   line-height: 1.5;
 }
 
-.join-cta {
+/* .p-button prefix: this block is unscoped, so it needs to out-rank
+   PrimeVue's own .p-button:not(:disabled):hover on specificity alone. */
+.p-button.join-cta {
   width: 100%;
   min-height: 3rem;
   border: 0;
@@ -1191,7 +1195,19 @@ main {
   background: linear-gradient(110deg, var(--p-primary-color), var(--p-green-400));
   color: var(--p-primary-contrast-color);
   font-weight: 700;
-  transition: background 0.2s ease;
+
+  // PrimeVue's own :hover drops the gradient, fades in a flat colour,
+  // swaps the ink and adds a 1px border — so every variant restates the
+  // gradient and ink on hover, and the border stays off.
+  &:not(:disabled):hover {
+    border: 0;
+    background: linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--p-primary-color) 88%, white),
+      color-mix(in srgb, var(--p-green-400) 88%, white)
+    );
+    color: var(--p-primary-contrast-color);
+  }
 
   &.spectating {
     background: linear-gradient(
@@ -1200,6 +1216,15 @@ main {
       color-mix(in srgb, var(--p-violet-400) 70%, var(--p-amber-400))
     );
     color: var(--p-surface-950);
+
+    &:not(:disabled):hover {
+      background: linear-gradient(
+        110deg,
+        color-mix(in srgb, var(--p-violet-400) 88%, white),
+        color-mix(in srgb, var(--p-violet-400) 64%, var(--p-amber-300))
+      );
+      color: var(--p-surface-950);
+    }
   }
 
   &:disabled {

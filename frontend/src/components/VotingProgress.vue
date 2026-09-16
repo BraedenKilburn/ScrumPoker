@@ -180,20 +180,12 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
 
     &::before {
       top: 0;
-      background: linear-gradient(
-        to bottom,
-        color-mix(in srgb, var(--p-content-background) 88%, black) 18%,
-        transparent
-      );
+      background: linear-gradient(to bottom, var(--surface-panel) 18%, transparent);
     }
 
     &::after {
       bottom: 0;
-      background: linear-gradient(
-        to top,
-        color-mix(in srgb, var(--p-content-background) 88%, black) 18%,
-        transparent
-      );
+      background: linear-gradient(to top, var(--surface-panel) 18%, transparent);
     }
 
     &.fade-top::before {
@@ -285,7 +277,7 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
     line-height: 1;
 
     &.ready {
-      color: var(--p-emerald-400);
+      color: var(--ink-emerald);
     }
   }
 
@@ -411,7 +403,7 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
       display: flex;
 
       .avatar {
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--p-content-background) 88%, black);
+        box-shadow: 0 0 0 2px var(--surface-panel);
 
         &:not(:first-child) {
           margin-left: -0.4rem;

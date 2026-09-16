@@ -267,7 +267,7 @@ function confirm() {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--p-amber-400);
+    color: var(--ink-amber);
   }
 }
 
