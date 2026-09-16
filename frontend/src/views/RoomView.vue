@@ -100,12 +100,13 @@ onBeforeRouteLeave(() => {
         <button
           ref="settingsButton"
           class="ghost-btn settings"
+          aria-label="Settings"
           aria-haspopup="dialog"
           :aria-expanded="settingsOpen"
           @click="settingsOpen = true"
         >
           <i class="pi pi-cog" aria-hidden="true" />
-          <span>Settings</span>
+          <span class="hide-mobile">Settings</span>
         </button>
         <button
           class="ghost-btn invite"
@@ -479,7 +480,8 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  // Keep Settings labelled; the other actions become icons on small screens.
+  // The actions become icons on small screens; each button carries an
+  // aria-label so the name survives the hidden text.
   padding: 0.5rem 0.6rem;
   border-radius: 999px;
   min-height: 2.75rem;
