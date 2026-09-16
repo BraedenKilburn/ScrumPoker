@@ -24,22 +24,22 @@
   },
   "devDependencies": {
     "@primeuix/themes": "^3.0.0",
-    "@tsconfig/node20": "^20.1.9",
-    "@vitejs/plugin-vue": "^6.0.8",
-    "@vue/devtools-api": "^8.1.5",
+    "@tsconfig/node20": "^20.1.10",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "@vue/devtools-api": "^8.2.1",
     "@vue/tsconfig": "^0.9.1",
     "npm-audit-resolver": "3.0.0-RC.0",
     "pinia": "^4.0.3",
     "prettier": "^3.9.6",
-    "primeicons": "^8.0.0",
+    "primeicons": "^8.0.1",
     "primevue": "^5.0.1",
-    "sass": "^1.102.0",
+    "sass": "^1.104.1",
     "typescript": "~6.0.3",
-    "vite": "^8.2.1",
+    "vite": "^8.3.0",
     "vite-plugin-vue-devtools": "^8.2.1",
-    "vitest": "^5.0.0",
-    "vue": "^3.5.41",
-    "vue-router": "^5.2.0",
-    "vue-tsc": "^3.3.9"
+    "vitest": "^5.0.1",
+    "vue": "^3.5.42",
+    "vue-router": "^5.3.1",
+    "vue-tsc": "^3.3.11"
   }
 }
