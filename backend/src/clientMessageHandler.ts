@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { ClientMessage, WebSocketData } from "@shared/types";
+import type { ClientMessage, RoomAlertEvent, WebSocketData } from "@shared/types";
 import type { RoomManager } from "./roomManager";
 import type { RoomBroadcaster } from "./roomBroadcaster";
 import type { ReactionRateLimiter } from "./reactionRateLimiter";
@@ -31,11 +31,19 @@ export type ClientMessageHandlerDeps = {
 export function createClientMessageHandler(deps: ClientMessageHandlerDeps) {
   const { roomManager, broadcaster, rateLimiter, membership } = deps;
 
+  const stream = crypto.randomUUID();
+  let sequence = 0;
+  const alertEvent = (actor: string): RoomAlertEvent => ({ stream, sequence: ++sequence, actor });
+
   // Personalized per member: a snapshot carries the recipient's own vote
   // unmasked, so it can't be one shared broadcast. Reveal and hide take
   // the same path so the audience isn't re-decided case by case.
-  function sendVoteStatus(roomId: string): void {
-    broadcaster.toEachMember(roomId, (member) => voteStatusMessage(roomId, roomManager, member));
+  function sendVoteStatus(roomId: string, actor: string): void {
+    const event = alertEvent(actor);
+    broadcaster.toEachMember(roomId, (member) => ({
+      ...voteStatusMessage(roomId, roomManager, member),
+      event,
+    }));
   }
 
   function dispatch(ws: Socket, msg: ClientMessage): void {
@@ -69,18 +77,22 @@ export function createClientMessageHandler(deps: ClientMessageHandlerDeps) {
 
       case "revealVotes":
         roomManager.setVoteVisibility(roomId, username, true);
-        sendVoteStatus(roomId);
+        sendVoteStatus(roomId, username);
         break;
 
       case "hideVotes":
         roomManager.setVoteVisibility(roomId, username, false);
-        sendVoteStatus(roomId);
+        sendVoteStatus(roomId, username);
         break;
 
       case "clearVotes":
         roomManager.clearVotes(roomId, username);
         roomManager.setVoteVisibility(roomId, username, false);
-        broadcaster.toRoom(roomId, { type: "votesCleared", data: { clearedBy: username } });
+        broadcaster.toRoom(roomId, {
+          type: "votesCleared",
+          event: alertEvent(username),
+          data: { clearedBy: username },
+        });
         break;
 
       case "transferAdmin":
@@ -107,7 +119,11 @@ export function createClientMessageHandler(deps: ClientMessageHandlerDeps) {
         // accidental confirm can't wipe votes.
         const changed = roomManager.setDeck(roomId, username, msg.data.deck);
         if (changed) {
-          broadcaster.toRoom(roomId, { type: "deckChanged", data: { deck: msg.data.deck } });
+          broadcaster.toRoom(roomId, {
+            type: "deckChanged",
+            event: alertEvent(username),
+            data: { deck: msg.data.deck },
+          });
         }
         break;
       }

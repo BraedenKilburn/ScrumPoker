@@ -3,6 +3,16 @@
 Glossary of domain terms. Grown lazily: a term is added when a piece of
 work actually resolves it (see `docs/agents/domain.md`), not speculatively.
 
+## Room alert
+
+A personal cue that a new round has started or votes have been revealed.
+Members choose sound cues and desktop notifications independently.
+
+## Desktop notification
+
+A room alert shown outside ScrumPoker to a desktop or laptop user whose
+room remains open, when its tab is hidden or its window lacks focus.
+
 ## Room id
 
 The name a room is reached by. Case- and whitespace-insensitive:

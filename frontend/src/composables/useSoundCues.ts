@@ -36,6 +36,8 @@ function playNote(ctx: AudioContext, { freq, startOffset, duration }: Note) {
 }
 
 function playCue(notes: Note[]) {
+  // Another tab may have changed Sound since this tab last rendered.
+  soundCuesEnabled.value = localStorage.getItem(soundCuesKey) === "true";
   if (!soundCuesEnabled.value) return;
   const now = performance.now();
   if (now - lastCueAt < CUE_DEBOUNCE_MS) return;

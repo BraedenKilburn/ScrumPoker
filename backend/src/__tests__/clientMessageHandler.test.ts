@@ -55,6 +55,21 @@ function setup() {
 }
 
 describe("clientMessageHandler", () => {
+  test("room alerts identify the authenticated actor and share one ordered identity across recipients", () => {
+    const { calls, send, admin } = setup();
+    send(admin, '{"type":"revealVotes","data":{"actor":"spoofed"}}');
+    const first = payloadFor(calls.at(-1), "voter");
+    const spectator = payloadFor(calls.at(-1), "watcher");
+    expect(first).toHaveProperty("event.actor", "admin");
+    expect(first).toHaveProperty("event.stream", expect.any(String));
+    expect(first).toHaveProperty("event.sequence", 1);
+    expect(spectator).toHaveProperty("event", "event" in first ? first.event : undefined);
+    send(admin, { type: "clearVotes" });
+    expect(calls.at(-1)).toMatchObject({ msg: { event: { actor: "admin", sequence: 2 } } });
+    send(admin, { type: "changeDeck", data: { deck: "tshirt" } });
+    expect(calls.at(-1)).toMatchObject({ msg: { event: { actor: "admin", sequence: 3 } } });
+  });
+
   describe("submitVote", () => {
     test("records the vote and broadcasts it masked to the whole room while votes are hidden", () => {
       const { roomManager, calls, send, voter } = setup();
@@ -138,10 +153,20 @@ describe("clientMessageHandler", () => {
       // Revealed: everyone sees everything, so payloads are identical.
       expect(payloadFor(call, "admin")).toEqual({
         type: "voteStatus",
+        event: expect.objectContaining({
+          actor: "admin",
+          stream: expect.any(String),
+          sequence: expect.any(Number),
+        }),
         data: { revealed: true, votes: { admin: null, voter: "5" } },
       });
       expect(payloadFor(call, "voter")).toEqual({
         type: "voteStatus",
+        event: expect.objectContaining({
+          actor: "admin",
+          stream: expect.any(String),
+          sequence: expect.any(Number),
+        }),
         data: { revealed: true, votes: { admin: null, voter: "5" } },
       });
     });
@@ -160,10 +185,20 @@ describe("clientMessageHandler", () => {
       // Each member sees their own real vote and "?" for everyone else.
       expect(payloadFor(call, "voter")).toEqual({
         type: "voteStatus",
+        event: expect.objectContaining({
+          actor: "admin",
+          stream: expect.any(String),
+          sequence: expect.any(Number),
+        }),
         data: { revealed: false, votes: { admin: "?", voter: "5" } },
       });
       expect(payloadFor(call, "admin")).toEqual({
         type: "voteStatus",
+        event: expect.objectContaining({
+          actor: "admin",
+          stream: expect.any(String),
+          sequence: expect.any(Number),
+        }),
         data: { revealed: false, votes: { admin: "8", voter: "?" } },
       });
     });
@@ -192,6 +227,11 @@ describe("clientMessageHandler", () => {
       }
       expect(payloadFor(call, "watcher")).toEqual({
         type: "voteStatus",
+        event: expect.objectContaining({
+          actor: "admin",
+          stream: expect.any(String),
+          sequence: expect.any(Number),
+        }),
         data: { revealed: false, votes: { admin: "?", voter: "?" } },
       });
     });
@@ -225,7 +265,11 @@ describe("clientMessageHandler", () => {
       expect(calls.at(-1)).toEqual({
         to: "room",
         roomId: "room1",
-        msg: { type: "votesCleared", data: { clearedBy: "admin" } },
+        msg: {
+          type: "votesCleared",
+          event: expect.objectContaining({ actor: "admin" }),
+          data: { clearedBy: "admin" },
+        },
       });
     });
 
@@ -302,7 +346,11 @@ describe("clientMessageHandler", () => {
       expect(calls.at(-1)).toEqual({
         to: "room",
         roomId: "room1",
-        msg: { type: "deckChanged", data: { deck: "tshirt" } },
+        msg: {
+          type: "deckChanged",
+          event: expect.objectContaining({ actor: "admin" }),
+          data: { deck: "tshirt" },
+        },
       });
     });
 
