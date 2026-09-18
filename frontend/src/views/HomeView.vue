@@ -401,7 +401,7 @@ const disabled = computed(() => !username.value || submitting.value);
   }
 
   &:hover {
-    box-shadow: 0 1.35rem 2.75rem color-mix(in srgb, var(--p-surface-950) 28%, transparent);
+    box-shadow: 0 1.35rem 2.75rem rgb(var(--shadow-color) / 28%);
     transform: translateY(-0.65rem) rotate(var(--card-rotation));
   }
 }
@@ -416,7 +416,7 @@ const disabled = computed(() => !username.value || submitting.value);
   border: 1px solid var(--p-content-border-color);
   border-radius: 1.25rem;
   background: var(--p-content-background);
-  box-shadow: 0 1.5rem 4rem color-mix(in srgb, var(--p-surface-950) 18%, transparent);
+  box-shadow: 0 1.5rem 4rem rgb(var(--shadow-color) / 18%);
 }
 
 .panel-heading {
@@ -473,7 +473,19 @@ const disabled = computed(() => !username.value || submitting.value);
   background: linear-gradient(110deg, var(--p-primary-color), var(--p-green-400));
   color: var(--p-primary-contrast-color);
   font-weight: 800;
-  transition: background 0.2s ease;
+
+  // PrimeVue's own :hover drops the gradient, fades in a flat colour,
+  // swaps the ink and adds a 1px border — so every variant restates the
+  // gradient and ink on hover, and the border stays off.
+  &:not(:disabled):hover {
+    border: 0;
+    background: linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--p-primary-color) 88%, white),
+      color-mix(in srgb, var(--p-green-400) 88%, white)
+    );
+    color: var(--p-primary-contrast-color);
+  }
 
   // Spectating tints the CTA violet so the chosen role is visible right
   // where you commit to it.
@@ -486,12 +498,12 @@ const disabled = computed(() => !username.value || submitting.value);
     color: var(--p-surface-950);
 
     &:not(:disabled):hover {
-      border: 0;
       background: linear-gradient(
         110deg,
         color-mix(in srgb, var(--p-violet-400) 88%, white),
         color-mix(in srgb, var(--p-violet-400) 64%, var(--p-amber-300))
       );
+      color: var(--p-surface-950);
     }
   }
 }

@@ -2,6 +2,7 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "@/App.vue";
 import router from "@/router";
+import { bootAppearance } from "@/composables/useAppearance";
 
 import PrimeVue from "primevue/config";
 import Lara from "@primeuix/themes/lara";
@@ -15,6 +16,9 @@ import ToastService from "primevue/toastservice";
 import Dialog from "primevue/dialog";
 
 import "@/assets/main.scss";
+
+// Appearance lives for the app's lifetime, not a room session: boot it once here.
+bootAppearance();
 
 const app = createApp(App);
 app.use(router);

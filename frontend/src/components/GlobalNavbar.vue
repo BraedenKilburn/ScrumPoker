@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRoute } from "vue-router";
+import ThemePreferenceControl from "@/components/ThemePreferenceControl.vue";
 
 // Room ID display
 const route = useRoute();
@@ -14,6 +15,7 @@ const roomId = computed(() => route.params.id);
       <p v-if="roomId">
         Room ID: <strong>{{ roomId }}</strong>
       </p>
+      <ThemePreferenceControl compact />
       <a href="https://github.com/BraedenKilburn/ScrumPoker" target="_blank" rel="noopener">
         GitHub <i class="pi pi-arrow-up-right" aria-hidden="true" />
       </a>
@@ -50,6 +52,15 @@ nav {
     gap: 0.25rem;
     color: var(--p-text-muted-color);
     font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  // Room ID, the appearance control and GitHub don't all fit beside the
+  // logo on a phone; the page under the navbar names the room anyway.
+  @media (max-width: 540px) {
+    p {
+      display: none;
+    }
   }
 }
 </style>

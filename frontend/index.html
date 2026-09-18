@@ -14,6 +14,27 @@
       href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
     />
     <title>Scrum Poker</title>
+    <meta name="theme-color" content="#f1f5f9" />
+    <!-- First paint: set the appearance before the bundle loads so the page
+         never paints light-then-dark (or the reverse). Same rule as
+         resolveAppearance() in src/composables/useAppearance.ts; the
+         contract test in src/composables/__tests__ keeps them in step. -->
+    <script>
+      (function () {
+        var preference = null;
+        try {
+          preference = localStorage.getItem("theme-preference");
+        } catch (_) {}
+        var dark =
+          preference === "dark" ||
+          (preference !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        var root = document.documentElement;
+        root.classList.toggle("p-dark", dark);
+        root.style.colorScheme = dark ? "dark" : "light";
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = dark ? "#18181b" : "#f1f5f9";
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

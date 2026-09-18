@@ -2,6 +2,7 @@
 import { ref, watch } from "vue";
 import Dialog from "primevue/dialog";
 import { decks, type DeckId } from "@shared/types";
+import ThemePreferenceControl from "@/components/ThemePreferenceControl.vue";
 
 const props = defineProps<{
   visible: boolean;
@@ -59,7 +60,7 @@ function updateDeck() {
   >
     <div class="sound-setting">
       <i class="pi pi-volume-up" aria-hidden="true" />
-      <div class="sound-copy">
+      <div class="setting-copy">
         <span id="settings-sound-label" class="setting-title">Sound</span>
         <p id="settings-sound-description">
           Play in-app chimes when votes are revealed or a new round starts.
@@ -82,7 +83,7 @@ function updateDeck() {
 
     <div class="sound-setting notification-setting">
       <i class="pi pi-bell" aria-hidden="true" />
-      <div class="sound-copy">
+      <div class="setting-copy">
         <span id="settings-notifications-label" class="setting-title">Desktop notifications</span>
         <p id="settings-notifications-description" aria-live="polite">
           {{ notificationDescription }}
@@ -100,6 +101,20 @@ function updateDeck() {
       >
         <span aria-hidden="true" />
       </button>
+    </div>
+
+    <div class="appearance-setting">
+      <i class="pi pi-palette" aria-hidden="true" />
+      <div class="setting-copy">
+        <span id="settings-appearance-label" class="setting-title">Appearance</span>
+        <p id="settings-appearance-description">
+          Follow your system setting, or choose light or dark.
+        </p>
+      </div>
+      <ThemePreferenceControl
+        labelledby="settings-appearance-label"
+        describedby="settings-appearance-description"
+      />
     </div>
 
     <form v-if="isAdmin" class="deck-settings" @submit.prevent="updateDeck">
@@ -151,7 +166,8 @@ function updateDeck() {
 </style>
 
 <style scoped lang="scss">
-.sound-setting {
+.sound-setting,
+.appearance-setting {
   display: flex;
   align-items: flex-start;
   gap: 0.9rem;
@@ -172,7 +188,11 @@ function updateDeck() {
   cursor: not-allowed;
 }
 
-.sound-copy {
+.appearance-setting {
+  margin-top: 0.75rem;
+}
+
+.setting-copy {
   flex: 1;
   min-width: 0;
 
@@ -251,7 +271,7 @@ legend {
   margin-bottom: 0.85rem;
 
   .pi {
-    color: var(--p-amber-400);
+    color: var(--ink-amber);
     margin-right: 0.5rem;
     font-size: 0.85rem;
   }
@@ -343,6 +363,19 @@ legend {
 button:focus-visible {
   outline: 2px solid var(--p-primary-color);
   outline-offset: 3px;
+}
+
+// Narrow dialog: the control takes its own full-width line under the
+// copy (indented past the icon column) instead of squeezing it.
+@media (max-width: 560px) {
+  .appearance-setting {
+    flex-wrap: wrap;
+
+    .theme-preference {
+      flex: 1 1 100%;
+      margin-left: 1.9rem;
+    }
+  }
 }
 
 @media (max-width: 380px) {

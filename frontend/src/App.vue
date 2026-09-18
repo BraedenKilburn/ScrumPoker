@@ -2,11 +2,8 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import Toast from "primevue/toast";
-import { keepDarkTheme } from "@/modules/darkMode";
 import GlobalNavbar from "@/components/GlobalNavbar.vue";
 import GlobalFooter from "@/components/GlobalFooter.vue";
-
-keepDarkTheme();
 
 const route = useRoute();
 const isRoomView = computed(() => route.name === "Room");

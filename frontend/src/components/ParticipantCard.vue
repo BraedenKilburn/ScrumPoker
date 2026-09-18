@@ -120,7 +120,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
     font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
     font-size: 0.75rem;
     letter-spacing: 0.02em;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px rgb(var(--shadow-color) / 30%);
 
     @media (min-width: 480px) {
       width: 3rem;
@@ -134,7 +134,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
     position: absolute;
     top: -5px;
     right: -6px;
-    color: var(--p-amber-400);
+    color: var(--ink-amber);
     font-size: 0.6rem;
     background: var(--p-content-background);
     border-radius: 999px;
@@ -177,7 +177,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
 
     &:hover,
     &:focus-visible {
-      color: var(--p-amber-400);
+      color: var(--ink-amber);
       border-color: color-mix(in srgb, var(--p-amber-400) 60%, transparent);
       transform: translateY(-1px);
       opacity: 1;
@@ -227,7 +227,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
     height: 1.4rem;
     border: 1px solid var(--p-content-border-color);
     border-radius: 999px;
-    background: color-mix(in srgb, var(--p-content-background) 85%, black);
+    background: var(--surface-raised);
     color: var(--p-text-muted-color);
     padding: 0;
     display: flex;
@@ -246,8 +246,8 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
 
     &:hover,
     &:focus-visible {
-      color: var(--p-red-400);
-      border-color: var(--p-red-400);
+      color: var(--ink-red);
+      border-color: var(--ink-red);
       opacity: 1;
     }
 
