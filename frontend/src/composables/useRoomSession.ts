@@ -12,10 +12,15 @@ import {
 import { createRoomMembers, createSpectatorMembers } from "@/modules/roomMembers";
 import { rememberRoomDeck } from "@/composables/useRecentRooms";
 import { useReactions } from "@/composables/useReactions";
+import { useRoomNotifications } from "@/composables/useRoomNotifications";
+import type { NotificationBrowser } from "@/modules/notificationBrowser";
 import { useSoundCues } from "@/composables/useSoundCues";
 import { useRootStore } from "@/stores/root";
 
-export function useRoomSession(id: string) {
+export function useRoomSession(
+  id: string,
+  options: { notificationBrowser?: NotificationBrowser } = {},
+) {
   const toast = useToast();
   const router = useRouter();
   const route = useRoute();
@@ -60,6 +65,13 @@ export function useRoomSession(id: string) {
   }
 
   const roomId = computed(() => normalizeRoomId(id ?? ""));
+  const notifications = useRoomNotifications({
+    roomId: roomId.value,
+    username,
+    connectionStatus,
+    playCue: (kind) => (kind === "reveal" ? playRevealCue() : playNewRoundCue()),
+    browser: options.notificationBrowser,
+  });
   // Deck chosen at creation arrives as a `?deck=` route query; harmless
   // for joiners since the backend ignores it when the room exists.
   const pendingDeck = computed<DeckId | undefined>(() => {
@@ -157,7 +169,9 @@ export function useRoomSession(id: string) {
     switch (msg.type) {
       case "joinRoomSuccess":
         reactions.clearRateLimit();
-        participants.value = new Map(Object.entries(msg.data.participants));
+        participants.value = new Map(
+          Object.entries(msg.data.participants).map(([name, vote]) => [name, vote ?? undefined]),
+        );
         store.setSpectators(msg.data.spectators);
         store.setAdmin(msg.data.admin);
         votesLocked.value = msg.data.locked;
@@ -168,7 +182,7 @@ export function useRoomSession(id: string) {
       case "deckChanged":
         applyDeck(msg.data.deck);
         store.clearVotes();
-        playNewRoundCue();
+        notifications.newRound(msg.event);
         addNotification(`Deck changed to ${decks[msg.data.deck].label} — votes were reset`);
         break;
       case "reaction":
@@ -198,11 +212,13 @@ export function useRoomSession(id: string) {
         // Our optimistic vote is unmasked; do not replace it with the
         // masked whole-room echo while the round is hidden.
         if (msg.data.username === username.value) break;
-        store.setParticipantPointEstimate(msg.data.username, msg.data.vote);
+        store.setParticipantPointEstimate(msg.data.username, msg.data.vote ?? undefined);
         break;
       case "voteStatus":
-        if (msg.data.revealed && !votesVisible.value) playRevealCue();
-        participants.value = new Map(Object.entries(msg.data.votes));
+        if (msg.data.revealed && !votesVisible.value) notifications.reveal(msg.event);
+        participants.value = new Map(
+          Object.entries(msg.data.votes).map(([name, vote]) => [name, vote ?? undefined]),
+        );
         votesVisible.value = msg.data.revealed;
         adoptOwnVote();
         break;
@@ -212,7 +228,7 @@ export function useRoomSession(id: string) {
         if (msg.data.clearedBy === username.value) break;
         store.clearVotes();
         votesVisible.value = false;
-        playNewRoundCue();
+        notifications.newRound(msg.event);
         break;
       case "voteLockStatus":
         votesLocked.value = msg.data.locked;
@@ -331,12 +347,17 @@ export function useRoomSession(id: string) {
 
   function teardownRoomSession() {
     reactions.dispose();
+    notifications.dispose();
     connection?.disconnect();
     connection = null;
     store.$reset();
   }
 
   return {
+    notificationsEnabled: notifications.notificationsEnabled,
+    notificationsUnavailable: notifications.notificationsUnavailable,
+    notificationDescription: notifications.notificationDescription,
+    toggleNotifications: notifications.toggleNotifications,
     adminSheetOpen,
     canReact: reactions.canReact,
     connectionStatus,

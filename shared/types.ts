@@ -246,12 +246,19 @@ export type UserVotedMessage = {
   data: { username: string; vote: string | null };
 };
 
+/** Identity of a live room action, shared by every recipient; absent on snapshots.
+ * Sequence is ordered within one server handler lifetime (stream).
+ */
+export type RoomAlertEvent = { stream: string; sequence: number; actor: string };
+
 export type VoteStatusMessage = {
+  event?: RoomAlertEvent;
   type: "voteStatus";
   data: { revealed: boolean; votes: Record<string, string | null> };
 };
 
 export type VotesClearedMessage = {
+  event?: RoomAlertEvent;
   type: "votesCleared";
   data: { clearedBy: string };
 };
@@ -307,6 +314,7 @@ export type UserReconnectedMessage = {
  * reset" so no paired votesCleared broadcast is needed.
  */
 export type DeckChangedMessage = {
+  event?: RoomAlertEvent;
   type: "deckChanged";
   data: { deck: DeckId };
 };
