@@ -350,10 +350,13 @@ onBeforeRouteLeave(() => {
         <VButton
           class="join-cta"
           :class="{ spectating: joinRole === 'spectator' }"
-          :label="joinRole === 'spectator' ? 'Join as spectator' : 'Join & vote'"
           :disabled="!usernameModel"
           type="submit"
-        />
+        >
+          <span class="p-button-label">
+            {{ joinRole === "spectator" ? "Join as spectator" : "Join & vote" }}
+          </span>
+        </VButton>
       </form>
     </VDialog>
   </main>

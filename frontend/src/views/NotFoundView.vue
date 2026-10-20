@@ -8,7 +8,9 @@
         <p>Sorry, the page you are looking for does not exist.</p>
       </template>
       <template #footer>
-        <VButton label="Return to Home" as="router-link" to="/" />
+        <VButton as="router-link" to="/">
+          <span class="p-button-label">Return to Home</span>
+        </VButton>
       </template>
     </VCard>
   </main>
