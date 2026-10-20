@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
 import { useScrollFades } from "@/composables/useScrollFades";
 import { getAvatarColor, getInitials, paletteVar } from "@/modules/avatarColor";
-import type { RoomMember, SpectatorMember } from "@/modules/roomMembers";
+import type { RoomMember, SpectatorMember } from "@/modules/roomState";
 
 const props = defineProps<{ members: RoomMember[]; spectators?: SpectatorMember[] }>();
 

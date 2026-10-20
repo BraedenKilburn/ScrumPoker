@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import Drawer from "primevue/drawer";
-import type { RoomMember, SpectatorMember } from "@/modules/roomMembers";
+import type { RoomMember, SpectatorMember } from "@/modules/roomState";
 import { getAvatarColor, getInitials, paletteVar } from "@/modules/avatarColor";
 
 const props = defineProps<{

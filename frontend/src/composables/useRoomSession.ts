@@ -9,7 +9,7 @@ import {
   type ConnectionStatus,
   type RoomConnection,
 } from "@/modules/roomConnection";
-import { createRoomMembers, createSpectatorMembers } from "@/modules/roomMembers";
+import { createRoomState } from "@/modules/roomState";
 import { rememberRoomDeck } from "@/composables/useRecentRooms";
 import { useReactions } from "@/composables/useReactions";
 import { useRoomNotifications } from "@/composables/useRoomNotifications";
@@ -25,18 +25,10 @@ export function useRoomSession(
   const router = useRouter();
   const route = useRoute();
   const store = useRootStore();
-  const {
-    username,
-    votesVisible,
-    participants,
-    spectators,
-    isSpectator,
-    isAdmin,
-    adminUsername,
-    votesLocked,
-    pointEstimate,
-    deck,
-  } = storeToRefs(store);
+  const { username } = storeToRefs(store);
+  // The session's one replica of the room. The switch below calls one
+  // transition per message; the rules live in the room state.
+  const room = createRoomState({ me: username });
 
   // Cues fire on incoming server messages. The switch below gates the
   // actor's votesCleared echo so self-initiated rounds stay silent.
@@ -91,25 +83,6 @@ export function useRoomSession(
     return url;
   });
   const isMissingUsername = computed(() => !username.value);
-  const points = computed(() => decks[deck.value].cards);
-  const deckLabel = computed(() => decks[deck.value].label);
-  const members = computed(() =>
-    createRoomMembers(
-      participants.value,
-      adminUsername.value,
-      username.value,
-      votesVisible.value,
-      points.value,
-    ),
-  );
-  const spectatorMembers = computed(() =>
-    createSpectatorMembers(spectators.value, adminUsername.value, username.value),
-  );
-  // Voted counts derive from `members` (voters only) — spectators are
-  // structurally excluded from the X/Y tally.
-  const votedCount = computed(() => members.value.filter((m) => m.point != null).length);
-  const totalCount = computed(() => members.value.length);
-  const hasVotes = computed(() => votedCount.value > 0);
 
   function connect() {
     connection = createRoomConnection({
@@ -144,12 +117,11 @@ export function useRoomSession(
     router.replace({ query: { ...route.query, deck: deckId } });
   }
 
-  // Everything that must track the room's authoritative deck: the store,
-  // the recent-rooms hint, the URL query, and the auto-reconnect URL —
-  // the last one so an admin reconnect after the room is destroyed
+  // Everything outside the room state that must track its authoritative
+  // deck: the recent-rooms hint, the URL query, and the auto-reconnect
+  // URL — the last one so an admin reconnect after the room is destroyed
   // recreates it on the current deck, not the connect-time one.
-  function applyDeck(deckId: DeckId) {
-    store.setDeck(deckId);
+  function followDeck(deckId: DeckId) {
     rememberRoomDeck(roomId.value, deckId);
     syncDeckQuery(deckId);
     const url = new URL(wsUrl.value);
@@ -157,31 +129,16 @@ export function useRoomSession(
     connection?.updateUrl(url);
   }
 
-  // The server never masks our own vote back to us, so a snapshot is
-  // authoritative for it — adopt the value rather than reconciling
-  // against local state. Covers the round being reset (deck change, new
-  // round) while we were disconnected: the snapshot simply says null.
-  function adoptOwnVote() {
-    store.pointEstimate = participants.value.get(username.value) ?? undefined;
-  }
-
   function handleWebSocketMessage(msg: ServerMessage) {
     switch (msg.type) {
       case "joinRoomSuccess":
         reactions.clearRateLimit();
-        participants.value = new Map(
-          Object.entries(msg.data.participants).map(([name, vote]) => [name, vote ?? undefined]),
-        );
-        store.setSpectators(msg.data.spectators);
-        store.setAdmin(msg.data.admin);
-        votesLocked.value = msg.data.locked;
-        votesVisible.value = msg.data.revealed;
-        applyDeck(msg.data.deck);
-        adoptOwnVote();
+        room.adoptSnapshot(msg.data);
+        followDeck(msg.data.deck);
         break;
       case "deckChanged":
-        applyDeck(msg.data.deck);
-        store.clearVotes();
+        room.deckChanged(msg.data.deck);
+        followDeck(msg.data.deck);
         notifications.newRound(msg.event);
         addNotification(`Deck changed to ${decks[msg.data.deck].label} — votes were reset`);
         break;
@@ -192,49 +149,36 @@ export function useRoomSession(
         reactions.applyRateLimit(msg.data.retryAfterMs);
         break;
       case "userJoined":
+        room.memberArrived(msg.data.username, msg.data.role);
         if (msg.data.role === "spectator") {
-          store.addSpectator(msg.data.username);
           addNotification(`${msg.data.username} is watching the room`);
         } else {
-          store.addParticipant({ username: msg.data.username });
           addNotification(`${msg.data.username} joined the room`);
         }
         break;
       case "userLeft":
-        store.removeParticipant(msg.data.username);
+        room.memberLeft(msg.data.username);
         addNotification(`${msg.data.username} left the room`);
         break;
       case "adminTransferred":
-        store.setAdmin(msg.data.newAdmin);
+        room.adminChanged(msg.data.newAdmin);
         addNotification(`Admin role transferred to ${msg.data.newAdmin}`);
         break;
       case "userVoted":
-        // Our optimistic vote is unmasked; do not replace it with the
-        // masked whole-room echo while the round is hidden.
-        if (msg.data.username === username.value) break;
-        store.setParticipantPointEstimate(msg.data.username, msg.data.vote ?? undefined);
+        room.memberVoted(msg.data.username, msg.data.vote);
         break;
       case "voteStatus":
-        if (msg.data.revealed && !votesVisible.value) notifications.reveal(msg.event);
-        participants.value = new Map(
-          Object.entries(msg.data.votes).map(([name, vote]) => [name, vote ?? undefined]),
-        );
-        votesVisible.value = msg.data.revealed;
-        adoptOwnVote();
+        if (room.adoptVoteSnapshot(msg.data)) notifications.reveal(msg.event);
         break;
       case "votesCleared":
-        // startNewRound already applied our own clear locally. Acknowledge
-        // its echo without replaying the state change or its sound cue.
-        if (msg.data.clearedBy === username.value) break;
-        store.clearVotes();
-        votesVisible.value = false;
-        notifications.newRound(msg.event);
+        // Our own clear's echo is acknowledged silently — no cue replay.
+        if (room.roundCleared(msg.data.clearedBy)) notifications.newRound(msg.event);
         break;
       case "voteLockStatus":
-        votesLocked.value = msg.data.locked;
+        room.lockChanged(msg.data.locked);
         break;
       case "participantRemoved":
-        store.removeParticipant(msg.data.participant);
+        room.memberLeft(msg.data.participant);
         addNotification(
           `${msg.data.participant} was removed from the room by ${msg.data.removedBy}`,
         );
@@ -244,12 +188,10 @@ export function useRoomSession(
           "Removed from Room",
           `You were removed from the room by ${msg.data.removedBy}`,
         );
-        store.$reset();
         router.push({ name: "Home" });
         break;
       case "roomClosed":
         addErrorNotification("Room Closed", msg.data.reason);
-        store.$reset();
         router.push({ name: "Home" });
         break;
       case "notification":
@@ -285,31 +227,28 @@ export function useRoomSession(
   }
 
   function toggleVoteVisibility() {
-    if (votesVisible.value) connection?.hideVotes();
+    if (room.votesVisible.value) connection?.hideVotes();
     else connection?.revealVotes();
   }
 
   function toggleVoteLock() {
-    if (votesLocked.value) connection?.unlockVotes();
+    if (room.votesLocked.value) connection?.unlockVotes();
     else connection?.lockVotes();
   }
 
-  function vote(point?: string) {
-    if (votesLocked.value || isSpectator.value) return;
-    const next = point === pointEstimate.value ? undefined : point;
-    store.pointEstimate = next;
-    store.setUserPointEstimate(next);
-    connection?.submitVote({ vote: next });
+  function vote(point: string) {
+    const cast = room.castOwnVote(point);
+    if (cast) connection?.submitVote(cast);
   }
 
   function clearMyVote() {
-    store.pointEstimate = undefined;
-    vote();
+    const cast = room.withdrawOwnVote();
+    if (cast) connection?.submitVote(cast);
   }
 
   function clearAllVotes() {
     connection?.clearVotes();
-    store.clearVotes();
+    room.clearRound();
   }
 
   function startNewRound() {
@@ -317,13 +256,13 @@ export function useRoomSession(
   }
 
   function makeAdmin(name: string) {
-    if (!isAdmin.value || name === store.adminUsername) return;
+    if (!room.isAdmin.value || name === room.adminUsername.value) return;
     connection?.transferAdmin(name);
     adminSheetOpen.value = false;
   }
 
   function handleRemoveParticipant(name: string) {
-    if (!isAdmin.value || name === store.username) return;
+    if (!room.isAdmin.value || name === username.value) return;
     connection?.removeParticipant(name);
   }
 
@@ -350,7 +289,7 @@ export function useRoomSession(
     notifications.dispose();
     connection?.disconnect();
     connection = null;
-    store.$reset();
+    store.clearUsername();
   }
 
   return {
@@ -362,27 +301,27 @@ export function useRoomSession(
     canReact: reactions.canReact,
     connectionStatus,
     copiedRoomLink,
-    deck,
-    deckLabel,
-    hasVotes,
-    isAdmin,
+    deck: room.deck,
+    deckLabel: room.deckLabel,
+    hasVotes: room.hasVotes,
+    isAdmin: room.isAdmin,
     isMissingUsername,
-    isSpectator,
+    isSpectator: room.isSpectator,
     joinAsSpectator,
-    members,
-    pointEstimate,
-    points,
+    members: room.members,
+    pointEstimate: room.ownVote,
+    points: room.points,
     reactionBursts: reactions.reactionBursts,
     reactionFeed: reactions.reactionFeed,
     reactionsRateLimited: reactions.reactionsRateLimited,
     roomId,
     soundCuesEnabled,
-    spectatorMembers,
-    totalCount,
+    spectatorMembers: room.spectatorMembers,
+    totalCount: room.totalCount,
     usernameModel,
-    votedCount,
-    votesLocked,
-    votesVisible,
+    votedCount: room.votedCount,
+    votesLocked: room.votesLocked,
+    votesVisible: room.votesVisible,
     changeDeck,
     clearAllVotes,
     clearMyVote,

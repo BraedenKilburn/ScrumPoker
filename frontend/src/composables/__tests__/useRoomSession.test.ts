@@ -113,48 +113,66 @@ beforeEach(() => {
   setActivePinia(createPinia());
 });
 
+function joinedRoom(username: string, participants: Record<string, string | null>) {
+  useRootStore().setUsername(username);
+  const session = useRoomSession("room1");
+  const socket = FakeSocket.instances.at(-1)!;
+  socket.emitOpen();
+  socket.emitMessage({
+    type: "joinRoomSuccess",
+    data: {
+      participants,
+      spectators: [],
+      admin: "admin",
+      locked: false,
+      revealed: false,
+      deck: "fibonacci",
+    },
+  });
+  return { session, socket };
+}
+
+const sentOfType = (socket: FakeSocket, type: string) =>
+  socket.sent.map((raw) => JSON.parse(raw)).filter((msg) => msg.type === type);
+
 describe("useRoomSession sender echoes", () => {
-  it("keeps the actor's optimistic vote when its masked broadcast echoes back", () => {
-    const store = useRootStore();
-    store.setUsername("voter");
-    store.addParticipant({ username: "voter" });
-    const session = useRoomSession("room1");
+  it("sends the actor's vote and keeps it when its masked broadcast echoes back", () => {
+    const { session, socket } = joinedRoom("voter", { voter: null });
 
     session.vote("5");
-    FakeSocket.instances.at(-1)!.emitMessage({
-      type: "userVoted",
-      data: { username: "voter", vote: "?" },
-    });
+    socket.emitMessage({ type: "userVoted", data: { username: "voter", vote: "?" } });
 
-    expect(store.pointEstimate).toBe("5");
-    expect(store.participants.get("voter")).toBe("5");
+    expect(sentOfType(socket, "submitVote")).toEqual([{ type: "submitVote", data: { vote: "5" } }]);
+    expect(session.pointEstimate.value).toBe("5");
   });
 
   it("acknowledges its own clear silently and cues a clear by another admin", () => {
-    const store = useRootStore();
-    store.setUsername("admin");
-    store.addParticipant({ username: "admin" });
-    const session = useRoomSession("room1");
-    const socket = FakeSocket.instances.at(-1)!;
+    const { session, socket } = joinedRoom("admin", { admin: null });
 
     session.vote("5");
     session.startNewRound();
-    socket.emitMessage({
-      type: "votesCleared",
-      data: { clearedBy: "admin" },
-    });
+    socket.emitMessage({ type: "votesCleared", data: { clearedBy: "admin" } });
 
-    expect(store.participants.get("admin")).toBeUndefined();
+    expect(sentOfType(socket, "clearVotes")).toHaveLength(1);
+    expect(session.pointEstimate.value).toBeUndefined();
     expect(audioStarts).toEqual([]);
 
     session.vote("8");
-    socket.emitMessage({
-      type: "votesCleared",
-      data: { clearedBy: "next-admin" },
-    });
+    socket.emitMessage({ type: "votesCleared", data: { clearedBy: "next-admin" } });
 
-    expect(store.participants.get("admin")).toBeUndefined();
+    expect(session.pointEstimate.value).toBeUndefined();
     expect(audioStarts).toHaveLength(1);
+  });
+});
+
+describe("useRoomSession teardown", () => {
+  it("forgets the confirmed name for this visit but keeps it prefilled", () => {
+    const { session } = joinedRoom("voter", { voter: null });
+
+    session.teardownRoomSession();
+
+    expect(useRootStore().username).toBe("");
+    expect(localStorage.getItem("username")).toBe("voter");
   });
 });
 

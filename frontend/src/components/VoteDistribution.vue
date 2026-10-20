@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { deckScale, deckTone, toneColor, type CardTone } from "@/modules/deckTone";
-import type { RoomMember } from "@/modules/roomMembers";
+import type { RoomMember } from "@/modules/roomState";
 
 const props = defineProps<{ members: RoomMember[]; cards: readonly string[] }>();
 

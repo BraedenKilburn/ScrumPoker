@@ -50,9 +50,6 @@ watch(roomId, (value) => {
 
 function joinRoom(id: string, deck?: DeckId, role?: ParticipantRole) {
   const spectating = role === "spectator";
-  if (spectating) store.addSpectator(username.value);
-  else store.addParticipant({ username: username.value, point_estimate: undefined });
-
   saveRecentRoom({
     id,
     username: username.value,

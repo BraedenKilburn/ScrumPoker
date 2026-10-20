@@ -1,19 +1,16 @@
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { defineStore } from "pinia";
-import { defaultDeckId, type DeckId } from "@shared/types";
 import { usernameKey } from "@/modules/constants";
 
 /**
- * A user in the room.
+ * The name this visitor confirmed, handed from Home or the deck chooser
+ * to the room. Room state itself lives in `createRoomState`, owned by
+ * the room session — it ends with the visit, so it has no store.
  */
-export type User = {
-  username: string;
-  point_estimate?: string;
-};
-
 export const useRootStore = defineStore("root", () => {
   /**
-   * The current user's username.
+   * The current user's username. Empty until confirmed this visit, which
+   * is what makes a direct room link ask for a name.
    */
   const username = ref<string>("");
 
@@ -27,175 +24,12 @@ export const useRootStore = defineStore("root", () => {
   }
 
   /**
-   * Whether the current user is the admin
+   * Forget the confirmed name for this visit. localStorage keeps it, so
+   * the next join form is prefilled.
    */
-  const isAdmin = ref(false);
-  const adminUsername = ref("");
-
-  /**
-   * Set the admin of the room.
-   * @param newAdmin The admin's username.
-   */
-  function setAdmin(newAdmin: string) {
-    adminUsername.value = newAdmin;
-    isAdmin.value = newAdmin === username.value;
-  }
-
-  /**
-   * All voting participants in the room. Spectators live in `spectators`
-   * instead — they have no vote slot, so keeping them out of this map
-   * makes every vote-derived computed voters-only by construction.
-   */
-  const participants = ref<Map<string, string | undefined>>(new Map());
-
-  /**
-   * Usernames watching the room without voting.
-   */
-  const spectators = ref<Set<string>>(new Set());
-
-  /**
-   * Whether the current user is spectating.
-   */
-  const isSpectator = computed(() => spectators.value.has(username.value));
-
-  /**
-   * Adds a participant to the room.
-   * @param participant The participant to add.
-   */
-  function addParticipant(participant: User) {
-    participants.value.set(participant.username, participant.point_estimate);
-  }
-
-  /**
-   * Adds a spectator to the room.
-   * @param username The spectator's username.
-   */
-  function addSpectator(username: string) {
-    spectators.value.add(username);
-  }
-
-  /**
-   * Replace the spectator list (room snapshot).
-   * @param usernames The spectators' usernames.
-   */
-  function setSpectators(usernames: string[]) {
-    spectators.value = new Set(usernames);
-  }
-
-  /**
-   * Removes a participant (voter or spectator) from the room.
-   * @param username The username of the participant to remove.
-   */
-  function removeParticipant(username: string) {
-    participants.value.delete(username);
-    spectators.value.delete(username);
-  }
-
-  /**
-   * The current user's point estimate.
-   */
-  const pointEstimate = ref<string | undefined>(undefined);
-
-  /**
-   * Set the user's point estimate.
-   * @param pointEstimate The point estimate to set.
-   */
-  function setUserPointEstimate(estimate?: string) {
-    if (!username.value) return;
-
-    const vote = estimate ?? pointEstimate.value;
-    participants.value.set(username.value, vote);
-    pointEstimate.value = vote;
-  }
-
-  /**
-   * Set a participant's point estimate.
-   * @param username The username of the participant.
-   * @param pointEstimate The point estimate to set.
-   */
-  function setParticipantPointEstimate(username: string, pointEstimate?: string) {
-    participants.value.set(username, pointEstimate);
-  }
-
-  /**
-   * The estimation deck the room uses.
-   */
-  const deck = ref<DeckId>(defaultDeckId);
-
-  /**
-   * Set the room's deck.
-   * @param deckId The deck to set.
-   */
-  function setDeck(deckId: DeckId) {
-    deck.value = deckId;
-  }
-
-  /**
-   * The visibility of the votes.
-   */
-  const votesVisible = ref(false);
-
-  /**
-   * If the users are allowed to change their votes.
-   */
-  const votesLocked = ref(false);
-
-  /**
-   * Clear the votes of all participants.
-   */
-  function clearVotes() {
-    pointEstimate.value = undefined;
-    participants.value.forEach((_, username) => {
-      participants.value.set(username, undefined);
-    });
-    votesVisible.value = false;
-    votesLocked.value = false;
-  }
-
-  /**
-   * Reset the store to its initial state.
-   */
-  function $reset() {
-    participants.value = new Map();
-    spectators.value = new Set();
+  function clearUsername() {
     username.value = "";
-    isAdmin.value = false;
-    adminUsername.value = "";
-    votesLocked.value = false;
-    votesVisible.value = false;
-    pointEstimate.value = undefined;
-    deck.value = defaultDeckId;
   }
 
-  return {
-    username,
-    setUsername,
-
-    isAdmin,
-    adminUsername,
-    setAdmin,
-
-    participants,
-    addParticipant,
-    removeParticipant,
-
-    spectators,
-    isSpectator,
-    addSpectator,
-    setSpectators,
-
-    pointEstimate,
-    setUserPointEstimate,
-    setParticipantPointEstimate,
-
-    deck,
-    setDeck,
-
-    votesVisible,
-    clearVotes,
-
-    votesLocked,
-
-    $reset,
-  };
+  return { username, setUsername, clearUsername };
 });
