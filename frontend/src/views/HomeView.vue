@@ -212,14 +212,13 @@ const disabled = computed(() => !username.value || submitting.value);
           type="submit"
           class="join-button"
           :class="{ spectating: joinRole === 'spectator' }"
-          :label="submitLabel"
-          icon-pos="right"
           :disabled="disabled"
         >
-          <template #icon="{ class: iconClass }">
-            <SpinnerIcon v-if="submitting" class="pi" :class="iconClass" spin />
-            <ChevronRightIcon v-else class="pi" :class="iconClass" />
-          </template>
+          <!-- v5's default slot replaces the deprecated label/icon props; the
+               p-button-* classes keep the theme's label and icon styling. -->
+          <span class="p-button-label">{{ submitLabel }}</span>
+          <SpinnerIcon v-if="submitting" class="pi p-button-icon" spin />
+          <ChevronRightIcon v-else class="pi p-button-icon" />
         </VButton>
 
         <div v-if="showDeckHint" class="deck-hint">

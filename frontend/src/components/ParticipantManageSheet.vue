@@ -54,7 +54,11 @@ const manageableMembers = computed(() => [
             </span>
             <span class="name">
               {{ m.name }}
-              <EyeIcon v-if="m.isSpectator" class="pi role-eye" title="Spectating" />
+              <!-- An <svg> shows no tooltip for a title attribute, so the
+                   label and tooltip live on a wrapper. -->
+              <span v-if="m.isSpectator" role="img" aria-label="Spectating" title="Spectating">
+                <EyeIcon class="pi role-eye" />
+              </span>
             </span>
             <button
               class="icon-btn"

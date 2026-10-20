@@ -20,8 +20,10 @@ const intentEvents = ["pointerdown", "keydown"] as const;
 export function prefetchRoomViews() {
   const prefetch = () => {
     for (const type of intentEvents) window.removeEventListener(type, prefetch, true);
-    void roomView();
-    void deckChooserView();
+    // A failed prefetch is only a missed head start; navigation imports
+    // the chunk itself and surfaces any error there.
+    roomView().catch(() => {});
+    deckChooserView().catch(() => {});
   };
   for (const type of intentEvents) {
     window.addEventListener(type, prefetch, { capture: true, passive: true });
