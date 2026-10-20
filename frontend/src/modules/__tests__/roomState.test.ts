@@ -414,3 +414,24 @@ describe("tally", () => {
     expect(room.hasVotes.value).toBe(false);
   });
 });
+
+describe("seat", () => {
+  it("holds no hand and accepts no vote until a snapshot seats us as a voter", () => {
+    const { room } = roomAs("alice");
+
+    expect(room.isVoter.value).toBe(false);
+    expect(room.castOwnVote("5")).toBeNull();
+
+    room.adoptSnapshot(snapshot({ participants: { alice: null } }));
+
+    expect(room.isVoter.value).toBe(true);
+    expect(room.castOwnVote("5")).toEqual({ vote: "5" });
+  });
+
+  it("never seats a spectator as a voter", () => {
+    const { room } = roomAs("watcher");
+    room.adoptSnapshot(snapshot({ spectators: ["watcher"] }));
+
+    expect(room.isVoter.value).toBe(false);
+  });
+});

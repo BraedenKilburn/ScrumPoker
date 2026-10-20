@@ -307,6 +307,7 @@ export function useRoomSession(
     isAdmin: room.isAdmin,
     isMissingUsername,
     isSpectator: room.isSpectator,
+    isVoter: room.isVoter,
     joinAsSpectator,
     members: room.members,
     pointEstimate: room.ownVote,

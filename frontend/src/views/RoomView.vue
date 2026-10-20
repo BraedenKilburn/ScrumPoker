@@ -30,6 +30,7 @@ const {
   isAdmin,
   isMissingUsername,
   isSpectator,
+  isVoter,
   joinAsSpectator,
   members,
   pointEstimate,
@@ -266,8 +267,9 @@ onBeforeRouteLeave(() => {
         The votes are locked.
       </PMessage>
 
-      <!-- Spectators have no hand of cards at all — nothing to play. -->
-      <div v-if="!isSpectator" class="hand-wrap">
+      <!-- Only a seated voter holds a hand: spectators never do, and nobody
+           does before the first snapshot says which they are. -->
+      <div v-if="isVoter" class="hand-wrap">
         <HandStrip
           :points="points"
           :current="pointEstimate"

@@ -49,6 +49,10 @@ export function createRoomState({ me }: { me: Ref<string> }) {
   const deckLabel = computed(() => decks[deck.value].label);
   const isAdmin = computed(() => !!me.value && admin.value === me.value);
   const isSpectator = computed(() => spectators.value.has(me.value));
+  // Seated once a snapshot lists us among the voters — false before the
+  // first snapshot as well as for spectators, so a joiner never holds a
+  // hand they might not be entitled to.
+  const isVoter = computed(() => !!me.value && votes.value.has(me.value));
   const members = computed<RoomMember[]>(() =>
     Array.from(votes.value.entries())
       .map(([name, point]) => ({
@@ -100,7 +104,7 @@ export function createRoomState({ me }: { me: Ref<string> }) {
   // Our own vote is optimistic: applied here before the server hears of
   // it, which is why memberVoted ignores its (masked) echo.
   function setOwnVote(vote: string | undefined): { vote: string | undefined } | null {
-    if (votesLocked.value || isSpectator.value || !me.value) return null;
+    if (votesLocked.value || !isVoter.value) return null;
     ownVote.value = vote;
     votes.value.set(me.value, vote);
     return { vote };
@@ -182,6 +186,7 @@ export function createRoomState({ me }: { me: Ref<string> }) {
     deckLabel,
     isAdmin,
     isSpectator,
+    isVoter,
     adoptSnapshot,
     adoptVoteSnapshot,
     castOwnVote,
