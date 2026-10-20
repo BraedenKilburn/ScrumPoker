@@ -3,6 +3,8 @@ import { computed } from "vue";
 import { getAvatarColor, getInitials, paletteVar } from "@/modules/avatarColor";
 import type { CardTone } from "@/modules/deckTone";
 import PointCard from "@/components/PointCard.vue";
+import CrownIcon from "@primeicons/vue/crown";
+import TimesIcon from "@primeicons/vue/times";
 
 const props = defineProps<{
   name: string;
@@ -32,7 +34,13 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
       <div class="avatar" :style="{ background: avatarBg }">
         <span>{{ initials }}</span>
       </div>
-      <i v-if="isAdmin" class="pi pi-crown crown" aria-label="Room admin" />
+      <CrownIcon
+        v-if="isAdmin"
+        class="pi crown"
+        role="img"
+        aria-label="Room admin"
+        :aria-hidden="false"
+      />
       <button
         v-else-if="canManageAdmin"
         class="admin-action"
@@ -41,7 +49,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
         title="Make admin"
         @click="$emit('transferAdmin')"
       >
-        <i class="pi pi-crown" aria-hidden="true" />
+        <CrownIcon class="pi" aria-hidden="true" />
       </button>
     </div>
 
@@ -53,7 +61,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
       title="Remove participant"
       @click="$emit('remove')"
     >
-      <i class="pi pi-times" aria-hidden="true" />
+      <TimesIcon class="pi" aria-hidden="true" />
     </button>
 
     <span class="name">{{ displayName }}</span>

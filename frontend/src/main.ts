@@ -2,11 +2,17 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "@/App.vue";
 import router from "@/router";
+import { prefetchRoomViews } from "@/router/routes";
 import { bootAppearance } from "@/composables/useAppearance";
 
 import PrimeVue from "primevue/config";
 import Lara from "@primeuix/themes/lara";
-import "primeicons/primeicons.css";
+// Self-hosted Open Sans. Deliberately not <link rel="preload">ed: under real
+// slow-4G throttling each preloaded face delayed first paint ~270ms by
+// competing with the entry bundle, which this SPA needs before it paints at
+// all; `font-display: swap` already keeps text visible meanwhile.
+import "@fontsource-variable/open-sans/wght.css";
+import "@fontsource-variable/open-sans/wght-italic.css";
 import Card from "primevue/card";
 import FloatLabel from "primevue/floatlabel";
 import InputText from "primevue/inputtext";
@@ -45,3 +51,4 @@ app.component("VDialog", Dialog);
 app.component("VTag", Tag);
 
 app.mount("#app");
+prefetchRoomViews();

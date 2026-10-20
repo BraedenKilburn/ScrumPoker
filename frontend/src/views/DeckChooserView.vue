@@ -6,6 +6,9 @@ import DeckOptionCard from "@/components/DeckOptionCard.vue";
 import { useRecentRooms } from "@/composables/useRecentRooms";
 import { checkRoom } from "@/modules/api";
 import { useRootStore } from "@/stores/root";
+import ArrowLeftIcon from "@primeicons/vue/arrow-left";
+import ChevronRightIcon from "@primeicons/vue/chevron-right";
+import ExclamationTriangleIcon from "@primeicons/vue/exclamation-triangle";
 
 const props = withDefaults(
   defineProps<{
@@ -97,7 +100,7 @@ function confirm() {
   <div class="deck-chooser" :class="mode">
     <div class="top-bar">
       <button class="back-link" type="button" @click="goBack">
-        <i class="pi pi-arrow-left" aria-hidden="true" />
+        <ArrowLeftIcon class="pi" aria-hidden="true" />
         {{ isCreate ? "Home" : `Back to ${roomId.toUpperCase()}` }}
       </button>
       <div v-if="isCreate" class="steps" aria-hidden="true">
@@ -117,7 +120,7 @@ function confirm() {
         Everyone in the room votes on this scale. You can change it later from inside the room.
       </p>
       <p v-else class="subtitle warning">
-        <i class="pi pi-exclamation-triangle" aria-hidden="true" />
+        <ExclamationTriangleIcon class="pi" aria-hidden="true" />
         Changing the deck clears the current round's votes.
       </p>
     </div>
@@ -138,7 +141,7 @@ function confirm() {
       </span>
       <button class="cta" type="button" @click="confirm">
         {{ isCreate ? `Create ${roomId.toUpperCase()}` : "Update deck" }}
-        <i class="pi pi-chevron-right" aria-hidden="true" />
+        <ChevronRightIcon class="pi" aria-hidden="true" />
       </button>
     </div>
   </div>

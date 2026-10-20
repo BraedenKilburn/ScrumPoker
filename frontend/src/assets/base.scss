@@ -34,7 +34,7 @@
   --ink-emerald: var(--p-emerald-700);
   --ink-violet: var(--p-violet-600);
 
-  font-family: "Open Sans", sans-serif;
+  font-family: "Open Sans Variable", sans-serif;
   font-optical-sizing: auto;
   font-weight: 400;
   font-style: normal;
@@ -153,6 +153,19 @@ p {
   font-style: normal;
   font-optical-sizing: auto;
   font-variation-settings: "wdth" 100;
+}
+
+/**
+ * App icons are @primeicons/vue SVG components tagged `.pi`, standing in for
+ * the primeicons font. Each is a 1em box, so its size still comes from
+ * `font-size` — PrimeVue's `.pi` icon size, or a component's own `.pi` rule —
+ * and inline it drops the same 0.06em below the baseline the font glyph box
+ * did. (PrimeVue's internal icons carry no `.pi` and keep their own sizing.)
+ */
+.pi {
+  --px-icon-size: 1em;
+  display: inline-block;
+  vertical-align: -0.06em;
 }
 
 /**

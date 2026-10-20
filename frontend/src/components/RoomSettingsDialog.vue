@@ -3,6 +3,10 @@ import { ref, watch } from "vue";
 import Dialog from "primevue/dialog";
 import { decks, type DeckId } from "@shared/types";
 import ThemePreferenceControl from "@/components/ThemePreferenceControl.vue";
+import BellIcon from "@primeicons/vue/bell";
+import CrownIcon from "@primeicons/vue/crown";
+import PaletteIcon from "@primeicons/vue/palette";
+import VolumeUpIcon from "@primeicons/vue/volume-up";
 
 const props = defineProps<{
   visible: boolean;
@@ -59,7 +63,7 @@ function updateDeck() {
     @after-hide="emit('afterHide')"
   >
     <div class="sound-setting">
-      <i class="pi pi-volume-up" aria-hidden="true" />
+      <VolumeUpIcon class="pi" aria-hidden="true" />
       <div class="setting-copy">
         <span id="settings-sound-label" class="setting-title">Sound</span>
         <p id="settings-sound-description">
@@ -82,7 +86,7 @@ function updateDeck() {
     </div>
 
     <div class="sound-setting notification-setting">
-      <i class="pi pi-bell" aria-hidden="true" />
+      <BellIcon class="pi" aria-hidden="true" />
       <div class="setting-copy">
         <span id="settings-notifications-label" class="setting-title">Desktop notifications</span>
         <p id="settings-notifications-description" aria-live="polite">
@@ -104,7 +108,7 @@ function updateDeck() {
     </div>
 
     <div class="appearance-setting">
-      <i class="pi pi-palette" aria-hidden="true" />
+      <PaletteIcon class="pi" aria-hidden="true" />
       <div class="setting-copy">
         <span id="settings-appearance-label" class="setting-title">Appearance</span>
         <p id="settings-appearance-description">
@@ -119,7 +123,7 @@ function updateDeck() {
 
     <form v-if="isAdmin" class="deck-settings" @submit.prevent="updateDeck">
       <fieldset>
-        <legend><i class="pi pi-crown" aria-hidden="true" /> Change deck</legend>
+        <legend><CrownIcon class="pi" aria-hidden="true" /> Change deck</legend>
         <div class="deck-options">
           <label
             v-for="option in decks"

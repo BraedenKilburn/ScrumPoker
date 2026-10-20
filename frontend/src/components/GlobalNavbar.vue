@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import ThemePreferenceControl from "@/components/ThemePreferenceControl.vue";
+import ArrowUpRightIcon from "@primeicons/vue/arrow-up-right";
 
 // Room ID display
 const route = useRoute();
@@ -17,7 +18,7 @@ const roomId = computed(() => route.params.id);
       </p>
       <ThemePreferenceControl compact />
       <a href="https://github.com/BraedenKilburn/ScrumPoker" target="_blank" rel="noopener">
-        GitHub <i class="pi pi-arrow-up-right" aria-hidden="true" />
+        GitHub <ArrowUpRightIcon class="pi" aria-hidden="true" />
       </a>
     </div>
   </nav>

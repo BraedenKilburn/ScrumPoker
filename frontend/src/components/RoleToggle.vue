@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import type { ParticipantRole } from "@shared/types";
+import CloneIcon from "@primeicons/vue/clone";
+import EyeIcon from "@primeicons/vue/eye";
 
 // Two-way segmented control, not a checkbox, so "which one am I" always
 // reads at a glance. Shared by the home form and the room's join dialog.
 const role = defineModel<ParticipantRole>({ required: true });
 
 const options = [
-  { id: "voter", label: "Voting", icon: "pi pi-clone" },
-  { id: "spectator", label: "Spectating", icon: "pi pi-eye" },
+  { id: "voter", label: "Voting", icon: CloneIcon },
+  { id: "spectator", label: "Spectating", icon: EyeIcon },
 ] as const;
 </script>
 
@@ -28,7 +30,7 @@ const options = [
       :aria-checked="role === o.id"
       @click="role = o.id"
     >
-      <i :class="o.icon" aria-hidden="true" />
+      <component :is="o.icon" class="pi" aria-hidden="true" />
       {{ o.label }}
     </button>
   </div>

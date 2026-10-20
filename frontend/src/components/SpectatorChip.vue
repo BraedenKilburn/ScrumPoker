@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { getAvatarColor, getInitials, paletteVar } from "@/modules/avatarColor";
+import EyeIcon from "@primeicons/vue/eye";
 
 const props = defineProps<{
   name: string;
@@ -16,7 +17,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
   <div class="spectator-chip" :class="{ 'is-current': isCurrentUser }">
     <span class="avatar" :style="{ background: avatarBg }">{{ initials }}</span>
     <span class="name">{{ displayName }}</span>
-    <i class="pi pi-eye" aria-hidden="true" />
+    <EyeIcon class="pi" aria-hidden="true" />
     <span class="visually-hidden">spectating</span>
   </div>
 </template>
@@ -59,7 +60,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
     white-space: nowrap;
   }
 
-  .pi-eye {
+  .p-icon-eye {
     font-size: 0.7rem;
     color: var(--p-text-muted-color);
     opacity: 0.7;
