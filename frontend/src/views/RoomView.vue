@@ -258,7 +258,7 @@ onBeforeRouteLeave(() => {
       </div>
 
       <PMessage
-        v-if="votesLocked && !isAdmin && !isSpectator"
+        v-if="votesLocked && !isAdmin && isVoter"
         severity="info"
         size="small"
         class="lock-banner"
