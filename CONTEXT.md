@@ -141,6 +141,16 @@ Builders live in `backend/src/roomSnapshots.ts`. The masking rule is a
 single private `maskVote` in the RoomManager, and there is **no accessor
 for raw votes** — masking cannot be bypassed by a future caller.
 
+## Room state
+
+The client's replica of a room, replaced wholesale by each
+[Snapshot](#snapshot). It is optimistic in exactly two places: the
+member's own vote, and an admin's own clear. The echoes of those two
+actions are acknowledged, not replayed — the vote echo is masked while
+the round is hidden, and the clear was already applied locally.
+
+_Avoid_: store (the container, not the concept).
+
 ## Broadcast audience
 
 Every server→client message is addressed to exactly one of four
