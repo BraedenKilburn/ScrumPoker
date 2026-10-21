@@ -10,6 +10,11 @@ import { checkRoom } from "@/modules/api";
 import { usernameKey } from "@/modules/constants";
 import { deckTone } from "@/modules/deckTone";
 import { useRootStore } from "@/stores/root";
+import ChevronRightIcon from "@primeicons/vue/chevron-right";
+import CloneIcon from "@primeicons/vue/clone";
+import SignInIcon from "@primeicons/vue/sign-in";
+import SparklesIcon from "@primeicons/vue/sparkles";
+import SpinnerIcon from "@primeicons/vue/spinner";
 
 const CARD_VALUES = ["8", "5", "3", "13", "21"] as const;
 const fibonacciCards = decks.fibonacci.cards;
@@ -138,7 +143,7 @@ const disabled = computed(() => !username.value || submitting.value);
     <section class="home-shell" aria-labelledby="home-title">
       <div class="hero-copy">
         <span class="privacy-badge">
-          <i class="pi pi-sparkles" aria-hidden="true" />
+          <SparklesIcon class="pi" aria-hidden="true" />
           No sign-up. No tracking.
         </span>
 
@@ -207,14 +212,17 @@ const disabled = computed(() => !username.value || submitting.value);
           type="submit"
           class="join-button"
           :class="{ spectating: joinRole === 'spectator' }"
-          :label="submitLabel"
-          :icon="submitting ? 'pi pi-spinner pi-spin' : 'pi pi-chevron-right'"
-          icon-pos="right"
           :disabled="disabled"
-        />
+        >
+          <!-- v5's default slot replaces the deprecated label/icon props; the
+               p-button-* classes keep the theme's label and icon styling. -->
+          <span class="p-button-label">{{ submitLabel }}</span>
+          <SpinnerIcon v-if="submitting" class="pi p-button-icon" spin />
+          <ChevronRightIcon v-else class="pi p-button-icon" />
+        </VButton>
 
         <div v-if="showDeckHint" class="deck-hint">
-          <i class="pi pi-clone" aria-hidden="true" />
+          <CloneIcon class="pi" aria-hidden="true" />
           Next: choose your deck
         </div>
 
@@ -242,7 +250,7 @@ const disabled = computed(() => !username.value || submitting.value);
               </small>
             </span>
             <span class="rejoin">
-              <i class="pi pi-sign-in" aria-hidden="true" />
+              <SignInIcon class="pi" aria-hidden="true" />
               rejoin
             </span>
           </button>

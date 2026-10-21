@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { computed, useId } from "vue";
+import { computed, useId, type Component } from "vue";
 import { useAppearance, type ThemePreference } from "@/composables/useAppearance";
+import DesktopIcon from "@primeicons/vue/desktop";
+import MoonIcon from "@primeicons/vue/moon";
+import SunIcon from "@primeicons/vue/sun";
 
 // Three-way segmented radiogroup for the theme preference. Binds straight
 // to the appearance composable: the preference is device-wide, so it is
@@ -22,10 +25,10 @@ const selected = computed<ThemePreference>({
 // Several controls can be mounted at once (navbar + Settings); each is its own radio group.
 const name = useId();
 
-const options: { id: ThemePreference; label: string; icon: string }[] = [
-  { id: "system", label: "System", icon: "pi pi-desktop" },
-  { id: "light", label: "Light", icon: "pi pi-sun" },
-  { id: "dark", label: "Dark", icon: "pi pi-moon" },
+const options: { id: ThemePreference; label: string; icon: Component }[] = [
+  { id: "system", label: "System", icon: DesktopIcon },
+  { id: "light", label: "Light", icon: SunIcon },
+  { id: "dark", label: "Dark", icon: MoonIcon },
 ];
 // Drives the sliding selected-segment backing (see ::before below).
 const selectedIndex = computed(() => options.findIndex((o) => o.id === selected.value));
@@ -55,7 +58,7 @@ const selectedIndex = computed(() => options.findIndex((o) => o.id === selected.
         :value="o.id"
         :aria-label="compact ? o.label : undefined"
       />
-      <i :class="o.icon" aria-hidden="true" />
+      <component :is="o.icon" class="pi" aria-hidden="true" />
       <span v-if="!compact">{{ o.label }}</span>
     </label>
   </div>

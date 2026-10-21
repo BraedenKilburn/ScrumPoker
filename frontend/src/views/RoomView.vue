@@ -16,6 +16,18 @@ import ReactionFeed from "@/components/ReactionFeed.vue";
 import RoomSettingsDialog from "@/components/RoomSettingsDialog.vue";
 import { useRoomSession } from "@/composables/useRoomSession";
 import { deckTone } from "@/modules/deckTone";
+import CheckIcon from "@primeicons/vue/check";
+import CogIcon from "@primeicons/vue/cog";
+import CrownIcon from "@primeicons/vue/crown";
+import EyeIcon from "@primeicons/vue/eye";
+import LockIcon from "@primeicons/vue/lock";
+import RefreshIcon from "@primeicons/vue/refresh";
+import ShareAltIcon from "@primeicons/vue/share-alt";
+import SignOutIcon from "@primeicons/vue/sign-out";
+import SpinnerIcon from "@primeicons/vue/spinner";
+import TrashIcon from "@primeicons/vue/trash";
+import UnlockIcon from "@primeicons/vue/unlock";
+import UsersIcon from "@primeicons/vue/users";
 
 const props = defineProps<{ id: string }>();
 const {
@@ -110,7 +122,7 @@ onBeforeRouteLeave(() => {
           :aria-expanded="settingsOpen"
           @click="settingsOpen = true"
         >
-          <i class="pi pi-cog" aria-hidden="true" />
+          <CogIcon class="pi" aria-hidden="true" />
           <span class="hide-mobile">Settings</span>
         </button>
         <button
@@ -118,11 +130,11 @@ onBeforeRouteLeave(() => {
           :aria-label="copiedRoomLink ? 'Copied' : 'Invite'"
           @click="copyRoomLink"
         >
-          <i :class="copiedRoomLink ? 'pi pi-check' : 'pi pi-share-alt'" />
+          <component :is="copiedRoomLink ? CheckIcon : ShareAltIcon" class="pi" />
           <span class="hide-mobile">{{ copiedRoomLink ? "Copied" : "Invite" }}</span>
         </button>
         <button class="ghost-btn leave" aria-label="Leave room" @click="leaveRoom">
-          <i class="pi pi-sign-out" />
+          <SignOutIcon class="pi" />
           <span class="hide-mobile">Leave</span>
         </button>
       </div>
@@ -131,14 +143,14 @@ onBeforeRouteLeave(() => {
     <div class="room-body">
       <PMessage v-if="connectionStatus === 'reconnecting'" severity="warn" class="reconnect-banner">
         <template #icon>
-          <i class="pi pi-spin pi-spinner" />
+          <SpinnerIcon class="pi" spin />
         </template>
         Connection lost. Attempting to reconnect...
       </PMessage>
 
       <section v-if="isAdmin" class="control-bar surface-panel">
         <div class="control-meta">
-          <span class="admin-chip"><i class="pi pi-crown" /> ADMIN</span>
+          <span class="admin-chip"><CrownIcon class="pi" /> ADMIN</span>
           <span class="status">
             <span class="label-short">
               {{ votesVisible ? "Votes revealed" : `${votedCount}/${totalCount} voted` }}
@@ -148,7 +160,7 @@ onBeforeRouteLeave(() => {
             </span>
           </span>
           <button class="secondary manage" @click="adminSheetOpen = true">
-            <i class="pi pi-users" />
+            <UsersIcon class="pi" />
             Manage
           </button>
         </div>
@@ -159,13 +171,13 @@ onBeforeRouteLeave(() => {
             :disabled="!hasVotes"
             @click="toggleVoteVisibility"
           >
-            <i class="pi pi-eye" />
+            <EyeIcon class="pi" />
             <span class="label-full">Reveal Votes</span>
             <span class="label-short">Reveal</span>
             <span class="muted">{{ votedCount }}/{{ totalCount }}</span>
           </button>
           <button v-else class="cta new-round" @click="startNewRound">
-            <i class="pi pi-refresh" />
+            <RefreshIcon class="pi" />
             New Round
           </button>
           <button
@@ -174,11 +186,11 @@ onBeforeRouteLeave(() => {
             :disabled="!hasVotes"
             @click="toggleVoteLock"
           >
-            <i :class="votesLocked ? 'pi pi-lock' : 'pi pi-unlock'" />
+            <component :is="votesLocked ? LockIcon : UnlockIcon" class="pi" />
             {{ votesLocked ? "Locked" : "Lock" }}
           </button>
           <button class="secondary danger" :disabled="!hasVotes" @click="clearAllVotes">
-            <i class="pi pi-trash" />
+            <TrashIcon class="pi" />
             <span class="label-full">Clear all</span>
             <span class="label-short">Clear</span>
           </button>
@@ -189,7 +201,7 @@ onBeforeRouteLeave(() => {
         <section class="board surface-panel">
           <div class="board-header">
             <span v-if="isSpectator" class="spectating-chip">
-              <i class="pi pi-eye" aria-hidden="true" />
+              <EyeIcon class="pi" aria-hidden="true" />
               SPECTATING
             </span>
             <span class="vote-pill" :class="{ revealed: votesVisible }">
@@ -197,7 +209,7 @@ onBeforeRouteLeave(() => {
               {{ votesVisible ? "Votes revealed" : `${votedCount}/${totalCount} voted` }}
             </span>
             <span v-if="spectatorMembers.length" class="watching-pill">
-              <i class="pi pi-eye" aria-hidden="true" />
+              <EyeIcon class="pi" aria-hidden="true" />
               {{ spectatorMembers.length }} watching
             </span>
           </div>
@@ -243,7 +255,7 @@ onBeforeRouteLeave(() => {
         <aside class="rail">
           <VoteDistribution v-if="votesVisible" :members="members" :cards="points" />
           <div v-else-if="isSpectator" class="spectator-notice surface-panel">
-            <i class="pi pi-eye" aria-hidden="true" />
+            <EyeIcon class="pi" aria-hidden="true" />
             <p>You're spectating this round — no card to play, just watching the team vote.</p>
             <span class="progress">{{ votedCount }}/{{ totalCount }} voted</span>
           </div>
@@ -263,7 +275,7 @@ onBeforeRouteLeave(() => {
         size="small"
         class="lock-banner"
       >
-        <template #icon><i class="pi pi-lock" /></template>
+        <template #icon><LockIcon class="pi" /></template>
         The votes are locked.
       </PMessage>
 
@@ -338,10 +350,13 @@ onBeforeRouteLeave(() => {
         <VButton
           class="join-cta"
           :class="{ spectating: joinRole === 'spectator' }"
-          :label="joinRole === 'spectator' ? 'Join as spectator' : 'Join & vote'"
           :disabled="!usernameModel"
           type="submit"
-        />
+        >
+          <span class="p-button-label">
+            {{ joinRole === "spectator" ? "Join as spectator" : "Join & vote" }}
+          </span>
+        </VButton>
       </form>
     </VDialog>
   </main>
@@ -510,11 +525,11 @@ main {
   }
 
   &.invite {
-    &:hover .pi-share-alt {
+    &:hover .p-icon-share-alt {
       animation: share-spark 650ms;
     }
 
-    .pi-check {
+    .p-icon-check {
       animation: check-pop 350ms ease-out;
     }
   }
@@ -524,7 +539,7 @@ main {
     font-weight: 600;
 
     @media (prefers-reduced-motion: no-preference) {
-      &:hover .pi-cog {
+      &:hover .p-icon-cog {
         animation: settings-turn 450ms ease-in-out;
       }
     }
@@ -1056,7 +1071,7 @@ main {
   padding: 1.25rem;
   text-align: center;
 
-  .pi-eye {
+  .p-icon-eye {
     font-size: 1.1rem;
     color: var(--p-text-muted-color);
   }

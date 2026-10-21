@@ -3,6 +3,10 @@ import { computed } from "vue";
 import Drawer from "primevue/drawer";
 import type { RoomMember, SpectatorMember } from "@/modules/roomState";
 import { getAvatarColor, getInitials, paletteVar } from "@/modules/avatarColor";
+import CrownIcon from "@primeicons/vue/crown";
+import EyeIcon from "@primeicons/vue/eye";
+import TrashIcon from "@primeicons/vue/trash";
+import UsersIcon from "@primeicons/vue/users";
 
 const props = defineProps<{
   visible: boolean;
@@ -37,7 +41,7 @@ const manageableMembers = computed(() => [
   >
     <template #header>
       <div class="sheet-header">
-        <span class="label"><i class="pi pi-users" /> MANAGE PARTICIPANTS</span>
+        <span class="label"><UsersIcon class="pi" /> MANAGE PARTICIPANTS</span>
       </div>
     </template>
 
@@ -50,7 +54,11 @@ const manageableMembers = computed(() => [
             </span>
             <span class="name">
               {{ m.name }}
-              <i v-if="m.isSpectator" class="pi pi-eye role-eye" title="Spectating" />
+              <!-- An <svg> shows no tooltip for a title attribute, so the
+                   label and tooltip live on a wrapper. -->
+              <span v-if="m.isSpectator" role="img" aria-label="Spectating" title="Spectating">
+                <EyeIcon class="pi role-eye" />
+              </span>
             </span>
             <button
               class="icon-btn"
@@ -58,14 +66,14 @@ const manageableMembers = computed(() => [
               :title="m.isAdmin ? 'Already admin' : 'Make admin'"
               @click="emit('transferAdmin', m.name)"
             >
-              <i class="pi pi-crown" />
+              <CrownIcon class="pi" />
             </button>
             <button
               class="icon-btn danger"
               title="Remove participant"
               @click="emit('removeParticipant', m.name)"
             >
-              <i class="pi pi-trash" />
+              <TrashIcon class="pi" />
             </button>
           </li>
         </ul>

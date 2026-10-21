@@ -23,6 +23,8 @@
     "resolve-audit": "resolve-audit"
   },
   "devDependencies": {
+    "@fontsource-variable/open-sans": "^5.2.6",
+    "@primeicons/vue": "^8.0.2",
     "@primeuix/themes": "^3.0.1",
     "@tsconfig/node20": "^20.1.10",
     "@vitejs/plugin-vue": "^6.0.10",
@@ -31,7 +33,6 @@
     "npm-audit-resolver": "3.0.0-RC.0",
     "pinia": "^4.1.0",
     "prettier": "^3.9.10",
-    "primeicons": "^8.0.2",
     "primevue": "^5.0.2",
     "sass": "^1.105.2",
     "typescript": "~6.0.3",

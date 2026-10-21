@@ -3,6 +3,8 @@ import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
 import { useScrollFades } from "@/composables/useScrollFades";
 import { getAvatarColor, getInitials, paletteVar } from "@/modules/avatarColor";
 import type { RoomMember, SpectatorMember } from "@/modules/roomState";
+import ChevronDownIcon from "@primeicons/vue/chevron-down";
+import EyeIcon from "@primeicons/vue/eye";
 
 const props = defineProps<{ members: RoomMember[]; spectators?: SpectatorMember[] }>();
 
@@ -87,7 +89,7 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
     <template v-if="spectators?.length">
       <div class="spectator-divider" role="presentation">
         <span class="line" />
-        <span class="label"><i class="pi pi-eye" /> Spectating · {{ spectators.length }}</span>
+        <span class="label"><EyeIcon class="pi" /> Spectating · {{ spectators.length }}</span>
         <span class="line" />
       </div>
 
@@ -131,7 +133,7 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
           </span>
           <span v-else key="less" class="face less">Show less</span>
         </Transition>
-        <i class="pi pi-chevron-down" :class="{ flipped: spectatorsExpanded }" aria-hidden="true" />
+        <ChevronDownIcon class="pi" :class="{ flipped: spectatorsExpanded }" aria-hidden="true" />
       </button>
     </template>
   </aside>
