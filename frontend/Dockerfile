@@ -1,4 +1,4 @@
-FROM oven/bun:1.4.3-slim AS dependencies
+FROM oven/bun:1.4.4-slim AS dependencies
 WORKDIR /workspace
 COPY package.json bun.lock bunfig.toml ./
 COPY frontend/package.json frontend/package.json
