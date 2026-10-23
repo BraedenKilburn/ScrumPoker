@@ -16,6 +16,9 @@ const reactionRateLimiter = new ReactionRateLimiter();
 // Exported so an integration test can bind an ephemeral port (PORT=0)
 // and stop the server afterwards. Production still runs `bun index.ts`.
 export const server = Bun.serve<WebSocketData>({
+  // Read here rather than left to Bun's default, which snapshots PORT at
+  // process start and ignores the test's runtime `process.env.PORT = "0"`.
+  port: process.env.PORT ?? 3000,
   fetch(req, server) {
     const url = new URL(req.url);
 

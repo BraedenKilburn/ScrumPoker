@@ -8,7 +8,7 @@ import type { ServerMessage } from "@shared/types";
  * HTTP probe and the socket agree on what a room is called.
  */
 
-// Must be set before importing index.ts: Bun.serve reads it at call time.
+// Must be set before importing index.ts, which passes it to Bun.serve.
 process.env.PORT = "0";
 
 let baseUrl: string;
