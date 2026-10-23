@@ -60,9 +60,29 @@ cleanup() {
     rollback
   fi
 }
+# Refuse to deploy anything but a clean, up-to-date main. The script ships
+# whatever is checked out, so a feature branch, uncommitted edits, or local
+# commits GitHub never accepted would otherwise go straight to production.
+# Runs before the trap so a refusal exits without a spurious "rolling back".
+cd "$PROJECT_DIR"
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$BRANCH" != "main" ]; then
+  log "Refusing to deploy: on branch '$BRANCH', not main."
+  exit 1
+fi
+if [ -n "$(git status --porcelain)" ]; then
+  log "Refusing to deploy: working tree has uncommitted changes."
+  git status --short
+  exit 1
+fi
+git fetch --quiet origin main
+if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+  log "Refusing to deploy: local main does not match origin/main. Run 'git pull --ff-only' (or reset unpushed commits) first."
+  exit 1
+fi
+
 trap cleanup EXIT
 
-cd "$PROJECT_DIR"
 log "Starting deployment of commit $(git rev-parse --short HEAD) on $(git rev-parse --abbrev-ref HEAD)"
 
 # Authenticate sudo once, up front, then refresh the credential in the
@@ -76,6 +96,12 @@ SUDO_KEEPALIVE_PID=$!
 #    is touched or anything is swapped — no half-deployed state.
 log "Building frontend..."
 cd "$PROJECT_DIR"
+# Install from scratch so the build matches bun.lock exactly, whatever state
+# node_modules was left in. The frontend is built from this host's
+# node_modules, not inside Docker, and a stale vitest 4.1.10 was once found
+# here long after bun.lock moved to 5.x — cause unknown, so don't trust an
+# incremental install.
+rm -rf node_modules frontend/node_modules backend/node_modules
 bun install --frozen-lockfile
 bun run --cwd frontend --bun build
 
