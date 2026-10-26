@@ -44,7 +44,7 @@ const labels: Record<ReactionEmoji, string> = {
   </section>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .reaction-bar {
   padding: 1rem;
 

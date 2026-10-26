@@ -83,7 +83,7 @@ const manageableMembers = computed(() => [
   </Drawer>
 </template>
 
-<style lang="scss">
+<style>
 .p-component.p-drawer.admin-drawer {
   border: none;
   border-top-left-radius: 1.25rem;
@@ -93,7 +93,7 @@ const manageableMembers = computed(() => [
 }
 </style>
 
-<style scoped lang="scss">
+<style scoped>
 .sheet-header .label {
   display: flex;
   gap: 0.5rem;

@@ -41,6 +41,6 @@ description: Build/launch/drive recipe for verifying ScrumPoker changes end-to-e
   text instead of reading immediately.
 - Admin disconnect destroys the room instantly; probe `exists:false`
   mid-flow is expected until someone reconnects.
-- `#app` uses `overflow-x: clip` (base.scss) — deliberately not
+- `#app` uses `overflow-x: clip` (base.css) — deliberately not
   `hidden`, which would make `#app` a scroll container and break
   `position: sticky` in every view.

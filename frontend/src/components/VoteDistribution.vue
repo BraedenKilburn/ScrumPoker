@@ -101,7 +101,7 @@ const cardColors = computed(() => {
   </aside>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .distribution {
   padding: 1.25rem;
   display: flex;

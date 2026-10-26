@@ -4,7 +4,7 @@ export type CardTone = "green" | "amber" | "red" | "violet";
 
 /**
  * CSS color for a tone — the global `--tone-*` custom properties in
- * assets/base.scss, the single source shared with PointCard's bands.
+ * assets/base.css, the single source shared with PointCard's bands.
  */
 export function toneColor(tone: CardTone): string {
   return `var(--tone-${tone})`;

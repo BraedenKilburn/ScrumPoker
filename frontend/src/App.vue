@@ -16,12 +16,12 @@ const isRoomView = computed(() => route.name === "Room");
   <Toast />
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .main {
   min-height: calc(100vh - var(--nav-height) - var(--footer-height));
+}
 
-  &--no-nav {
-    min-height: 100vh;
-  }
+.main--no-nav {
+  min-height: 100vh;
 }
 </style>

@@ -115,7 +115,7 @@ onBeforeUnmount(() => observer?.disconnect());
   </div>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .hand-box {
   display: flex;
   align-items: center;

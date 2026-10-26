@@ -24,7 +24,7 @@ const roomId = computed(() => route.params.id);
   </nav>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 nav {
   display: flex;
   justify-content: space-between;
@@ -56,8 +56,8 @@ nav {
     white-space: nowrap;
   }
 
-  // Room ID, the appearance control and GitHub don't all fit beside the
-  // logo on a phone; the page under the navbar names the room anyway.
+  /* Room ID, the appearance control and GitHub don't all fit beside the
+     logo on a phone; the page under the navbar names the room anyway. */
   @media (max-width: 540px) {
     p {
       display: none;

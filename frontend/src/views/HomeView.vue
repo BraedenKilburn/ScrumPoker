@@ -264,11 +264,11 @@ const disabled = computed(() => !username.value || submitting.value);
   </main>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .home-page {
-  // The shell subtracts the vertical padding from its min-height so a
-  // short page still fits the viewport exactly, while a tall one keeps
-  // this gap above the footer instead of bumping into it.
+  /* The shell subtracts the vertical padding from its min-height so a
+     short page still fits the viewport exactly, while a tall one keeps
+     this gap above the footer instead of bumping into it. */
   --home-pad-y: 2rem;
 
   min-height: calc(100vh - var(--nav-height) - var(--footer-height));
@@ -479,9 +479,9 @@ const disabled = computed(() => !username.value || submitting.value);
   color: var(--p-primary-contrast-color);
   font-weight: 800;
 
-  // PrimeVue's own :hover drops the gradient, fades in a flat colour,
-  // swaps the ink and adds a 1px border — so every variant restates the
-  // gradient and ink on hover, and the border stays off.
+  /* PrimeVue's own :hover drops the gradient, fades in a flat colour,
+     swaps the ink and adds a 1px border — so every variant restates the
+     gradient and ink on hover, and the border stays off. */
   &:not(:disabled):hover {
     border: 0;
     background: linear-gradient(
@@ -492,8 +492,8 @@ const disabled = computed(() => !username.value || submitting.value);
     color: var(--p-primary-contrast-color);
   }
 
-  // Spectating tints the CTA violet so the chosen role is visible right
-  // where you commit to it.
+  /* Spectating tints the CTA violet so the chosen role is visible right
+     where you commit to it. */
   &.spectating {
     background: linear-gradient(
       110deg,
@@ -674,8 +674,8 @@ const disabled = computed(() => !username.value || submitting.value);
 
 @media (max-width: 767px) {
   .home-page {
-    // Keep the var in sync with this asymmetric padding (1.5 + 2 = 3.5rem)
-    // so the shell's min-height calc stays exact.
+    /* Keep the var in sync with this asymmetric padding (1.5 + 2 = 3.5rem)
+       so the shell's min-height calc stays exact. */
     --home-pad-y: 1.75rem;
 
     padding: 1.5rem 1.25rem 2rem;

@@ -44,7 +44,7 @@ withDefaults(
   </div>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .point-card {
   --card-fg: #0a0a0a;
   --card-bg: var(--tone-green);

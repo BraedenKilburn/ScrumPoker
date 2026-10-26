@@ -10,7 +10,7 @@ A real-time Scrum Poker application built with Vue 3 and Bun. This application a
 - Vite
 - PrimeVue Components
 - Bun Package Manager
-- SCSS for styling
+- Native CSS (with nesting) for styling
 
 ### Backend
 
@@ -119,7 +119,7 @@ repository root with `bun install`.
 - Uses Vite's hot module replacement
 - PrimeVue components for UI
 - TypeScript for type safety
-- SCSS for styling
+- Native CSS (with nesting) for styling
 
 ### Backend Development
 

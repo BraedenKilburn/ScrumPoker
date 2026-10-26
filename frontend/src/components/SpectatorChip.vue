@@ -68,9 +68,9 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
   </div>
 </template>
 
-<style scoped lang="scss">
-// Deliberately smaller than ParticipantCard so the board reads "voters
-// here, observers over there" at a glance.
+<style scoped>
+/* Deliberately smaller than ParticipantCard so the board reads "voters
+   here, observers over there" at a glance. */
 .spectator-chip {
   display: inline-flex;
   align-items: center;
@@ -124,9 +124,9 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
     color: var(--ink-amber);
   }
 
-  // Animating the track from 0fr to 1fr gives a smooth width reveal
-  // without hard-coding the buttons' width. The negative margin swallows
-  // the chip's gap while collapsed so the resting chip is unchanged.
+  /* Animating the track from 0fr to 1fr gives a smooth width reveal
+     without hard-coding the buttons' width. The negative margin swallows
+     the chip's gap while collapsed so the resting chip is unchanged. */
   .actions {
     display: grid;
     grid-template-columns: 0fr;
@@ -144,8 +144,8 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
     }
   }
 
-  // Padding keeps the focus rings inside the clipped track: it must cover
-  // the buttons' outline width + offset (2px + 1px below).
+  /* Padding keeps the focus rings inside the clipped track: it must cover
+     the buttons' outline width + offset (2px + 1px below). */
   .actions-inner {
     display: flex;
     gap: 0.25rem;

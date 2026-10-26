@@ -39,7 +39,7 @@ const inputId = `deck-option-${props.deck.id}`;
   </label>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .deck-option {
   display: flex;
   flex-direction: column;
