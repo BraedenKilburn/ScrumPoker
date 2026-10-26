@@ -236,7 +236,12 @@ onBeforeRouteLeave(() => {
               v-for="s in spectatorMembers"
               :key="s.name"
               :name="s.name"
+              :is-admin="s.isAdmin"
               :is-current-user="s.isCurrentUser"
+              :can-manage-admin="isAdmin && !s.isCurrentUser && !s.isAdmin"
+              :can-remove="isAdmin && !s.isCurrentUser"
+              @transfer-admin="makeAdmin(s.name)"
+              @remove="handleRemoveParticipant(s.name)"
             />
           </div>
 

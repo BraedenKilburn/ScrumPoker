@@ -263,6 +263,25 @@ describe("membership", () => {
     expect(room.members.value[0].isAdmin).toBe(true);
     expect(room.votesLocked.value).toBe(true);
   });
+
+  it("hands the admin role to a spectator without seating them", () => {
+    const { room } = roomAs("watcher");
+    room.adoptSnapshot(
+      snapshot({ participants: { alice: null }, spectators: ["watcher"], admin: "alice" }),
+    );
+
+    room.adminChanged("watcher");
+
+    expect(room.isAdmin.value).toBe(true);
+    expect(room.isSpectator.value).toBe(true);
+    expect(room.isVoter.value).toBe(false);
+    expect(room.spectatorMembers.value).toEqual([
+      { name: "watcher", isAdmin: true, isCurrentUser: true },
+    ]);
+    expect(room.members.value).toEqual([
+      { name: "alice", point: undefined, isAdmin: false, isCurrentUser: false },
+    ]);
+  });
 });
 
 // Ported from the old roomMembers helper: ordering is now observed
