@@ -139,7 +139,7 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
   </aside>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .voting-progress {
   padding: 1.25rem;
 
@@ -158,9 +158,9 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
     }
   }
 
-  // Edge scrims over a scroll region: rows dissolve into the panel background
-  // toward whichever edge still has content beyond it. A solid band at the
-  // very edge keeps the cue readable against the already-dark panel.
+  /* Edge scrims over a scroll region: rows dissolve into the panel background
+     toward whichever edge still has content beyond it. A solid band at the
+     very edge keeps the cue readable against the already-dark panel. */
   .scroll-fade {
     --fade-size: 3.25rem;
     position: relative;
@@ -169,8 +169,8 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
     &::after {
       content: "";
       position: absolute;
-      // Above the positioned scroll region, which otherwise paints over the
-      // ::before (earlier in DOM order).
+      /* Above the positioned scroll region, which otherwise paints over the
+         ::before (earlier in DOM order). */
       z-index: 1;
       left: 0;
       right: 0;
@@ -199,8 +199,8 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
     }
   }
 
-  // The head stays outside this region, so the X/Y count is always visible
-  // however far the list scrolls.
+  /* The head stays outside this region, so the X/Y count is always visible
+     however far the list scrolls. */
   .voter-scroll {
     position: relative;
     max-height: clamp(10rem, calc(100vh - 30rem), 24rem);
@@ -244,18 +244,6 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
       opacity: 1;
       box-shadow: 0 0 8px var(--p-emerald-400);
       animation: dot-pop 0.4s ease;
-    }
-  }
-
-  @keyframes dot-pop {
-    0% {
-      transform: scale(0.4);
-    }
-    60% {
-      transform: scale(1.4);
-    }
-    100% {
-      transform: scale(1);
     }
   }
 
@@ -303,8 +291,8 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
     white-space: nowrap;
   }
 
-  // Spectators sit below a divider with no status dot or ready state —
-  // they're present, not pending.
+  /* Spectators sit below a divider with no status dot or ready state —
+     they're present, not pending. */
   .spectator-divider {
     display: flex;
     align-items: center;
@@ -332,7 +320,7 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
     }
   }
 
-  // Animates between collapsed (0fr) and the list's natural height (1fr).
+  /* Animates between collapsed (0fr) and the list's natural height (1fr). */
   .spectator-reveal {
     display: grid;
     grid-template-rows: 0fr;
@@ -347,7 +335,7 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
       min-height: 0;
     }
 
-    // The spectator cap is only 9rem, so its fades stay proportionate.
+    /* The spectator cap is only 9rem, so its fades stay proportionate. */
     .scroll-fade {
       --fade-size: 2rem;
     }
@@ -461,5 +449,17 @@ const spectatorsOpen = computed(() => spectatorsExpanded.value || !spectatorOver
 .vp-status-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+@keyframes dot-pop {
+  0% {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 </style>

@@ -367,7 +367,7 @@ onBeforeRouteLeave(() => {
   </main>
 </template>
 
-<style lang="scss">
+<style>
 /* Unscoped: the dialog teleports to <body>, outside this component's
    scope attribute — same pattern as ParticipantManageSheet's drawer. */
 .p-dialog.join-dialog {
@@ -375,7 +375,7 @@ onBeforeRouteLeave(() => {
 }
 </style>
 
-<style scoped lang="scss">
+<style scoped>
 main {
   display: flex;
   flex-direction: column;
@@ -453,8 +453,8 @@ main {
 
     .room-id {
       display: inline-flex;
-      // Drop the deck chip to its own line instead of colliding with
-      // the header actions when the viewport is narrow.
+      /* Drop the deck chip to its own line instead of colliding with
+         the header actions when the viewport is narrow. */
       flex-wrap: wrap;
       min-width: 0;
       align-items: center;
@@ -510,8 +510,8 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  // The actions become icons on small screens; each button carries an
-  // aria-label so the name survives the hidden text.
+  /* The actions become icons on small screens; each button carries an
+     aria-label so the name survives the hidden text. */
   padding: 0.5rem 0.6rem;
   border-radius: 999px;
   min-height: 2.75rem;
@@ -543,8 +543,8 @@ main {
     background: var(--p-content-background);
     font-weight: 600;
 
-    @media (prefers-reduced-motion: no-preference) {
-      &:hover .p-icon-cog {
+    &:hover .p-icon-cog {
+      @media (prefers-reduced-motion: no-preference) {
         animation: settings-turn 450ms ease-in-out;
       }
     }
@@ -1016,7 +1016,7 @@ main {
       gap: 0.85rem;
     }
 
-    > * {
+    & > * {
       flex: 0 0 calc((100% - 0.4rem * 2) / 3);
       min-width: 0;
       box-sizing: border-box;
@@ -1056,8 +1056,8 @@ main {
     padding: 2rem 0;
   }
 
-  // A clearly different tier than the voter cards: compact chips, no
-  // vote slot, no suspense.
+  /* A clearly different tier than the voter cards: compact chips, no
+     vote slot, no suspense. */
   .spectator-row {
     position: relative;
     z-index: 1;
@@ -1174,9 +1174,9 @@ main {
   }
 }
 
-// The dialog teleports to <body>, so :deep() from this component can't
-// reach PrimeVue-rendered wrappers — but elements authored here keep
-// their scope attribute, so plain scoped selectors still apply to them.
+/* The dialog teleports to <body>, so :deep() from this component can't
+   reach PrimeVue-rendered wrappers — but elements authored here keep
+   their scope attribute, so plain scoped selectors still apply to them. */
 .join-copy {
   margin: 0 0 1.15rem;
   color: var(--p-text-muted-color);
@@ -1195,7 +1195,7 @@ main {
   flex-direction: column;
   gap: 0.45rem;
 
-  :deep(.p-inputtext) {
+  & :deep(.p-inputtext) {
     width: 100%;
   }
 }
@@ -1226,9 +1226,9 @@ main {
   color: var(--p-primary-contrast-color);
   font-weight: 700;
 
-  // PrimeVue's own :hover drops the gradient, fades in a flat colour,
-  // swaps the ink and adds a 1px border — so every variant restates the
-  // gradient and ink on hover, and the border stays off.
+  /* PrimeVue's own :hover drops the gradient, fades in a flat colour,
+     swaps the ink and adds a 1px border — so every variant restates the
+     gradient and ink on hover, and the border stays off. */
   &:not(:disabled):hover {
     border: 0;
     background: linear-gradient(

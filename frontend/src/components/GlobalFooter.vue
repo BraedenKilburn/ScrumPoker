@@ -15,7 +15,7 @@ import packageJson from "../../package.json";
   </footer>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 footer {
   display: flex;
   justify-content: space-between;

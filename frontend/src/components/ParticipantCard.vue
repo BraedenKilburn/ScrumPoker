@@ -82,7 +82,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
   </div>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .participant-card {
   position: relative;
   display: flex;
@@ -146,7 +146,7 @@ const displayName = computed(() => (props.isCurrentUser ? "You" : props.name));
     font-size: 0.6rem;
     background: var(--p-content-background);
     border-radius: 999px;
-    // The svg's 1em width/height is the glyph; keep the padding outside it.
+    /* The svg's 1em width/height is the glyph; keep the padding outside it. */
     box-sizing: content-box;
     padding: 2px 3px;
     box-shadow: 0 0 0 1px var(--p-content-border-color);

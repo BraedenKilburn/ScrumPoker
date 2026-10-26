@@ -148,7 +148,7 @@ function updateDeck() {
   </Dialog>
 </template>
 
-<style lang="scss">
+<style>
 .p-dialog.room-settings-dialog {
   width: min(34rem, calc(100vw - 2rem));
   max-height: calc(100dvh - 2rem);
@@ -169,7 +169,7 @@ function updateDeck() {
 }
 </style>
 
-<style scoped lang="scss">
+<style scoped>
 .sound-setting,
 .appearance-setting {
   display: flex;
@@ -369,8 +369,8 @@ button:focus-visible {
   outline-offset: 3px;
 }
 
-// Narrow dialog: the control takes its own full-width line under the
-// copy (indented past the icon column) instead of squeezing it.
+/* Narrow dialog: the control takes its own full-width line under the
+   copy (indented past the icon column) instead of squeezing it. */
 @media (max-width: 560px) {
   .appearance-setting {
     flex-wrap: wrap;

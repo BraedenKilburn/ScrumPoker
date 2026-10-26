@@ -16,7 +16,7 @@
   </main>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 main {
   display: flex;
   justify-content: center;
@@ -24,7 +24,7 @@ main {
 }
 </style>
 
-<style lang="scss">
+<style>
 .not-found-card {
   width: 90vw;
   text-align: center;

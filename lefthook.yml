@@ -13,7 +13,7 @@ pre-commit:
       group:
         jobs:
           - name: format
-            glob: "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,vue,css,scss,json,yml,yaml}"
+            glob: "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,vue,css,json,yml,yaml}"
             run: bunx oxfmt --write {staged_files}
             stage_fixed: true
 

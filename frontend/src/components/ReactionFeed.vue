@@ -17,7 +17,7 @@ defineProps<{ items: RoomReaction[] }>();
   </section>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .reaction-feed {
   padding: 0.75rem 1rem;
   overflow: hidden;

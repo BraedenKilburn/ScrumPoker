@@ -4,14 +4,14 @@ import { join, relative } from "node:path";
 
 /**
  * Surfaces, shadows and edge highlights are valued per Appearance in
- * base.scss (`--surface-*`, `--shadow-color`, `--edge-highlight`). A
+ * base.css (`--surface-*`, `--shadow-color`, `--edge-highlight`). A
  * component that mixes the page background toward black/white, or drops
  * a literal black shadow / white highlight, bakes in a dark assumption
- * and inverts badly on a light page — so no stylesheet outside base.scss
+ * and inverts badly on a light page — so no stylesheet outside base.css
  * may do it.
  */
 const src = join(import.meta.dirname, "..", "..");
-const tokenSheet = join(src, "assets", "base.scss");
+const tokenSheet = join(src, "assets", "base.css");
 
 const darkAssumptions: Array<[label: string, pattern: RegExp]> = [
   [
@@ -26,7 +26,7 @@ function stylesheets(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) return entry.name === "__tests__" ? [] : stylesheets(path);
-    return /\.(vue|scss|css)$/.test(entry.name) && path !== tokenSheet ? [path] : [];
+    return /\.(vue|css)$/.test(entry.name) && path !== tokenSheet ? [path] : [];
   });
 }
 

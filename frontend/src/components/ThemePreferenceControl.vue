@@ -64,12 +64,12 @@ const selectedIndex = computed(() => options.findIndex((o) => o.id === selected.
   </div>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .theme-preference {
   position: relative;
   display: grid;
-  // Equal columns whether shrink-wrapped or stretched, so the backing
-  // below can slide in exact thirds.
+  /* Equal columns whether shrink-wrapped or stretched, so the backing
+     below can slide in exact thirds. */
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   flex-shrink: 0;
@@ -79,8 +79,8 @@ const selectedIndex = computed(() => options.findIndex((o) => o.id === selected.
   border: 1px solid var(--p-content-border-color);
   border-radius: 0.75rem;
 
-  // The selected segment's backing: one pill slid between segments
-  // (same treatment as RoleToggle) rather than repainted per segment.
+  /* The selected segment's backing: one pill slid between segments
+     (same treatment as RoleToggle) rather than repainted per segment. */
   &::before {
     content: "";
     position: absolute;
@@ -129,8 +129,8 @@ const selectedIndex = computed(() => options.findIndex((o) => o.id === selected.
     }
   }
 
-  // The native radio does the work (checked state, arrow keys); the label
-  // is its visible face, so keep the input in the label but off-screen.
+  /* The native radio does the work (checked state, arrow keys); the label
+     is its visible face, so keep the input in the label but off-screen. */
   input {
     position: absolute;
     width: 1px;

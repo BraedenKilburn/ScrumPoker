@@ -147,7 +147,7 @@ function confirm() {
   </div>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .deck-chooser {
   display: flex;
   flex-direction: column;

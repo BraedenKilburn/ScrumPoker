@@ -21,7 +21,7 @@ import Tag from "primevue/tag";
 import ToastService from "primevue/toastservice";
 import Dialog from "primevue/dialog";
 
-import "@/assets/main.scss";
+import "@/assets/base.css";
 
 // Appearance lives for the app's lifetime, not a room session: boot it once here.
 bootAppearance();

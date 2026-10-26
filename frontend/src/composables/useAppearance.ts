@@ -56,7 +56,7 @@ export type AppearanceRoot = {
 };
 
 const OS_DARK_QUERY = "(prefers-color-scheme: dark)";
-/** The page background per appearance (`--surface-page` in base.scss),
+/** The page background per appearance (`--surface-page` in base.css),
  *  so mobile browser chrome matches the page. Mirrored in index.html. */
 export const THEME_COLOR: Record<Appearance, string> = { light: "#f1f5f9", dark: "#18181b" };
 
@@ -74,7 +74,7 @@ function applyAppearance(root: AppearanceRoot, next: Appearance) {
   appearance.value = next;
   // PrimeVue components tween background/colour over 0.2s, which would
   // make a switch ripple through the page. Hold transitions off (see
-  // base.scss) while the new appearance is computed, then let them go.
+  // base.css) while the new appearance is computed, then let them go.
   root.classList.toggle("appearance-switching", true);
   // .p-dark is PrimeVue's configured darkModeSelector; color-scheme makes
   // native scrollbars and form controls follow.
