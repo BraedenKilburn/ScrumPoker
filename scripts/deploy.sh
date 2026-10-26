@@ -103,7 +103,9 @@ cd "$PROJECT_DIR"
 # incremental install.
 rm -rf node_modules frontend/node_modules backend/node_modules
 bun install --frozen-lockfile
-bun run --cwd frontend --bun build
+# No --bun: let Vite run under Node, matching local builds. Under Bun the
+# build was ~25% slower here and emitted slightly different chunk hashes.
+bun run --cwd frontend build
 
 # Pre-compress the built assets at max level so Caddy serves them via
 # `file_server { precompressed br gzip }` — best ratio, no per-request CPU.
