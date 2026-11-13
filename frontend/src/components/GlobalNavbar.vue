@@ -13,9 +13,7 @@ const roomId = computed(() => route.params.id);
   <nav>
     <router-link :to="{ name: 'Home' }" class="logo"> Scrum Poker </router-link>
     <div class="nav-links">
-      <p v-if="roomId">
-        Room ID: <strong>{{ roomId }}</strong>
-      </p>
+      <p v-if="roomId">Room ID: <strong>{{ roomId }}</strong></p>
       <ThemePreferenceControl compact />
       <a href="https://github.com/BraedenKilburn/ScrumPoker" target="_blank" rel="noopener">
         GitHub <ArrowUpRightIcon class="pi" aria-hidden="true" />

@@ -9,9 +9,7 @@ defineProps<{ items: RoomReaction[] }>();
     <TransitionGroup tag="ol" name="reaction-feed" aria-live="polite" aria-relevant="additions">
       <li v-for="item in items" :key="item.id">
         <span class="emoji" aria-hidden="true">{{ item.emoji }}</span>
-        <span class="message"
-          ><strong>{{ item.who }}</strong> reacted</span
-        >
+        <span class="message"><strong>{{ item.who }}</strong> reacted</span>
       </li>
     </TransitionGroup>
   </section>
