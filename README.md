@@ -24,6 +24,7 @@ A real-time Scrum Poker application built with Vue 3 and Bun. This application a
 
 - Docker & Docker Compose
 - Bun
+- Node 24 (pinned in `.node-version`; Vite and Vitest run under Node)
 
 ### Development Setup
 

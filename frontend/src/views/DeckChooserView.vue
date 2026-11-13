@@ -136,9 +136,7 @@ function confirm() {
     </div>
 
     <div class="footer-cta">
-      <span class="selected-label">
-        Selected · <strong>{{ decks[selected].label }}</strong>
-      </span>
+      <span class="selected-label"> Selected · <strong>{{ decks[selected].label }}</strong> </span>
       <button class="cta" type="button" @click="confirm">
         {{ isCreate ? `Create ${roomId.toUpperCase()}` : "Update deck" }}
         <ChevronRightIcon class="pi" aria-hidden="true" />

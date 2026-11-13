@@ -26,6 +26,13 @@ jobs:
         with:
           bun-version: 1.4.4
 
+      # Vite and Vitest run under Node (bun run without --bun), so pin it to
+      # the same version the deploy host builds with.
+      - name: Set up Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile
 
