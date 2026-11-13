@@ -81,6 +81,20 @@ if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
   exit 1
 fi
 
+# Vite builds under Node (see step 1), so build with the major pinned in
+# .node-version. fnm installs/switches to it if present; the check below
+# refuses to deploy on any other major either way.
+REQUIRED_NODE="$(tr -d '[:space:]v' < .node-version)"
+REQUIRED_NODE_MAJOR="${REQUIRED_NODE%%.*}"
+if command -v fnm >/dev/null 2>&1; then
+  fnm use --install-if-missing --silent-if-unchanged >/dev/null || true
+fi
+ACTUAL_NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo none)"
+if [ "$ACTUAL_NODE_MAJOR" != "$REQUIRED_NODE_MAJOR" ]; then
+  log "Refusing to deploy: need Node $REQUIRED_NODE_MAJOR (.node-version), found $(node --version 2>/dev/null || echo none)."
+  exit 1
+fi
+
 trap cleanup EXIT
 
 log "Starting deployment of commit $(git rev-parse --short HEAD) on $(git rev-parse --abbrev-ref HEAD)"
