@@ -38,10 +38,4 @@ export const logger = {
       );
     }
   },
-  websocket: (message: string, data?: any) => {
-    console.log(
-      `${colors.magenta}[WEBSOCKET]${colors.reset} ${colors.gray}${new Date().toISOString()}${colors.reset} - ${message}`,
-      data ? data : "",
-    );
-  },
 };

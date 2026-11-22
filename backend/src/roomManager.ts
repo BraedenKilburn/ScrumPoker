@@ -49,6 +49,10 @@ export interface RoomManager {
   setDeck(roomId: string, username: string, deck: DeckId): boolean;
   getRoomSpectators(roomId: string): string[];
   isSpectator(roomId: string, username: string): boolean;
+  /** How many rooms exist right now. */
+  roomCount(): number;
+  /** Roster size summed across every room, absent members included. */
+  memberCount(): number;
 }
 
 export class InMemoryRoomManager implements RoomManager {
@@ -242,6 +246,16 @@ export class InMemoryRoomManager implements RoomManager {
   isSpectator(roomId: string, username: string): boolean {
     const room = this.rooms.get(roomId);
     return room ? room.spectators.has(username) : false;
+  }
+
+  roomCount(): number {
+    return this.rooms.size;
+  }
+
+  memberCount(): number {
+    let total = 0;
+    for (const room of this.rooms.values()) total += room.users.size;
+    return total;
   }
 
   // Returns whether the deck actually changed — a same-deck call is a

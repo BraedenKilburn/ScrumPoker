@@ -75,6 +75,53 @@ The production build will be available at:
 - Frontend: http://localhost (port 80)
 - Backend: ws://api.yourdomain.com (port 3000)
 
+## Operations
+
+### Health endpoint
+
+`GET /health` (also reachable through the reverse proxy as `/ws/health`) is public and returns a minimal JSON body:
+
+```json
+{ "status": "ok", "uptimeSeconds": 8123, "version": "98adede" }
+```
+
+- `status` is always present and is exactly `"ok"` or `"degraded"`. Monitors depend on this contract.
+- `version` is the git short SHA passed as the `GIT_SHA` Docker build arg (`scripts/deploy.sh` does this). It reads `"dev"` when the arg isn't set.
+- When the backend process's resident memory (RSS) is above `HEALTH_MAX_RSS_MB`, the endpoint answers `503` with `"status": "degraded"`.
+- Responses send `Cache-Control: no-store`.
+
+`scripts/deploy.sh` waits for `/health` to answer `200` with the commit being deployed as its `version`, and rolls back otherwise. The prod compose file also defines a container `healthcheck` against it.
+
+### Stats log line
+
+Every `STATS_INTERVAL_MS` the backend logs one line:
+
+```
+[INFO] ... - stats {"rooms":0,"members":0,"connections":0,"absentMembers":0,"rssMb":30,"heapUsedMb":0}
+```
+
+`absentMembers` counts members inside their reconnect grace period. Above `HEALTH_MAX_RSS_MB` the line is logged as `[WARN]` instead. Read it with `docker compose -f docker-compose.prod.yml logs backend | grep stats`. Docker's `json-file` log rotation handles retention.
+
+### Environment variables
+
+| Variable            | Default  | Purpose                                                        |
+| ------------------- | -------- | -------------------------------------------------------------- |
+| `GIT_SHA`           | `dev`    | Build arg baked into the image; reported as `version`.         |
+| `HEALTH_MAX_RSS_MB` | `400`    | RSS above this marks `/health` degraded and warns in the stats line. |
+| `STATS_INTERVAL_MS` | `300000` | How often the stats line is logged (5 minutes).                |
+
+### External alerting (manual setup)
+
+**Uptime (Uptime Kuma).** Add an **HTTP(s) – Json Query** monitor:
+
+- URL `https://<domain>/ws/health`, Json Query `status`, expected value `ok`.
+- Accepted status codes `200-299`, so a `503` degraded response counts as down.
+- Heartbeat interval 60s, with 2–3 retries before alerting, so a single dropped poll doesn't page.
+- Turn on certificate-expiry notification, which also watches the automatic TLS renewal.
+- Optionally add a plain **HTTP(s)** monitor on `https://<domain>/` to watch the static frontend separately.
+
+Uptime Kuma polls the public URL from outside, so nothing needs to be opened on either side. If the machine running Uptime Kuma goes offline, nothing alerts.
+
 ## Project Structure
 
 ```bash

@@ -70,6 +70,13 @@ export class DisconnectManager {
     return this.disconnected.get(roomId)?.has(username) ?? false;
   }
 
+  /** Members inside their grace period across every room. */
+  absentCount(): number {
+    let total = 0;
+    for (const room of this.disconnected.values()) total += room.size;
+    return total;
+  }
+
   clearRoom(roomId: string): void {
     const roomDisconnects = this.disconnected.get(roomId);
     if (!roomDisconnects) return;

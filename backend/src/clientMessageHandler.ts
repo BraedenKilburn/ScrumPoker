@@ -6,7 +6,6 @@ import type { ReactionRateLimiter } from "./reactionRateLimiter";
 import type { RoomMembership } from "./roomMembership";
 import { parseClientMessage } from "./clientMessageParser";
 import { userVotedMessage, voteStatusMessage } from "./roomSnapshots";
-import { logger } from "./logger";
 
 type Socket = ServerWebSocket<WebSocketData>;
 
@@ -146,20 +145,18 @@ export function createClientMessageHandler(deps: ClientMessageHandlerDeps) {
     }
   }
 
-  function replyError(ws: Socket, raw: string, message: string): void {
-    const { roomId, username } = ws.data;
-    logger.warn(`Rejected client message`, { roomId, username, message: raw, error: message });
+  function replyError(ws: Socket, message: string): void {
     broadcaster.reply(ws, { type: "error", data: { message } });
   }
 
   function handle(ws: Socket, raw: string): void {
     const parsed = parseClientMessage(raw);
-    if (!parsed.ok) return replyError(ws, raw, parsed.reason);
+    if (!parsed.ok) return replyError(ws, parsed.reason);
 
     try {
       dispatch(ws, parsed.message);
     } catch (error) {
-      replyError(ws, raw, (error as Error).message);
+      replyError(ws, (error as Error).message);
     }
   }
 

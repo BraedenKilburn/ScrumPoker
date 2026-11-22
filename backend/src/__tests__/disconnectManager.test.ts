@@ -134,4 +134,20 @@ describe("DisconnectManager", () => {
       disconnectManager.clearRoom("nonexistent");
     });
   });
+
+  describe("absentCount", () => {
+    test("counts members inside their grace period across rooms", () => {
+      expect(disconnectManager.absentCount()).toBe(0);
+
+      disconnectManager.markDisconnected("room1", "user1", () => {}, 50);
+      disconnectManager.markDisconnected("room2", "user2", () => {}, 100);
+      expect(disconnectManager.absentCount()).toBe(2);
+
+      disconnectManager.cancelDisconnect("room2", "user2");
+      expect(disconnectManager.absentCount()).toBe(1);
+
+      advance(50);
+      expect(disconnectManager.absentCount()).toBe(0);
+    });
+  });
 });

@@ -10,7 +10,7 @@ OLD_DIR="${WWW_DIR}-old"
 BACKEND_SERVICE="backend"
 # Compose names images "<project>-<service>"; project is the dir basename (scrumpoker).
 BACKEND_IMAGE="scrumpoker-backend"
-HEALTH_URL="http://127.0.0.1:3000/rooms/__deploy_healthcheck__"
+HEALTH_URL="http://127.0.0.1:3000/health"
 
 # Track how far we got so cleanup only undoes what actually changed.
 SUCCESS=0
@@ -97,7 +97,11 @@ fi
 
 trap cleanup EXIT
 
-log "Starting deployment of commit $(git rev-parse --short HEAD) on $(git rev-parse --abbrev-ref HEAD)"
+# Baked into the image and echoed back by /health, which proves the
+# container answering the health check is the one this run just built.
+DEPLOY_SHA="$(git rev-parse --short HEAD)"
+
+log "Starting deployment of commit $DEPLOY_SHA on $(git rev-parse --abbrev-ref HEAD)"
 
 # Authenticate sudo once, up front, then refresh the credential in the
 # background so no password prompt interrupts the (slow) build later.
@@ -138,21 +142,25 @@ sudo chown -R caddy:caddy "$STAGING_DIR"
 cd "$PROJECT_DIR"
 log "Rebuilding backend..."
 docker image tag "${BACKEND_IMAGE}:latest" "${BACKEND_IMAGE}:rollback" 2>/dev/null || true
-docker compose -f "$COMPOSE_FILE" build "$BACKEND_SERVICE"
+docker compose -f "$COMPOSE_FILE" build --build-arg GIT_SHA="$DEPLOY_SHA" "$BACKEND_SERVICE"
 
 log "Restarting backend..."
 docker compose -f "$COMPOSE_FILE" up -d "$BACKEND_SERVICE"
 BACKEND_SWAPPED=1
 
-# 3. Verify the new backend actually serves before pointing users at it.
+# 3. Verify the new backend actually serves before pointing users at it:
+#    /health must answer 2xx (curl -f) AND report this commit as its version.
+#    /health renders compact JSON, so a fixed-string match is exact.
 log "Waiting for backend health..."
+HEALTH_BODY=""
 for i in $(seq 1 15); do
-  if curl -fsS -m 2 -o /dev/null "$HEALTH_URL"; then
-    log "Backend healthy."
+  if HEALTH_BODY="$(curl -fsS -m 2 "$HEALTH_URL" 2>/dev/null)" \
+    && grep -qF "\"version\":\"$DEPLOY_SHA\"" <<<"$HEALTH_BODY"; then
+    log "Backend healthy at $DEPLOY_SHA."
     break
   fi
   if [ "$i" -eq 15 ]; then
-    log "Backend failed health check after 15s."
+    log "Backend failed health check after 15s (want version $DEPLOY_SHA; last response: ${HEALTH_BODY:-none})."
     exit 1
   fi
   sleep 1

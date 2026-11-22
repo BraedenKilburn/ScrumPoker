@@ -95,21 +95,4 @@ describe("Logger", () => {
       process.env.NODE_ENV = originalEnv;
     });
   });
-
-  describe("websocket", () => {
-    it("should log websocket message with timestamp", () => {
-      logger.websocket("test websocket message");
-      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-      expect(consoleLogSpy.mock.calls[0][0]).toContain("[WEBSOCKET]");
-      expect(consoleLogSpy.mock.calls[0][0]).toContain("test websocket message");
-    });
-
-    it("should log websocket message with additional data if provided", () => {
-      const data = { key: "value" };
-      logger.websocket("test websocket with data", data);
-      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-      expect(consoleLogSpy.mock.calls[0][0]).toContain("test websocket with data");
-      expect(consoleLogSpy.mock.calls[0][1]).toBe(data);
-    });
-  });
 });

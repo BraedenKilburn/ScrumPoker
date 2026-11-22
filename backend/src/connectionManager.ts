@@ -72,6 +72,13 @@ export class ConnectionManager {
     return Array.from(this.connections.get(roomId)?.entries() ?? []);
   }
 
+  /** Live sockets across every room — presence, not membership. */
+  connectionCount(): number {
+    let total = 0;
+    for (const room of this.connections.values()) total += room.size;
+    return total;
+  }
+
   /**
    * Check if a user is connected to a room
    * @param roomId - The room ID

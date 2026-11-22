@@ -5,7 +5,6 @@ import type { RoomBroadcaster } from "./roomBroadcaster";
 import type { ConnectionManager } from "./connectionManager";
 import type { DisconnectManager } from "./disconnectManager";
 import { joinRoomSuccessMessage } from "./roomSnapshots";
-import { logger } from "./logger";
 
 type Socket = ServerWebSocket<WebSocketData>;
 
@@ -97,8 +96,6 @@ export function createRoomMembership(deps: RoomMembershipDeps) {
       ws.subscribe(roomId);
       connectionManager.registerConnection(roomId, username, ws);
 
-      logger.websocket(`User reconnected`, { roomId, username });
-
       broadcaster.reply(ws, joinRoomSuccessMessage(roomId, roomManager, username));
       broadcaster.toRoomExcept(ws, { type: "userReconnected", data: { username } });
       return;
@@ -117,8 +114,6 @@ export function createRoomMembership(deps: RoomMembershipDeps) {
 
     ws.subscribe(roomId);
     connectionManager.registerConnection(roomId, username, ws);
-
-    logger.websocket(`Connection opened`, { roomId, username });
 
     // Role comes from room state, not the query param, so the broadcast
     // matches what joinRoom actually recorded.
@@ -140,13 +135,7 @@ export function createRoomMembership(deps: RoomMembershipDeps) {
 
     // The join was rejected before the connection was ever registered,
     // so there is nothing to unwind.
-    if (departure === "usernameTaken") {
-      logger.error(`Username taken`, { roomId, username, code, reason });
-      return;
-    }
-
-    const log = code === 1000 ? logger.websocket : logger.error;
-    log(`Connection closed`, { roomId, username, code, reason });
+    if (departure === "usernameTaken") return;
 
     connectionManager.removeConnection(roomId, username);
 
@@ -163,19 +152,12 @@ export function createRoomMembership(deps: RoomMembershipDeps) {
         return;
 
       case "lost":
-        logger.websocket(`User disconnected unexpectedly, starting grace period`, {
-          roomId,
-          username,
-        });
         broadcaster.toRoom(roomId, { type: "userDisconnected", data: { username } });
 
         disconnectManager.markDisconnected(
           roomId,
           username,
-          () => {
-            logger.websocket(`Grace period expired`, { roomId, username });
-            removeAndAnnounce(roomId, username);
-          },
+          () => removeAndAnnounce(roomId, username),
           gracePeriodMs,
         );
         return;
