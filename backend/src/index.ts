@@ -73,7 +73,7 @@ export const server = Bun.serve<WebSocketData>({
     if (!roomId) return new Response("Room ID is required", { status: 400 });
     if (server.upgrade(req, { data: { username, roomId, deck, role } })) return;
 
-    logger.error(`Upgrade failed`, { roomId, username });
+    logger.error(`Upgrade failed`, { roomId });
     return new Response("Upgrade failed", { status: 500 });
   },
   websocket: {
