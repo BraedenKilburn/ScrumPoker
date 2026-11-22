@@ -120,12 +120,7 @@ Every `STATS_INTERVAL_MS` the backend logs one line:
 - Turn on certificate-expiry notification, which also watches the automatic TLS renewal.
 - Optionally add a plain **HTTP(s)** monitor on `https://<domain>/` to watch the static frontend separately.
 
-Uptime Kuma polls the public URL from outside, so nothing needs to be opened on either side. If the machine running Uptime Kuma goes offline, nothing alerts. The host alerts below cover that case.
-
-**Host memory and disk (DigitalOcean Monitoring).** `/health` only reports the backend process's memory. Create alert policies on the droplet (the monitoring agent must be installed) to email on:
-
-- Memory utilization above 85% for 5 minutes.
-- Disk utilization above 80% for 5 minutes.
+Uptime Kuma polls the public URL from outside, so nothing needs to be opened on either side. If the machine running Uptime Kuma goes offline, nothing alerts.
 
 ## Project Structure
 
