@@ -10,6 +10,8 @@ import type { ServerMessage } from "@shared/types";
 
 // Must be set before importing index.ts, which passes it to Bun.serve.
 process.env.PORT = "0";
+// Stands in for the build arg deploy.sh passes, so the version is observable.
+process.env.GIT_SHA = "test-sha";
 
 let baseUrl: string;
 let stop: () => void;
@@ -56,6 +58,28 @@ function join(params: Record<string, string>) {
 const probe = (id: string) => fetch(`${baseUrl}/rooms/${id}`);
 
 describe("server", () => {
+  describe("health endpoint", () => {
+    for (const path of ["/health", "/ws/health"]) {
+      test(`GET ${path} answers ok with uptime and the baked-in version only`, async () => {
+        const response = await fetch(`${baseUrl}${path}`);
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Cache-Control")).toBe("no-store");
+        const body = await response.json();
+        expect(Object.keys(body).sort()).toEqual(["status", "uptimeSeconds", "version"]);
+        expect(body.status).toBe("ok");
+        expect(body.version).toBe("test-sha");
+        expect(Number.isInteger(body.uptimeSeconds)).toBe(true);
+      });
+    }
+
+    test("a room named 'health' is still answered by the room probe", async () => {
+      const response = await probe("health");
+
+      expect(await response.json()).toEqual({ exists: false, deck: null });
+    });
+  });
+
   describe("room existence probe", () => {
     test("reports a room that has never existed", async () => {
       const response = await probe("no-such-room");

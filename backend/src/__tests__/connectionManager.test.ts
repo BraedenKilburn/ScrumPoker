@@ -183,4 +183,24 @@ describe("ConnectionManager", () => {
       expect(connectionManager.isConnected("nonexistent", "user1")).toBe(false);
     });
   });
+
+  describe("connectionCount", () => {
+    test("counts live connections across rooms", () => {
+      expect(connectionManager.connectionCount()).toBe(0);
+
+      connectionManager.registerConnection("room1", "user1", mockWs1 as any);
+      connectionManager.registerConnection("room2", "user2", mockWs2 as any);
+      expect(connectionManager.connectionCount()).toBe(2);
+
+      connectionManager.removeConnection("room1", "user1");
+      expect(connectionManager.connectionCount()).toBe(1);
+    });
+
+    test("a reconnect replacing a socket is still one connection", () => {
+      connectionManager.registerConnection("room1", "user1", mockWs1 as any);
+      connectionManager.registerConnection("room1", "user1", mockWs2 as any);
+
+      expect(connectionManager.connectionCount()).toBe(1);
+    });
+  });
 });

@@ -494,4 +494,31 @@ describe("InMemoryRoomManager", () => {
       expect(roomManager.isUserInRoom("room1", "user1")).toBe(false);
     });
   });
+
+  describe("counts", () => {
+    test("start at zero", () => {
+      expect(roomManager.roomCount()).toBe(0);
+      expect(roomManager.memberCount()).toBe(0);
+    });
+
+    test("count rooms and members across rooms, spectators included", () => {
+      roomManager.joinRoom("room1", "alice");
+      roomManager.joinRoom("room1", "bob", undefined, "spectator");
+      roomManager.joinRoom("room2", "carol");
+
+      expect(roomManager.roomCount()).toBe(2);
+      expect(roomManager.memberCount()).toBe(3);
+    });
+
+    test("drop a room and its members when the admin leaves", () => {
+      roomManager.joinRoom("room1", "alice");
+      roomManager.joinRoom("room1", "bob");
+      roomManager.leaveRoom("room1", "bob");
+      expect(roomManager.memberCount()).toBe(1);
+
+      roomManager.leaveRoom("room1", "alice");
+      expect(roomManager.roomCount()).toBe(0);
+      expect(roomManager.memberCount()).toBe(0);
+    });
+  });
 });

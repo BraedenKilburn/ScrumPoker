@@ -7,11 +7,15 @@ import { ReactionRateLimiter } from "./reactionRateLimiter";
 import { BunRoomBroadcaster } from "./roomBroadcaster";
 import { createClientMessageHandler } from "./clientMessageHandler";
 import { createRoomMembership } from "./roomMembership";
+import { healthCheck, opsConfigFromEnv } from "./health";
+import { startStatsReporter } from "./statsReporter";
 
 const connectionManager = new ConnectionManager();
 const roomManager = new InMemoryRoomManager();
 const disconnectManager = new DisconnectManager();
 const reactionRateLimiter = new ReactionRateLimiter();
+const ops = opsConfigFromEnv(process.env);
+const readMemory = () => process.memoryUsage();
 
 // Exported so an integration test can bind an ephemeral port (PORT=0)
 // and stop the server afterwards. Production still runs `bun index.ts`.
@@ -25,7 +29,7 @@ export const server = Bun.serve<WebSocketData>({
     // Room-existence probe for the home page. Matched by pathname suffix
     // because in prod only the `/ws` prefix is proxied here (and the prefix is
     // forwarded intact), so the request arrives as `/ws/rooms/:id` — while
-    // deploy.sh's health check hits `/rooms/:id` directly on :3000.
+    // a direct request on :3000 is plain `/rooms/:id`.
     const roomsMatch = url.pathname.match(/\/rooms\/([^/]+)$/);
     if (req.method === "GET" && roomsMatch) {
       // decodeURIComponent throws on malformed %-encoding — such an id
@@ -39,6 +43,19 @@ export const server = Bun.serve<WebSocketData>({
         { exists, deck: exists ? roomManager.getRoomDeck(id) : null },
         { headers: { "Access-Control-Allow-Origin": "*" } },
       );
+    }
+
+    // Liveness for deploy.sh, the container healthcheck and Uptime Kuma.
+    // Same suffix rule as the probe above, so it answers both directly on
+    // :3000 and as `/ws/health` through Caddy. Checked after the room
+    // probe so `/rooms/health` still asks about a room called "health".
+    if (req.method === "GET" && url.pathname.endsWith("/health")) {
+      return healthCheck({
+        version: ops.version,
+        maxRssMb: ops.maxRssMb,
+        uptimeSeconds: process.uptime,
+        readMemory,
+      });
     }
 
     const rawRoomId = url.searchParams.get("roomId");
@@ -89,6 +106,25 @@ const clientMessages = createClientMessageHandler({
   broadcaster,
   rateLimiter: reactionRateLimiter,
   membership,
+});
+
+startStatsReporter({
+  // Unref'd: the stats timer alone must never keep the process alive
+  // (the server does that), so a stopped server in tests can exit.
+  scheduler: {
+    schedule: (callback, delayMs) => setTimeout(callback, delayMs).unref(),
+    cancel: (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>),
+  },
+  intervalMs: ops.statsIntervalMs,
+  maxRssMb: ops.maxRssMb,
+  readMemory,
+  readCounts: () => ({
+    rooms: roomManager.roomCount(),
+    members: roomManager.memberCount(),
+    connections: connectionManager.connectionCount(),
+    absentMembers: disconnectManager.absentCount(),
+  }),
+  log: logger,
 });
 
 console.log(`Listening on ${server.hostname}:${server.port}`);
