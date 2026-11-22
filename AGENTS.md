@@ -45,4 +45,4 @@ The five canonical triage labels, used as-is. See `docs/agents/triage-labels.md`
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

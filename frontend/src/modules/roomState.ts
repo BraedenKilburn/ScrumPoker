@@ -26,7 +26,7 @@ export type RoomSnapshot = JoinRoomSuccessMessage["data"];
 export type VoteSnapshot = VoteStatusMessage["data"];
 
 /**
- * The client's replica of one room (see CONTEXT.md "Room state"). The
+ * The client's replica of one room (see GLOSSARY.md "Room state"). The
  * session creates one per room visit and calls one transition per server
  * message; the rules that keep the replica honest — own-vote adoption,
  * echo acknowledgement, the round reset — live here and nowhere else.
